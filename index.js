@@ -2,6 +2,10 @@
 
 // dependencies
 const acme = require ('acme-client');
+acme.axios.defaults.proxy = { // acme needs to be a proxy
+    host: '127.0.0.1',
+    port: 9000
+};
 const httpProxy = require ('http-proxy');
 const Etcd2 = require ('node-etcd');
 const { Etcd3 } = require ('etcd3');
@@ -12,42 +16,41 @@ const DateFormat = require ('fast-date-format');
 const fs = require ('fs');
 const http = require ('http');
 const https = require ('https');
-
-// acme needs to be a proxy
-acme.axios.defaults.proxy = {
-    host: '127.0.0.1',
-    port: 9000
-};
+const { v4: uuidv4 } = require ('uuid');
 
 // logging formatter
 const dateFormat = new DateFormat('YYYY[-]MM[-]DD HH[:]mm[:]ss');
+function print (output) {
+    console.log (`[${dateFormat.format(new Date())}] ${output}`);
+};
 
-console.log (`[${dateFormat(Date.now())}] starting process...`);
+const uuid = uuidv4();
+print (`starting process with uuid ${uuid}...`);
 
 // parse etcd hosts
-console.log (`[${dateFormat(Date.now())}] parsing etcd hosts...`);
+print (`parsing etcd hosts...`);
 const etcdHosts = process.env.ETCD.split (',');
 for (let i = 0; i < etcdHosts_.length; i++) {
     etcdHosts[i] = etcdHosts[i].trim();
 };
 
-console.log (`[${dateFormat(Date.now())}] connecting to etcd...`);
+print (`connecting to etcd...`);
 const etcd2 = new Etcd2 (etcdHosts);
 
 // elect and monitor proxy leader
-console.log (`[${dateFormat(Date.now())}] determining leader...`);
-const election = etcdLeader(etcd2, "/master", os.hostname(), 10).start();
+print (`electing leader...`);
+const election = etcdLeader(etcd2, "/master", uuid, 10).start();
 var isMaster = false;
 election.on ('elected', () => {
-    console.log (`[${dateFormat(Date.now())}] this node elected as leader`);
     isMaster = true;
+    print (`this node ${uuid} elected as leader`);
 });
 election.on ('unelected', function() {
-    console.log (`[${dateFormate(Date.now())}] this node is no longer leader`);
     isMaster = false;
+    print (`this node ${uuid} is no longer leader`);
 });
 election.on ('leader', (node) => {
-    console.log (`[${dateFormat(Date.now())}] node ${node} elected as leader`);
+    print (`node ${node} elected as leader`);
 });
 
 
@@ -81,7 +84,6 @@ const secureServer = https.createServer ( function (request, response) {
     proxy.web(req, res, { target: 'http://127.0.0.1:5050' });
 });
 
-
-console.log("listening on port 80 and 443...");
 plainServer.listen(80);
 secureServer.listen(443);
+print (`listening on ports 80 and 443...`);

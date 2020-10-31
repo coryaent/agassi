@@ -29,6 +29,7 @@
     "etcd3": "^1.0.2",
     "fast-date-format": "^2.2.4",
     "http-proxy": "^1.18.1",
-    "node-etcd": "^7.0.0"
+    "node-etcd": "^7.0.0",
+    "uuid": "^8.3.1"
   }
 }
