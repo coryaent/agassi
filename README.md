@@ -5,11 +5,11 @@ A proxy for docker containers, services, and stacks, with Let's Encrypt SSL and 
 - Docker swarm
 - etcd
 - RSA key (for Let's Encrypt account)
-```
+```shell
 openssl genrsa -out account.key 4096
 ```
 - OpenSSL key/self-signed certificate pair (for SSL server)
-```
+```shell
 export CERTNAME=reimagined-invention &&\
 openssl req \
 -newkey rsa:4096\
@@ -22,7 +22,7 @@ openssl req \
 ```
 
 ## ENV
-```
+```shell
 ETCD=host01,host02,host03 # comma-seperated etcd hosts
 ELECTION_TTL= # TTL for leader elections (integer, seconds)
 ACME_KEY= # RSA key for Let's Encrypt Account (file)
