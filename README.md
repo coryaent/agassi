@@ -6,7 +6,7 @@ A proxy for docker containers, services, and stacks, with Let's Encrypt SSL and 
 - etcd
 - RSA key (for Let's Encrypt account)
 ```
-openssl genrsa -out domain.key 4096
+openssl genrsa -out account.key 4096
 ```
 - OpenSSL key/self-signed certificate pair (for SSL server)
 ```
@@ -23,9 +23,9 @@ openssl req \
 
 ## ENV
 ```
-ETCD=host01,host02,host03
-ELECTION_TTL=
-ACME_KEY=
-
-DEFAULT_CRT=
+ETCD=host01,host02,host03 # comma-seperated etcd hosts
+ELECTION_TTL= # TTL for leader elections (integer, seconds)
+ACME_KEY= # RSA key for Let's Encrypt Account (file)
+DEFAULT_KEY= # SSL key for default HTTPS server (file)
+DEFAULT_CRT= # self-signed SSL certificate for HTTPS (file)
 ```
