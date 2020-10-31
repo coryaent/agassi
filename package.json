@@ -1,0 +1,34 @@
+{
+  "name": "reimagined-invention",
+  "version": "0.0.0",
+  "description": "A proxy for docker containers, services, and stacks, with Let's Encrypt SSL and etcd-backed redundancy ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coryagroup/reimagined-invention.git"
+  },
+  "keywords": [
+    "docker",
+    "proxy",
+    "ssl",
+    "letsencrypt"
+  ],
+  "author": "Steve Corya",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/coryagroup/reimagined-invention/issues"
+  },
+  "homepage": "https://github.com/coryagroup/reimagined-invention#readme",
+  "dependencies": {
+    "acme-client": "^4.0.2",
+    "dolphin": "^0.1.14",
+    "etcd-leader": "0.0.1",
+    "etcd3": "^1.0.2",
+    "fast-date-format": "^2.2.4",
+    "http-proxy": "^1.18.1",
+    "node-etcd": "^7.0.0"
+  }
+}
