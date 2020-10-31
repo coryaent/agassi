@@ -3,6 +3,13 @@
 const Etcd2 = require ('node-etcd');
 const etcdLeader = require ('etcd-leader');
 const os = require('os');
+const DateFormat = require ('fast-date-format');
+
+
+const dateFormat = new DateFormat('YYYY[-]MM[-]DD HH[:]mm[:]ss');
+
+console.log (`[${dateFormat(Date.now())}] starting process...`);
+
 
 console.log (`[${dateFormat(Date.now())}] connecting to etcd...`);
 const etcd2 = new Etcd2 (['http://192.168.1.10:2379', 'http://192.168.1.12:2379', 'http://192.168.1.13:2379']);
