@@ -5,4 +5,5 @@ A proxy for docker containers, services, and stacks, with Let's Encrypt SSL and 
 ```
 ETCD=host01,host02,host03
 SSL_KEY=
+ELECTION_TTL=
 ```
