@@ -2,6 +2,7 @@
 
 const acme = require ('acme-client');
 const fs = require ('fs');
+const util = require('util');
 
 const key = fs.readFileSync (process.env.PWD + '/test.key', 'ascii');
 
@@ -11,7 +12,15 @@ const key = fs.readFileSync (process.env.PWD + '/test.key', 'ascii');
         directoryUrl: acme.directory.letsencrypt.staging,
         accountKey: key
     });
-    console.log (`client: ${JSON.stringify(client, null, '\t')}`);
+
+    // const [acmeKey, acmeCSR] = await acme.forge.createCsr({
+    //     commonName: 'example.com'
+    // }, key);
+
+    // console.log (`myKey:\n${key}`);
+    // console.log (`acmeKey:\n${acmeKey}`);
+    // console.log (`acmeCSR:\n${acmeCSR}`);
+
 
     /* Register account */
     const account = await client.createAccount({
@@ -20,6 +29,18 @@ const key = fs.readFileSync (process.env.PWD + '/test.key', 'ascii');
     });
     console.log (`account: ${JSON.stringify(account, null, '\t')}`);
 
-    console.log (`key: ${key}`);
+    const order = await client.createOrder({
+        identifiers: [
+            { type: 'dns', value: 'stevecorya.com' },
+            { type: 'dns', value: 'corya.me' }
+        ]
+    });
+    console.log (order);
 
+    const authorizations = await client.getAuthorizations(order);
+    console.log (util.inspect(authorizations, false, null));
+
+    const keyAuthorization = await client.getChallengeKeyAuthorization(authorizations[0]['challenges'][0]);
+    console.log (authorizations[0]['challenges'][0]);
+    console.log (keyAuthorization);
 }) ();

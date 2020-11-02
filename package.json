@@ -24,7 +24,9 @@
   "homepage": "https://github.com/coryagroup/reimagined-invention#readme",
   "dependencies": {
     "acme-client": "^4.0.2",
+    "bluebird": "^3.7.2",
     "dolphin": "^0.1.14",
+    "dotenv": "^8.2.0",
     "etcd-leader": "0.0.1",
     "etcd3": "^1.0.2",
     "fast-date-format": "^2.2.4",
