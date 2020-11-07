@@ -23,9 +23,13 @@ const secureServer = https.createServer ( function (request, response) {
     // and then proxy the request.
 
     // console.log (request);    
-    console.log (new URL(request.url, `https://${request.headers.host}`));
-    response.write (JSON.stringify(new URL(request.url, `https://${request.headers.host}`), null, '\t'));
-    response.end();
+    // console.log (new URL(request.url, `https://${request.headers.host}`));
+    // response.write (JSON.stringify(new URL(request.url, `https://${request.headers.host}`), null, '\t'));
+    // response.end();
+    proxy.web (request, response, {
+        target: 'http://localhost:8080',
+        auth: 'user:pass'
+    });
 });
 
 

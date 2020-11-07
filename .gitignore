@@ -1,4 +1,5 @@
 node_modules
-test.key
-test.crt
-domain.key
+.env
+*.key
+*.crt
+tls.js

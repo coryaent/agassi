@@ -1,5 +1,5 @@
 # reimagined-invention
-A proxy for docker containers, services, and stacks, with Let's Encrypt SSL and etcd-backed redundancy
+A distributed, high-availability reverse proxy created specifically for HTTP(S) ingres to docker swarms.
 
 ## Pre-requisites
 - Docker swarm
@@ -21,16 +21,33 @@ openssl req \
 -subj "/CN=example.com" 
 ```
 
-## ENV
+## env
 ```shell
 ETCD= # comma-seperated etcd hosts (string array) [required]
 ACME_KEY= # PEM key for Let's Encrypt Account (file) [required]
-DEFAULT_KEY= # SSL key for default HTTPS server (file) [required]
-DEFAULT_CRT= # self-signed SSL certificate for HTTPS (file) [required]
+DEFAULT_KEY= # SSL key for HTTPS server and Let's Encrypt CSR's (file) [required]
+DEFAULT_CRT= # self-signed SSL certificate for HTTPS server (file) [required]
 ELECTION_DIR= # election directory in etcd2 (string) [default: /leader]
 ELECTION_TTL= # TTL for leader elections (integer, seconds) [default: 10]
 CHALLENGE_DIR= # etcd2 directory for ACME challenges (string) [default: /challenges]
 VHOST_DIR= # etcd2 directory for virtual hosts (string) [default: /virtual-hosts]
-CERTIFICATE_DIR= # etcd2 directory for Let's Encrypt certificates (string) [default: /certificates]
 STAGING= # do or do not use staging environment (boolean) [default: false]
+```
+
+## Virtual Hosts
+Virtual hosts are stored in etcd and cached in memory with ES6 Maps. etcd entries are also used to create secure contexts for SNI.
+```js
+VirtualHost {
+    ssl: {
+        cert: ,
+        key: ,
+    },
+    auth: {
+        user: ,
+        hash: 
+    },
+    options: {
+        /* proxy options */
+    }
+}
 ```

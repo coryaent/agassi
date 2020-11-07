@@ -4,10 +4,7 @@ const dolphin = require ('dolphin')();
 const print = require ('./print.js');
 
 print ('fetching networks...');
-(async () => {
-    let networks = dolphin.networks();
-    print (networks);
-}) ();
+dolphin.networks().then ((networks) => print (networks));
 
 print ('watching events...');
 dolphin.events({})
