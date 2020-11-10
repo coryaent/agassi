@@ -261,7 +261,7 @@ https.createServer ({
     },
     key: defaultKey,
     cert: defaultCert
-}, (request, response) => {
+}, async (request, response) => {
     print ('received new https request');
     const requestURL = new URL(request.url, `https://${request.headers.host}`);
     print (requestURL.hostname);
