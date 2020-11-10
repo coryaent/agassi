@@ -11,6 +11,7 @@ const Etcd = require ('node-etcd');
 const bluebird = require ('bluebird'); bluebird.promisifyAll(Etcd.prototype);
 const etcdLeader = require ('etcd-leader');
 const dolphin = require ('dolphin')();
+const Docker = require ('dockerode'); const docker = new Docker ();
 const httpProxy = require ('http-proxy');
 const http = require ('http');
 const https = require ('https');
@@ -87,24 +88,25 @@ dolphin.events({})
     if (isLeader) {
         // on service creation
         if (event.Type === 'service' && event.Action === 'create') {
-            print (`detected new docker service ${event.Actor.Attributes.name}`);
+            print (`detected new docker service ${event.Actor.ID}`);
+            const service = await docker.getService (event.Actor.ID).inspect();
             // check that the service has the requisite label(s)
-            if (event.Attributes.VIRTUAL_HOST) {
+            if (service.Spec.Labels.VIRTUAL_HOST) {
                 // parse virtual host
-                const virtualURL = new URL (event.Attributes.VIRTUAL_HOST);
+                const virtualURL = new URL (service.Spec.Labels.VIRTUAL_HOST);
                 print (`new service VIRTUAL_HOST parsed as ${virtualURL.toString()}`);
 
                 // create virtual host w/ options
                 const virtualHost = {};
                 virtualHost.options = {};
-                virtualHost.options.target = `${virtualURL.protocol}://${event.Attributes.name}:${virtualURL.port}`;
-                print (`target set to ${virtualURL.protocol}://${event.Attributes.name}:${virtualURL.port}`);
+                virtualHost.options.target = `${virtualURL.protocol}://${service.Spec.Name}:${virtualURL.port}`;
+                print (`target set to ${virtualURL.protocol}://${service.Spec.Name}:${virtualURL.port}`);
                 // check if auth is required
-                if (event.Attributes.VIRTUAL_AUTH) {
-                    print (`found VIRTUAL_AUTH for ${event.Attributes.name}`);
-                    virtualHost.auth = event.Attributes.VIRTUAL_AUTH;
+                if (service.Spec.Labels.VIRTUAL_AUTH) {
+                    print (`found VIRTUAL_AUTH for ${service.Spec.Name}`);
+                    virtualHost.auth = service.Spec.Labels.VIRTUAL_AUTH;
                 } else {
-                    print (`VIRTUAL_AUTH not found for ${event.Attributes.name}`);
+                    print (`VIRTUAL_AUTH not found for ${service.Spec.Name}`);
                 };
                 print (`adding virtual host to etcd...`);
                 await etcd.setAsync (`${vHostDir}/${virtualURL.hostname}`,
