@@ -285,13 +285,17 @@ https.createServer ({
         const [virtualUser, virtualHash] = virtualHost.auth.split (':');
 
         // compare provided header with expected values
-        if (requestUser === virtualUser && (await compareHash (requestPassword, virtualHash))) {
-            // authentication passed
-            print (`basic auth passed`);
-            proxy.web (request, response, virtualHost.options);
-        } else {
-            print (`basic auth failed`);
-            response.end ('Authentication failed.');
+        if (requestUser === virtualUser) {
+            const passAuth = await compareHash (requestPassword, virtualHash);
+        
+            if (passAuth) {
+                // authentication passed
+                print (`basic auth passed`);
+                proxy.web (request, response, virtualHost.options);
+            } else {
+                print (`basic auth failed`);
+                response.end ('Authentication failed.');
+            };
         };
 
     } else {
