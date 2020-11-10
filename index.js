@@ -10,15 +10,13 @@ const acme = require ('acme-client');
 const Etcd = require ('node-etcd');
 const bluebird = require ('bluebird'); bluebird.promisifyAll(Etcd.prototype);
 const etcdLeader = require ('etcd-leader');
-const EventEmitter = require ('events');
 const dolphin = require ('dolphin')();
 const httpProxy = require ('http-proxy');
 const http = require ('http');
 const https = require ('https');
-const auth = require("http-auth");
-const url = require ('url');
 const tls = require ('tls');
 const memoize = require ('nano-memoize');
+const crypto = require ('crypto'); const md5 = (x) => crypto.createHash('md5').update(x).digest('hex');
 
 const uuid = uuidv4();
 print (`starting process with uuid ${uuid}...`);
@@ -30,9 +28,8 @@ const defaultCert = fs.readFileSync (process.env.DEFAULT_CRT);
 const acmeKey = fs.readFileSync (process.env.ACME_KEY);
 
 // initialize caches of virtual hosts, SNI secure contexts, and basic authentication
-const secureContext = {};
 const vHosts = new Map ();
-const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 60});
+const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 60}); // memoize for 1 hr.
 
 // acme client
 const client = new acme.Client({
@@ -53,6 +50,8 @@ const etcd = new Etcd (etcdHosts);
 // create requisite directories for watchers
 const challengeDir = typeof process.env.CHALLENGE_DIR === 'string' ? process.env.CHALLENGE_DIR : '/challenges';
 etcd.mkdirSync (challengeDir);
+const certDir = typeof process.env.CERT_DIR === 'string' ? process.env.CERT_DIR : '/certs';
+etcd.mkdirSync (certDir);
 const vHostDir = typeof process.env.VHOST_DIR === 'string' ? process.env.VHOST_DIR : '/virtual-hosts';
 etcd.mkdirSync (vHostDir);
 
@@ -84,15 +83,33 @@ election.on ('error', (error) => {
 // listen to docker socket for new containers
 dolphin.events({})
 .on ('event', async (event) => {
-    // only leader handles new services
+    // only leader hayndles new services
     if (isLeader) {
         // on service creation
         if (event.Type === 'service' && event.Action === 'create') {
             print (`detected new docker service ${event.Actor.Attributes.name}`);
-            // check that the service has the requisite labels
+            // check that the service has the requisite label(s)
             if (event.Attributes.VIRTUAL_HOST) {
                 // parse virtual host
                 const virtualURL = new URL (event.Attributes.VIRTUAL_HOST);
+                print (`new service VIRTUAL_HOST parsed as ${virtualURL.toString()}`);
+
+                // create virtual host w/ options
+                const virtualHost = {};
+                virtualHost.options = {};
+                virtualHost.options.target = `${virtualURL.protocol}://${event.Attributes.name}:${virtualURL.port}`;
+                print (`target set to ${virtualURL.protocol}://${event.Attributes.name}:${virtualURL.port}`);
+                // check if auth is required
+                if (event.Attributes.VIRTUAL_AUTH) {
+                    print (`found VIRTUAL_AUTH for ${event.Attributes.name}`);
+                    virtualHost.auth = event.Attributes.VIRTUAL_AUTH;
+                } else {
+                    print (`VIRTUAL_AUTH not found for ${event.Attributes.name}`);
+                };
+                print (`adding virtual host to etcd...`);
+                await etcd.setAsync (`${vHostDir}/${virtualURL.hostname}`,
+                    JSON.stringify (virtualHost), {maxRetries: 3}, print
+                );
 
                 // place order for signed certificate
                 print (`ordering Let's Encrypt certificate for ${virtualURL.hostname} ...`);
@@ -119,7 +136,7 @@ dolphin.events({})
                         challenge: httpChallenge,
                         response: httpAuthorizationResponse
                     }
-                ), { ttl: 864000, maxRetries: 3 }, print); // options and error callback
+                ), { ttl: 864000, maxRetries: 3 }, print); // options and error callback (10-day exp.)
             };
         };
     };
@@ -131,19 +148,44 @@ dolphin.events({})
 // watch for new ACME challenges
 etcd.watcher (challengeDir, null, {recursive: true})
 .on ('set', async (event) => {
+
     // only the leader communicates that a challenge is ready
     print (`found new ACME challenge`);
     if (isLeader) {
+        // queue the completion on the remote ACME server and wait
+        print (`completing challenge and awaiting validation...`);
         const value = JSON.parse (event.node.value);
         await client.completeChallenge (value.challenge);
         await client.waitForValidStatus(value.challenge);
 
+        // challenge is complete and valid, send cert-signing request
+        print (`creating CSR for ${value.domain} ...`);
         const [key, csr] = await acme.forge.createCsr({
             commonName: value.domain
         }, defaultKey);
 
+        // finalize the order and pull the cert
+        print (`finalizing order and downloading cert for ${value.domain} ...`);
         await client.finalizeOrder(value.order, csr);
-        const cert = await client.getCertificate(value.order); 
+        const cert = await client.getCertificate(value.order);
+
+        // add cert to etcd with expiration
+        print (`adding cert to etcd...`);
+        await etcd.setAsync (`${certDir}/${md5(cert)}`, 
+            JSON.stringify ({
+                cert: cert,
+                domain: value.domain
+            }
+        ), {ttl: 7776000, maxRetries: 3}, print); // 90-day ttl
+
+        // update the virtual host
+        print (`updating virtual host in etcd...`);
+        const virtualHost = JSON.parse (await etcd.getAsync (`${vHostDir}/${value.domain}`));
+        virtualHost.cert = cert;
+        await etcd.setAsync (`${vHostDir}/${value.domain}`, 
+            JSON.stringify (virtualHost), {maxRetries: 3}, print
+        );
+
     };
 })
 .on ('error', (error) => {
@@ -169,7 +211,9 @@ http.createServer (async (request, response) => {
         });
         response.write (challengeResponse);
         response.end();
+
     } else {
+
         // redirect to https
         const redirectLocation = "https://" + request.headers['host'] + request.url;
         print (`redirecting to ${redirectLocation} ...`);
@@ -177,6 +221,7 @@ http.createServer (async (request, response) => {
             "Location": redirectLocation
         });
         response.end();
+
     };
 })
 .on ('error', (error) => print (error))
@@ -185,9 +230,11 @@ http.createServer (async (request, response) => {
 // watch for new virtual hosts
 etcd.watcher (vHostDir, null, {recursive: true})
 .on ('set', async (event) => {
-    // let vHost = event.node.key.replace ('/virtual-hosts/', '');
-    // let options = JSON.parse (event.node.value);
-    // vHosts.set (vHost, options);
+    print (`found new virtual host in etcd`);
+    const vHostDomain = event.node.key.replace (`${vHostDir}/`, '');
+    const vHost = JSON.parse (event.node.value);
+    print (`caching virtual host for ${vHostDomain} ...`);
+    vHosts.set (vHostDomain, vHost);
 })
 .on ('error', (error) => {
     print (`ERROR: ${error}`);
@@ -197,12 +244,19 @@ etcd.watcher (vHostDir, null, {recursive: true})
 // create proxy, HTTP and HTTPS servers
 const proxy = httpProxy.createProxyServer({})
 .on ('error', (error)  => print (error));
+
 https.createServer ({
-    SNICallback: function (domain, cb) {
-        if (secureContext[domain]) {
-            cb (null, secureContext[domain]);
+    SNICallback: (domain, callback) => {
+        print (`calling SNICallBack...`);
+        if (vHosts.get(domain).cert) {
+            print (`found SNI callback for ${domain}`);
+            return callback (null, tls.createSecureContext({
+                key: defaultKey,
+                cert: vHosts.get(domain).cert
+            }));
         } else {
-            cb (null, secureContext["default"]);
+            print (`could not find SNI callback for ${domain}`);
+            return callback (null, false);
         };
     },
     key: defaultKey,
@@ -214,22 +268,29 @@ https.createServer ({
     const virtualHost = vHosts.get (requestURL.hostname);
     // basic auth protected host
     if (virtualHost.auth) {
+        print (`basic auth required...`);
         // auth required but not provided
         if (!request.headers.authorization) {
             // prompt for password in browser
             response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${requestURL.hostname}"`});
             response.end ('Authorization is needed');
-            return; 
+            return;  
         };
 
         // parse authentication header
         const requestAuth = (new Buffer (request.headers.authorization.replace(/^Basic/, ''), 'base64')).toString('utf-8');
         const [requestUser, requestPassword] = requestAuth.split (':');
 
+        // parse vHost auth parameter
+        const [virtualUser, virtualHash] = virtualHost.auth.split (':');
+
         // compare provided header with expected values
-        if (requestUser === virtualHost.auth.user && await compareHash (requestPassword, virtualHost.auth.hash)) {
+        if (requestUser === virtualUser && await compareHash (requestPassword, virtualHash)) {
             // authentication passed
+            print (`basic auth passed`);
+            proxy.web (request, response, virtualHost.options);
         } else {
+            print (`basic auth failed`);
             response.end ('Authentication failed.');
         };
 
