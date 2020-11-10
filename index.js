@@ -281,24 +281,21 @@ https.createServer ({
 
         // parse authentication header
         const requestAuth = (new Buffer (request.headers.authorization.replace(/^Basic/, ''), 'base64')).toString('utf-8');
+        print (requestAuth);
         const [requestUser, requestPassword] = requestAuth.split (':');
 
         // parse vHost auth parameter
         const [virtualUser, virtualHash] = virtualHost.auth.split (':');
+        print (virtualHost.auth);
 
         // compare provided header with expected values
-        if (requestUser === virtualUser) {
-            const passAuth = await compareHash (requestPassword, virtualHash);
-        
-            if (passAuth) {
-                // authentication passed
-                print (`basic auth passed`);
-                proxy.web (request, response, virtualHost.options);
-            } else {
-                print (`basic auth failed`);
-                response.end ('Authentication failed.');
-            };
+        if (requestUser === virtualUser && (await compareHash (requestPassword, virtualHash))) {
+            print (`basic auth passed`);
+            proxy.web (request, response, virtualHost.options);
         };
+
+        response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${requestURL.hostname}"`});
+        response.end ('Authorization is needed');
 
     } else {
         // basic auth not required 
