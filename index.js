@@ -99,8 +99,8 @@ dolphin.events({})
                 // create virtual host w/ options
                 const virtualHost = {};
                 virtualHost.options = {};
-                virtualHost.options.target = `${virtualURL.protocol}://${service.Spec.Name}:${virtualURL.port}`;
-                print (`target set to ${virtualURL.protocol}://${service.Spec.Name}:${virtualURL.port}`);
+                virtualHost.options.target = `${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`;
+                print (`target set to ${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`);
                 // check if auth is required
                 if (service.Spec.Labels.VIRTUAL_AUTH) {
                     print (`found VIRTUAL_AUTH for ${service.Spec.Name}`);
@@ -110,7 +110,7 @@ dolphin.events({})
                 };
                 print (`adding virtual host to etcd...`);
                 await etcd.setAsync (`${vHostDir}/${virtualURL.hostname}`,
-                    JSON.stringify (virtualHost), {maxRetries: 3}, print
+                    JSON.stringify (virtualHost)
                 );
 
                 // place order for signed certificate
