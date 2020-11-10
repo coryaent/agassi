@@ -14,7 +14,8 @@ dolphin.events({})
     if (event.Type == 'service') {
         console.log (`EVENT: ${event}`);
         console.log (`ID: ${event.Actor.ID}`);
-        console.log (`SERVICE: ${await docker.getService(event.Actor.ID).inspect()}`);
+        const service = await docker.getService(event.Actor.ID).inspect();
+        console.log (`SERVICE: ${util.inspect(service, false, null)}`);
     };
 })
 .on ('error', (error) => {
