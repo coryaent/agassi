@@ -1,7 +1,7 @@
 "use strict";
 
 const dolphin = require ('dolphin')();
-const docker = require ('dockerode');
+const Docker = require ('dockerode'); const docker = new Docker ();
 const print = require ('./print.js');
 
 // print ('fetching networks...');
@@ -14,7 +14,7 @@ dolphin.events({})
     if (event.Type == 'service') {
         console.log (`EVENT: ${event}`);
         console.log (`ID: ${event.Actor.ID}`);
-        console.log (`SERVICE: ${docker.getService(event.Actor.ID).inspect()}`);
+        console.log (`SERVICE: ${await docker.getService(event.Actor.ID).inspect()}`);
     };
 })
 .on ('error', (error) => {
