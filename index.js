@@ -285,7 +285,7 @@ https.createServer ({
         const [virtualUser, virtualHash] = virtualHost.auth.split (':');
 
         // compare provided header with expected values
-        if (requestUser === virtualUser && await compareHash (requestPassword, virtualHash)) {
+        if (requestUser === virtualUser && (await compareHash (requestPassword, virtualHash))) {
             // authentication passed
             print (`basic auth passed`);
             proxy.web (request, response, virtualHost.options);
