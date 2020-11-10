@@ -21,12 +21,12 @@ print (`keys set...`);
 
 print (`getting keys...`);
 
-let key = etcd2.getSync ('/dir', {recursive:true});
-let empty = etcd2.getSync ('vHosts', {recursive:true});
-let ttltest = etcd2.getSync ('ttltest');
+let key = etcd2.getSync ('/dir/somekey').body.node.value;
+// let empty = etcd2.getSync ('vHosts', {recursive:true});
+// let ttltest = etcd2.getSync ('ttltest');
 
 
 print (key);
-print (empty);
-print (new Date(ttltest.body.node.expiration).toUTCString())
+print (key.value);
+// print (new Date(ttltest.body.node.expiration).toUTCString())
 // print (ttltest);
