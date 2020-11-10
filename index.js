@@ -178,14 +178,14 @@ etcd.watcher (challengeDir, null, {recursive: true})
                 cert: cert,
                 domain: value.domain
             }
-        ), {ttl: 7776000, maxRetries: 3}, print); // 90-day ttl
+        ), {ttl: 7776000}); // 90-day ttl
 
         // update the virtual host
         print (`updating virtual host in etcd...`);
-        const virtualHost = JSON.parse (await etcd.getAsync (`${vHostDir}/${value.domain}`));
+        const virtualHost = JSON.parse ( (await etcd.getAsync (`${vHostDir}/${value.domain}`) ).node.value );
         virtualHost.cert = cert;
         await etcd.setAsync (`${vHostDir}/${value.domain}`, 
-            JSON.stringify (virtualHost), {maxRetries: 3}, print
+            JSON.stringify (virtualHost)
         );
 
     };
