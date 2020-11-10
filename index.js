@@ -105,6 +105,7 @@ dolphin.events({})
                 if (service.Spec.Labels.VIRTUAL_AUTH) {
                     print (`found VIRTUAL_AUTH for ${service.Spec.Name}`);
                     virtualHost.auth = service.Spec.Labels.VIRTUAL_AUTH;
+                    print (service.Spec.Labals.VIRTUAL_AUTH);
                 } else {
                     print (`VIRTUAL_AUTH not found for ${service.Spec.Name}`);
                 };
