@@ -248,7 +248,7 @@ const proxy = httpProxy.createProxyServer({})
 https.createServer ({
     SNICallback: (domain, callback) => {
         print (`calling SNICallBack...`);
-        if (vHosts.get(domain).cert) {
+        if (vHosts.get(domain) && vHosts.get(domain).cert) {
             print (`found SNI callback for ${domain}`);
             return callback (null, tls.createSecureContext({
                 key: defaultKey,
