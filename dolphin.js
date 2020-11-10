@@ -3,8 +3,8 @@
 const dolphin = require ('dolphin')();
 const print = require ('./print.js');
 
-print ('fetching networks...');
-dolphin.networks().then ((networks) => print (networks));
+// print ('fetching networks...');
+// dolphin.networks().then ((networks) => print (networks));
 
 print ('watching events...');
 dolphin.events({})
