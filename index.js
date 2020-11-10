@@ -124,21 +124,21 @@ dolphin.events({})
                 // get http authorization token and response
                 print (`getting authorization token for ${virtualURL.hostname} ...`);
                 const authorizations = await client.getAuthorizations(order);
-                const httpChallenge = await client.getChallengeKeyAuthorization(authorizations[0]['challenges'].find (
-                    (element) => element.type === 'http-01'));
+                const httpChallenge = authorizations[0]['challenges'].find (
+                    (element) => element.type === 'http-01');
                 const httpAuthorizationToken = httpChallenge.token;
                 const httpAuthorizationResponse = await client.getChallengeKeyAuthorization(httpChallenge);
 
                 // add challenge and response to etcd
                 print (`setting token and response for ${virtualURL.hostname} in etcd...`);
-                await etcd.setAsync (`${challengDir}/${httpAuthorizationToken}`, // key
+                await etcd.setAsync (`${challengeDir}/${httpAuthorizationToken}`, // key
                     JSON.stringify({ // etcd value
                         domain: virtualURL.hostname,
                         order: order,
                         challenge: httpChallenge,
                         response: httpAuthorizationResponse
                     }
-                ), { ttl: 864000, maxRetries: 3 }, print); // options and error callback (10-day exp.)
+                ), { ttl: 864000 }); // 10-day expiration
             };
         };
     };
