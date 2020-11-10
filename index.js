@@ -15,7 +15,7 @@ const httpProxy = require ('http-proxy');
 const http = require ('http');
 const https = require ('https');
 const tls = require ('tls');
-const memoize = require ('nano-memoize');
+const memoize = require ('fast-memoize');
 const crypto = require ('crypto'); const md5 = (x) => crypto.createHash('md5').update(x).digest('hex');
 
 const uuid = uuidv4();
@@ -29,7 +29,7 @@ const acmeKey = fs.readFileSync (process.env.ACME_KEY);
 
 // initialize caches of virtual hosts, SNI secure contexts, and basic authentication
 const vHosts = new Map ();
-const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 60}); // memoize for 1 hr.
+const compareHash = memoize (bcrypt.compare); // memoize for 1 hr.
 
 // acme client
 const client = new acme.Client({
