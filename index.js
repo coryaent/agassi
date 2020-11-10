@@ -205,7 +205,7 @@ http.createServer (async (request, response) => {
         // process ACME validation
         const token = requestURL.pathname.replace('/.well-known/acme-challenge/', '');
         print (`fetching token response from etcd for token ${token} ...`);
-        const value = await etcd.getAsync (`${challengeDir}/${token}`).body.node.value;
+        const value = (await etcd.getAsync (`${challengeDir}/${token}`)).node.value;
         const challengeResponse = JSON.parse (value).response;
         print (`responding to challenge request...`);
         response.writeHead(200, {
