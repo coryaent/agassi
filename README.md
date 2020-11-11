@@ -33,6 +33,7 @@ CHALLENGE_DIR= # etcd2 directory for ACME challenges (string) [default: /challen
 CERT_DIR= #etcd2 directory for storing Let's Encrypt certs (string) [default: /certs]
 VHOST_DIR= # etcd2 directory for virtual hosts (string) [default: /virtual-hosts]
 STAGING= # do or do not use staging environment (boolean) [default: false]
+RENEW_INTERVAL= # interval to check for expiring certs (integer, hours) [default: 6]
 ```
 
 ## Virtual Hosts

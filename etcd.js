@@ -22,13 +22,27 @@ print (`keys set...`);
 
 print (`getting keys...`);
 
+const allCerts = etcd.getSync ('/dir', {recursive: true});
+print (allCerts);
+
 (async () => { 
-    let key = (await etcd.getAsync ('/challenges/XWvxqYSoyN27sn5wXN4pDxjzhLmad8sXYaUvQgFdyrQ')).node.value;
+    try {
+        let exists = (await etcd.getAsync ('/dir/somekey'));
+        print (exists);
+    } catch (error) {
+        print ('key does not exist');
+    };
+
+    try {
+        let doesnt = (await etcd.getAsync ('/dir/doesnotexist'));
+        print (doesnt);
+    } catch (error) {
+        print ('key does not exist');
+    };
     // let empty = etcd2.getSync ('vHosts', {recursive:true});
     // let ttltest = etcd2.getSync ('ttltest');
 
     // print (key);
-    print (JSON.parse(key).response);
     // print (key.value);
     // print (new Date(ttltest.body.node.expiration).toUTCString())
     // print (ttltest);

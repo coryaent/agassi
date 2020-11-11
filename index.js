@@ -17,20 +17,16 @@ const http = require ('http');
 const https = require ('https');
 const tls = require ('tls');
 const memoize = require ('fast-memoize');
-const crypto = require ('crypto'); const md5 = (x) => crypto.createHash('md5').update(x).digest('hex');
+const dateDiff = require ('date-range-diff');
 
 const uuid = uuidv4();
 print (`starting process with uuid ${uuid}...`);
 
 // load keys for HTTPS server and Let's Encrypt
-print (`loading certificates...`);
+print (`loading keys...`);
 const defaultKey = fs.readFileSync (process.env.DEFAULT_KEY);
 const defaultCert = fs.readFileSync (process.env.DEFAULT_CRT);
 const acmeKey = fs.readFileSync (process.env.ACME_KEY);
-
-// initialize caches of virtual hosts, SNI secure contexts, and basic authentication
-const vHosts = new Map ();
-const compareHash = memoize (bcrypt.compare); // memoize for 1 hr.
 
 // acme client
 const client = new acme.Client({
@@ -55,6 +51,21 @@ const certDir = typeof process.env.CERT_DIR === 'string' ? process.env.CERT_DIR 
 etcd.mkdirSync (certDir);
 const vHostDir = typeof process.env.VHOST_DIR === 'string' ? process.env.VHOST_DIR : '/virtual-hosts';
 etcd.mkdirSync (vHostDir);
+
+// initialize caches of virtual hosts, current certificates, and basic authentication
+const certs = new Set ();
+const vHosts = new Map ();
+const compareHash = memoize (bcrypt.compare); // locally cache authentication(s)
+// cache availability of certs
+const certNodes = etcd.getSync (`${certDir}`, {recursive: true});
+for (let certNode of certNodes.body.node.nodes) {
+    certs.add (certNode.key.replace (`${certDir}/`, ''));
+};
+// cache existing virtual hosts
+const virtualHostNodes = etcd.getSync (`${vHostDir}`, {recursive: true});
+for (let virtualHostNode of virtualHostNodes.body.node.nodes) {
+    vHosts.set (virtualHostNode.key.replace (`${vHostDir}/`, ''), JSON.parse(virtualHostNode.value));
+};
 
 // elect and monitor proxy leader
 const electionDir = typeof process.env.ELECTION_DIR === 'string' ? process.env.ELECTION_DIR : '/leader';
@@ -86,9 +97,9 @@ dolphin.events({})
 .on ('event', async (event) => {
     // only leader hayndles new services
     if (isLeader) {
-        // on service creation
-        if (event.Type === 'service' && event.Action === 'create') {
-            print (`detected new docker service ${event.Actor.ID}`);
+        // on service creation or update
+        if (event.Type === 'service' && event.Action === 'update') {
+            print (`detected updated docker service ${event.Actor.ID}`);
             const service = await docker.getService (event.Actor.ID).inspect();
             // check that the service has the requisite label(s)
             if (service.Spec.Labels.VIRTUAL_HOST) {
@@ -103,45 +114,61 @@ dolphin.events({})
                 print (`target set to ${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`);
                 // check if auth is required
                 if (service.Spec.Labels.VIRTUAL_AUTH) {
-                    print (`found VIRTUAL_AUTH for ${service.Spec.Name}`);
                     virtualHost.auth = service.Spec.Labels.VIRTUAL_AUTH;
-                    print (service.Spec.Labels.VIRTUAL_AUTH);
-                } else {
-                    print (`VIRTUAL_AUTH not found for ${service.Spec.Name}`);
+                };
+                // check if etcd already has a cert for this domain
+                if (certs.has (virtualURL.hostname)) {
+                    print (`pulling existing cert for ${virtualURL.hostname}`);
+                    virtualHost.cert = (await etcd.getAsync (`${certDir}/${virtualURL.hostname}`)).node.value;
                 };
                 print (`adding virtual host to etcd...`);
                 await etcd.setAsync (`${vHostDir}/${virtualURL.hostname}`,
                     JSON.stringify (virtualHost)
                 );
 
-                // place order for signed certificate
-                print (`ordering Let's Encrypt certificate for ${virtualURL.hostname} ...`);
-                const order = await client.createOrder({
-                    identifiers: [
-                        { type: 'dns', value: virtualURL.hostname },
-                    ]
-                });
+                // if domain does not already have a cert
+                if (!certs.has (virtualURL.hostname)) {
+                    // place order for signed certificate
+                    print (`ordering Let's Encrypt certificate for ${virtualURL.hostname} ...`);
+                    const order = await client.createOrder({
+                        identifiers: [
+                            { type: 'dns', value: virtualURL.hostname },
+                        ]
+                    });
 
-                // get http authorization token and response
-                print (`getting authorization token for ${virtualURL.hostname} ...`);
-                const authorizations = await client.getAuthorizations(order);
-                const httpChallenge = authorizations[0]['challenges'].find (
-                    (element) => element.type === 'http-01');
-                const httpAuthorizationToken = httpChallenge.token;
-                const httpAuthorizationResponse = await client.getChallengeKeyAuthorization(httpChallenge);
+                    // get http authorization token and response
+                    print (`getting authorization token for ${virtualURL.hostname} ...`);
+                    const authorizations = await client.getAuthorizations(order);
+                    const httpChallenge = authorizations[0]['challenges'].find (
+                        (element) => element.type === 'http-01');
+                    const httpAuthorizationToken = httpChallenge.token;
+                    const httpAuthorizationResponse = await client.getChallengeKeyAuthorization(httpChallenge);
 
-                // add challenge and response to etcd
-                print (`setting token and response for ${virtualURL.hostname} in etcd...`);
-                await etcd.setAsync (`${challengeDir}/${httpAuthorizationToken}`, // key
-                    JSON.stringify({ // etcd value
-                        domain: virtualURL.hostname,
-                        order: order,
-                        challenge: httpChallenge,
-                        response: httpAuthorizationResponse
-                    }
-                ), { ttl: 864000 }); // 10-day expiration
+                    // add challenge and response to etcd
+                    print (`setting token and response for ${virtualURL.hostname} in etcd...`);
+                    await etcd.setAsync (`${challengeDir}/${httpAuthorizationToken}`, // key
+                        JSON.stringify({ // etcd value
+                            domain: virtualURL.hostname,
+                            order: order,
+                            challenge: httpChallenge,
+                            response: httpAuthorizationResponse
+                        }
+                    ), { ttl: 864000 }); // 10-day expiration
+                };
             };
         };
+        // if (event.Type === 'service' && event.Action === 'remove') {
+        //     print (`detected removed docker service ${event.Actor.ID}`);
+        //     const service = await docker.getService (event.Actor.ID).inspect();
+        //     // check that the service has the requisite label(s)
+        //     if (service.Spec.Labels.VIRTUAL_HOST) {
+        //         // parse virtual host
+        //         const virtualURL = new URL (service.Spec.Labels.VIRTUAL_HOST);
+        //         print (`removed service VIRTUAL_HOST parsed as ${virtualURL.toString()}`);
+
+        //         // remove virtual host from etcd
+        //     };
+        // };
     };
 })
 .on ('error', (error) => {
@@ -161,6 +188,10 @@ etcd.watcher (challengeDir, null, {recursive: true})
         await client.completeChallenge (value.challenge);
         await client.waitForValidStatus(value.challenge);
 
+        // remove completed challeng
+        print (`removing completed challenge...`);
+        await etcd.delAsync (event.node.key);
+
         // challenge is complete and valid, send cert-signing request
         print (`creating CSR for ${value.domain} ...`);
         const [key, csr] = await acme.forge.createCsr({
@@ -174,23 +205,46 @@ etcd.watcher (challengeDir, null, {recursive: true})
 
         // add cert to etcd with expiration
         print (`adding cert to etcd...`);
-        await etcd.setAsync (`${certDir}/${md5(cert)}`, 
-            JSON.stringify ({
-                cert: cert,
-                domain: value.domain
-            }
-        ), {ttl: 7776000}); // 90-day ttl
-
-        // update the virtual host
-        print (`updating virtual host in etcd...`);
-        const virtualHost = JSON.parse ( (await etcd.getAsync (`${vHostDir}/${value.domain}`) ).node.value );
-        virtualHost.cert = cert;
-        await etcd.setAsync (`${vHostDir}/${value.domain}`, 
-            JSON.stringify (virtualHost)
-        );
-
+        await etcd.setAsync (`${certDir}/${value.domain}`, cert, {ttl: 7776000}); // 90-day ttl
     };
 })
+.on ('error', (error) => {
+    print (`ERROR: ${error}`);
+});
+
+// watch for new certs
+etcd.watcher (certDir, null, {recursive: true})
+.on ('set', async (event) => {
+    const domain = event.node.key.replace (`${certDir}/`, '');
+    print (`found new cert for ${domain} in etcd`);
+    certs.add (domain);
+    // update the virtual host
+    print (`updating virtual host in etcd...`);
+    const virtualHost = JSON.parse ( (await etcd.getAsync (`${vHostDir}/${domain}`) ).node.value );
+    virtualHost.cert = cert;
+    await etcd.setAsync (`${vHostDir}/${domain}`, 
+        JSON.stringify (virtualHost)
+    );
+})
+.on ('error', (error) => {
+    print (`ERROR: ${error}`);
+});
+
+// watch for new and/or removed virtual hosts
+etcd.watcher (vHostDir, null, {recursive: true})
+.on ('set', (event) => {
+    print (`found new virtual host in etcd`);
+    const vHostDomain = event.node.key.replace (`${vHostDir}/`, '');
+    const vHost = JSON.parse (event.node.value);
+    print (`caching virtual host for ${vHostDomain} ...`);
+    vHosts.set (vHostDomain, vHost);
+})
+// .on ('delete', (event) => {
+//     print (`virtual host deleted in etcd`);
+//     const vHostDomain = event.node.key.replace (`${vHostDir}/`, '');
+//     print (`removing virtual host ${vHostDomain} from cache...`);
+//     vHosts.delete (vHostDomain);
+// })
 .on ('error', (error) => {
     print (`ERROR: ${error}`);
 });
@@ -201,13 +255,15 @@ http.createServer (async (request, response) => {
     print ('received http request');
     const requestURL = new URL(request.url, `http://${request.headers.host}`);
     print (requestURL.toString());
+    // if request is for ACME challenge
     if (requestURL.pathname && requestURL.pathname.startsWith('/.well-known/acme-challenge/')) {
 
-        // process ACME validation
+        // pull challenge response from etcd
         const token = requestURL.pathname.replace('/.well-known/acme-challenge/', '');
-        print (`fetching token response from etcd for token ${token} ...`);
         const value = (await etcd.getAsync (`${challengeDir}/${token}`)).node.value;
         const challengeResponse = JSON.parse (value).response;
+
+        // write challenge response to request
         print (`responding to challenge request...`);
         response.writeHead(200, {
             'Content-Type': 'text/plain'
@@ -230,35 +286,18 @@ http.createServer (async (request, response) => {
 .on ('error', (error) => print (error))
 .listen (80);
 
-// watch for new virtual hosts
-etcd.watcher (vHostDir, null, {recursive: true})
-.on ('set', async (event) => {
-    print (`found new virtual host in etcd`);
-    const vHostDomain = event.node.key.replace (`${vHostDir}/`, '');
-    const vHost = JSON.parse (event.node.value);
-    print (`caching virtual host for ${vHostDomain} ...`);
-    vHosts.set (vHostDomain, vHost);
-})
-.on ('error', (error) => {
-    print (`ERROR: ${error}`);
-});
-
-
 // create proxy, HTTP and HTTPS servers
 const proxy = httpProxy.createProxyServer({})
 .on ('error', (error)  => print (error));
 
 https.createServer ({
     SNICallback: (domain, callback) => {
-        print (`calling SNICallBack...`);
         if (vHosts.get(domain) && vHosts.get(domain).cert) {
-            print (`found SNI callback for ${domain}`);
             return callback (null, tls.createSecureContext({
                 key: defaultKey,
                 cert: vHosts.get(domain).cert
             }));
         } else {
-            print (`could not find SNI callback for ${domain}`);
             return callback (null, false);
         };
     },
@@ -276,18 +315,16 @@ https.createServer ({
         if (!request.headers.authorization) {
             // prompt for password in browser
             response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${requestURL.hostname}"`});
-            response.end ('Authorization is needed');
+            response.end ('Authorization is required.');
             return;  
         };
 
         // parse authentication header
-        const requestAuth = (new Buffer (request.headers.authorization.replace(/^Basic/, ''), 'base64')).toString('utf-8');
-        print (requestAuth);
+        const requestAuth = (Buffer.from (request.headers.authorization.replace(/^Basic/, ''), 'base64')).toString('utf-8');
         const [requestUser, requestPassword] = requestAuth.split (':');
 
         // parse vHost auth parameter
         const [virtualUser, virtualHash] = virtualHost.auth.split (':');
-        print (virtualHost.auth);
 
         // compare provided header with expected values
         if (requestUser === virtualUser && (await compareHash (requestPassword, virtualHash))) {
@@ -296,7 +333,7 @@ https.createServer ({
         };
 
         response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${requestURL.hostname}"`});
-        response.end ('Authorization is needed');
+        response.end ('Authorization is required.');
 
     } else {
         // basic auth not required 
@@ -307,6 +344,54 @@ https.createServer ({
 .listen(443);
 
 // periodically check for expriring certificates
+const renewInterval = typeof process.env.RENEW_INTERVAL === 'string' ? parseInt (process.env.RENEW_INTERVAL) * 60 * 60 : 6 * 60 * 60;
 setInterval (async () => {
+    try {
+        // only leader runs renewals
+        if (isLeader) {
+            // fetch all certificates
+            const allCerts_ = await etcd.getAsync (certDir, {recursive: true});
+            const allCerts = allCerts_.node.nodes;
 
-}, 86400); // run once per day
+            // check if each cert is approaching expiration
+            for await (let cert of allCerts) {
+                const domain = cert.key.replace (`${certDir}/`, '');
+                const daysUntilExpiration = dateDiff (new Date (cert.expiration), new Date ()).days;
+                print (`certificate for ${domain} expires in ${daysUntilExpiration} days`);
+                // only renew certs for domains with virtual hosts
+                if (vHosts.has (domain) && daysUntilExpiration < 45) {
+                    // place order for signed certificate
+                    print (`renewing Let's Encrypt certificate for ${domain} ...`);
+                    const order = await client.createOrder({
+                        identifiers: [
+                            { type: 'dns', value: domain },
+                        ]
+                    });
+
+                    // get http authorization token and response
+                    print (`getting authorization token for ${domain} ...`);
+                    const authorizations = await client.getAuthorizations(order);
+                    const httpChallenge = authorizations[0]['challenges'].find (
+                        (element) => element.type === 'http-01');
+                    const httpAuthorizationToken = httpChallenge.token;
+                    const httpAuthorizationResponse = await client.getChallengeKeyAuthorization(httpChallenge);
+
+                    // add challenge and response to etcd
+                    print (`setting token and response for ${domain} in etcd...`);
+                    await etcd.setAsync (`${challengeDir}/${httpAuthorizationToken}`, // key
+                        JSON.stringify({ // etcd value
+                            domain: domain,
+                            order: order,
+                            challenge: httpChallenge,
+                            response: httpAuthorizationResponse
+                        }
+                    ), { ttl: 864000 }); // 10-day expiration
+                };
+            };
+        };
+    } catch (error) {
+        print ('error renewing certificates');
+        print (error);
+    };
+        
+}, renewInterval); // run once per set interval
