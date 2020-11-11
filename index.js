@@ -55,6 +55,7 @@ etcd.mkdirSync (vHostDir);
 // initialize caches of virtual hosts, current certificates, and basic authentication
 const certs = new Set ();
 const vHosts = new Map ();
+const dockerServices = new Map ();
 const compareHash = memoize (bcrypt.compare); // locally cache authentication(s)
 // cache availability of certs
 const certNodes = etcd.getSync (`${certDir}`, {recursive: true});
@@ -64,7 +65,10 @@ for (let certNode of certNodes.body.node.nodes) {
 // cache existing virtual hosts
 const virtualHostNodes = etcd.getSync (`${vHostDir}`, {recursive: true});
 for (let virtualHostNode of virtualHostNodes.body.node.nodes) {
-    vHosts.set (virtualHostNode.key.replace (`${vHostDir}/`, ''), JSON.parse(virtualHostNode.value));
+    const vHostKey = virtualHostNode.key.replace (`${vHostDir}/`, '');
+    const vHost = JSON.parse(virtualHostNode.value);
+    vHosts.set (vHostKey, vHost);
+    dockerServices.set (vHost.serviceID, vHostKey);
 };
 
 // elect and monitor proxy leader
@@ -109,6 +113,7 @@ dolphin.events({})
 
                 // create virtual host w/ options
                 const virtualHost = {};
+                virtualHost.serviceID = event.Actor.ID;
                 virtualHost.options = {};
                 virtualHost.options.target = `${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`;
                 print (`target set to ${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`);
@@ -157,18 +162,17 @@ dolphin.events({})
                 };
             };
         };
-        // if (event.Type === 'service' && event.Action === 'remove') {
-        //     print (`detected removed docker service ${event.Actor.ID}`);
-        //     const service = await docker.getService (event.Actor.ID).inspect();
-        //     // check that the service has the requisite label(s)
-        //     if (service.Spec.Labels.VIRTUAL_HOST) {
-        //         // parse virtual host
-        //         const virtualURL = new URL (service.Spec.Labels.VIRTUAL_HOST);
-        //         print (`removed service VIRTUAL_HOST parsed as ${virtualURL.toString()}`);
-
-        //         // remove virtual host from etcd
-        //     };
-        // };
+        if (event.Type === 'service' && event.Action === 'remove') {
+            print (`detected removed docker service ${event.Actor.ID}`);
+            if (dockerServices.has (event.Actor.ID)) {
+                print (`docker service ${event.Actor.ID} has virual host ${dockerServices.get (event.Actor.ID)}`);
+                print (`removing virtual host ${dockerServices.get (event.Actor.ID)} from etcd...`);
+                await etcd.delAsync (`${vHostDir}/${dockerServices.get (event.Actor.ID)}`);
+                dockerServices.delete (event.Actor.ID);
+            } else {
+                print (`docker service ${dockerServices.get (event.Actor.ID)} has no virtual host`);
+            };
+        };
     };
 })
 .on ('error', (error) => {
@@ -239,12 +243,12 @@ etcd.watcher (vHostDir, null, {recursive: true})
     print (`caching virtual host for ${vHostDomain} ...`);
     vHosts.set (vHostDomain, vHost);
 })
-// .on ('delete', (event) => {
-//     print (`virtual host deleted in etcd`);
-//     const vHostDomain = event.node.key.replace (`${vHostDir}/`, '');
-//     print (`removing virtual host ${vHostDomain} from cache...`);
-//     vHosts.delete (vHostDomain);
-// })
+.on ('delete', (event) => {
+    print (`virtual host deleted in etcd`);
+    const vHostDomain = event.node.key.replace (`${vHostDir}/`, '');
+    print (`removing virtual host ${vHostDomain} from cache...`);
+    vHosts.delete (vHostDomain);
+})
 .on ('error', (error) => {
     print (`ERROR: ${error}`);
 });
