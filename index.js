@@ -58,17 +58,24 @@ const vHosts = new Map ();
 const dockerServices = new Map ();
 const compareHash = memoize (bcrypt.compare); // locally cache authentication(s)
 // cache availability of certs
+const isIterable = object =>
+  object != null && typeof object[Symbol.iterator] === 'function'
+
 const certNodes = etcd.getSync (`${certDir}`, {recursive: true});
-for (let certNode of certNodes.body.node.nodes) {
-    certs.add (certNode.key.replace (`${certDir}/`, ''));
+if (isIterable (certNodes.body.node.nodes)) {
+    for (let certNode of certNodes.body.node.nodes) {
+        certs.add (certNode.key.replace (`${certDir}/`, ''));
+    };
 };
 // cache existing virtual hosts
 const virtualHostNodes = etcd.getSync (`${vHostDir}`, {recursive: true});
-for (let virtualHostNode of virtualHostNodes.body.node.nodes) {
-    const vHostKey = virtualHostNode.key.replace (`${vHostDir}/`, '');
-    const vHost = JSON.parse(virtualHostNode.value);
-    vHosts.set (vHostKey, vHost);
-    dockerServices.set (vHost.serviceID, vHostKey);
+if (isIterable (virtualHostNodes.body.node.nodes)) {
+    for (let virtualHostNode of virtualHostNodes.body.node.nodes) {
+        const vHostKey = virtualHostNode.key.replace (`${vHostDir}/`, '');
+        const vHost = JSON.parse(virtualHostNode.value);
+        vHosts.set (vHostKey, vHost);
+        dockerServices.set (vHost.serviceID, vHostKey);
+    };
 };
 
 // elect and monitor proxy leader
