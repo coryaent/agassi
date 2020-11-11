@@ -232,7 +232,7 @@ etcd.watcher (certDir, null, {recursive: true})
     // update the virtual host
     print (`updating virtual host in etcd...`);
     const virtualHost = JSON.parse ( (await etcd.getAsync (`${vHostDir}/${domain}`) ).node.value );
-    virtualHost.cert = cert;
+    virtualHost.cert = event.node.value;
     await etcd.setAsync (`${vHostDir}/${domain}`, 
         JSON.stringify (virtualHost)
     );
