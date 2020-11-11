@@ -368,6 +368,7 @@ setInterval (async () => {
             for await (let cert of allCerts) {
                 const domain = cert.key.replace (`${certDir}/`, '');
                 const daysUntilExpiration = dateDiff (new Date (cert.expiration), new Date ()).days;
+                print (cert);
                 print (`certificate for ${domain} expires in ${daysUntilExpiration} days`);
                 // only renew certs for domains with virtual hosts
                 if (vHosts.has (domain) && daysUntilExpiration < 45) {
