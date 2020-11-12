@@ -24,9 +24,9 @@ print (`starting process with uuid ${uuid}...`);
 
 // load keys for HTTPS server and Let's Encrypt
 print (`loading keys...`);
-const defaultKey = fs.readFileSync (process.env.DEFAULT_KEY);
-const defaultCert = fs.readFileSync (process.env.DEFAULT_CRT);
-const acmeKey = fs.readFileSync (process.env.ACME_KEY);
+const defaultKey = fs.readFileSync (process.env.DEFAULT_KEY, 'utf-8');
+const defaultCert = fs.readFileSync (process.env.DEFAULT_CRT, 'utf-8');
+const acmeKey = fs.readFileSync (process.env.ACME_KEY, 'utf-8');
 
 // acme client
 const client = new acme.Client({
