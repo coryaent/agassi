@@ -1,5 +1,5 @@
 {
-  "name": "reimagined-invention",
+  "name": "agassi",
   "version": "0.0.0",
   "description": "A proxy for docker containers, services, and stacks, with Let's Encrypt SSL and etcd-backed redundancy ",
   "main": "index.js",
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/coryagroup/reimagined-invention.git"
+    "url": "git+https://github.com/coryagroup/agassi.git"
   },
   "keywords": [
     "docker",
@@ -19,9 +19,9 @@
   "author": "Steve Corya",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/coryagroup/reimagined-invention/issues"
+    "url": "https://github.com/coryagroup/agassi/issues"
   },
-  "homepage": "https://github.com/coryagroup/reimagined-invention#readme",
+  "homepage": "https://github.com/coryagroup/agassi#readme",
   "dependencies": {
     "acme-client": "^4.0.2",
     "bcrypt": "^5.0.0",
