@@ -355,7 +355,7 @@ https.createServer ({
 .listen(443);
 
 // periodically check for expriring certificates
-const renewInterval = typeof process.env.RENEW_INTERVAL === 'string' ? parseInt (process.env.RENEW_INTERVAL) * 60 * 60 : 6 * 60 * 60;
+const renewInterval = typeof process.env.RENEW_INTERVAL === 'string' ? parseInt (process.env.RENEW_INTERVAL) * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
 setInterval (async () => {
     try {
         // only leader runs renewals
