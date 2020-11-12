@@ -13,7 +13,7 @@ openssl genrsa -out account.key 4096
 ```shell
 export CERTNAME=reimagined-invention &&\
 openssl req \
--newkey rsa:4096\
+-newkey rsa:4096 \
 -x509 -sha256 \
 -days 3650 \
 -nodes \
