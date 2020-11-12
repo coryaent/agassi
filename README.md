@@ -6,13 +6,13 @@ A distributed, high-availability reverse proxy created specifically for HTTP(S) 
 - etcd
 - RSA key (for Let's Encrypt account)
 ```shell
-openssl genrsa -out account.key 2048
+openssl genrsa -out account.key 4096
 ```
 - OpenSSL key/self-signed certificate pair (for SSL server)
 ```shell
 export CERTNAME=reimagined-invention &&\
 openssl req \
--newkey rsa:2048\
+-newkey rsa:4096\
 -x509 -sha256 \
 -days 3650 \
 -nodes \
