@@ -27,7 +27,7 @@ print (`loading keys and email address...`);
 const defaultKey = fs.readFileSync (process.env.DEFAULT_KEY, 'utf-8');
 const defaultCert = fs.readFileSync (process.env.DEFAULT_CRT, 'utf-8');
 const acmeKey = fs.readFileSync (process.env.ACME_KEY, 'utf-8');
-const email = (fs.readFileSync (process.env.EMAIL, 'utf-8')).trim();
+const email = 'mailto:' + (fs.readFileSync (process.env.EMAIL, 'utf-8')).trim();
 print (`using email ${email}...`);
 
 // acme client
