@@ -24,7 +24,6 @@
   "homepage": "https://github.com/coryagroup/agassi#readme",
   "dependencies": {
     "acme-client": "^4.0.2",
-    "bcrypt": "^5.0.0",
     "bcryptjs": "^2.4.3",
     "bluebird": "^3.7.2",
     "date-range-diff": "^1.0.0",
@@ -32,14 +31,10 @@
     "dolphin": "^0.1.14",
     "dotenv": "^8.2.0",
     "etcd-leader": "0.0.1",
-    "etcd3": "^1.0.2",
     "fast-date-format": "^2.2.4",
     "fast-memoize": "^2.5.2",
-    "http-auth": "^4.1.2",
     "http-proxy": "^1.18.1",
-    "nano-memoize": "^1.2.1",
     "node-etcd": "^7.0.0",
-    "twin-bcrypt": "^2.1.1",
     "uuid": "^8.3.1"
   }
 }

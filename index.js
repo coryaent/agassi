@@ -339,10 +339,9 @@ https.createServer ({
         if (requestUser === virtualUser && (await compareHash (requestPassword, virtualHash))) {
             print (`basic auth passed`);
             proxy.web (request, response, virtualHost.options);
+        } else {
+            response.end ('Authorization failed.');
         };
-
-        response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${requestURL.hostname}"`});
-        response.end ('Authorization is required.');
 
     } else {
         // basic auth not required 
