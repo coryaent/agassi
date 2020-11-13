@@ -28,6 +28,7 @@ const defaultKey = fs.readFileSync (process.env.DEFAULT_KEY, 'utf-8');
 const defaultCert = fs.readFileSync (process.env.DEFAULT_CRT, 'utf-8');
 const acmeKey = fs.readFileSync (process.env.ACME_KEY, 'utf-8');
 const email = fs.readFileSync (process.env.EMAIL, 'utf-8');
+print (`using email ${email}...`);
 
 // acme client
 const client = new acme.Client({
