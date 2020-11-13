@@ -8,6 +8,8 @@ services:
       - lets-encrypt-account
       - corya-group-default-key
       - corya-group-default-cert
+    configs:
+      - lets-encrypt-email
     environment:
       ETCD: etcd-01:2379,etcd-02:2379,etcd-03:2379
       ACME_KEY: /run/secrets/lets-encrypt-account
