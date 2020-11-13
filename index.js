@@ -64,7 +64,7 @@ const isIterable = object =>
 const certNodes = etcd.getSync (`${certDir}`, {recursive: true});
 if (isIterable (certNodes.body.node.nodes)) {
     for (let certNode of certNodes.body.node.nodes) {
-        certs.add (certNode.key.replace (`${certDir}/`, ''));
+        certs.set (certNode.key.replace (`${certDir}/`, ''), certNode.value);
     };
 };
 // cache existing virtual hosts
