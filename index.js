@@ -23,10 +23,11 @@ const uuid = uuidv4();
 print (`starting process with uuid ${uuid}...`);
 
 // load keys for HTTPS server and Let's Encrypt
-print (`loading keys...`);
+print (`loading keys and email address...`);
 const defaultKey = fs.readFileSync (process.env.DEFAULT_KEY, 'utf-8');
 const defaultCert = fs.readFileSync (process.env.DEFAULT_CRT, 'utf-8');
 const acmeKey = fs.readFileSync (process.env.ACME_KEY, 'utf-8');
+const email = fs.readFileSync (process.env.EMAIL, 'utf-8');
 
 // acme client
 const client = new acme.Client({
@@ -89,7 +90,7 @@ election.on ('elected', async () => {
     print (`initializing Let's Encrypt account...`);
     await client.createAccount({
         termsOfServiceAgreed: true,
-        contact: [process.env.EMAIL.startsWith('mailto:') ? process.env.EMAIL : `mailto:${process.env.EMAIL}`]
+        contact: [email]
     });
 });
 election.on ('unelected', () => {

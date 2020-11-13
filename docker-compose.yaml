@@ -13,7 +13,7 @@ services:
       ACME_KEY: /run/secrets/lets-encrypt-account
       DEFAULT_KEY: /run/secrets/corya-group-default-key
       DEFAULT_CRT: /run/secrets/corya-group-default-cert
-      EMAIL: ${AGASSI_EMAIL?Variable AGASSI_EMAIL not set}
+      EMAIL: /lets-encrypt-email
       STAGING: 'true'
     networks:
       - etcd
@@ -39,4 +39,8 @@ secrets:
   corya-group-default-key:
     external: true
   corya-group-default-cert:
+    external: true
+
+configs:
+  lets-encrypt-email:
     external: true
