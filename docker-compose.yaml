@@ -3,7 +3,7 @@ version: '3.8'
 # docker network create --driver=overlay --opt encrypted --attachable web
 services:
   ingress:
-    image: coryagroup/agassi:test
+    image: coryagroup/agassi:latest
     secrets:
       - lets-encrypt-account
       - corya-group-default-key
