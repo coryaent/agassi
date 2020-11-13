@@ -53,7 +53,7 @@ const vHostDir = typeof process.env.VHOST_DIR === 'string' ? process.env.VHOST_D
 etcd.mkdirSync (vHostDir);
 
 // initialize caches of virtual hosts, current certificates, and basic authentication
-const certs = new Set ();
+const certs = new Map ();
 const vHosts = new Map ();
 const dockerServices = new Map ();
 const compareHash = memoize (bcrypt.compare); // locally cache authentication(s)
@@ -71,10 +71,10 @@ if (isIterable (certNodes.body.node.nodes)) {
 const virtualHostNodes = etcd.getSync (`${vHostDir}`, {recursive: true});
 if (isIterable (virtualHostNodes.body.node.nodes)) {
     for (let virtualHostNode of virtualHostNodes.body.node.nodes) {
-        const vHostKey = virtualHostNode.key.replace (`${vHostDir}/`, '');
+        const vHostDomain = virtualHostNode.key.replace (`${vHostDir}/`, '');
         const vHost = JSON.parse(virtualHostNode.value);
-        vHosts.set (vHostKey, vHost);
-        dockerServices.set (vHost.serviceID, vHostKey);
+        vHosts.set (vHostDomain, vHost);
+        dockerServices.set (vHost.serviceID, vHostDomain);
     };
 };
 
@@ -119,6 +119,7 @@ dolphin.events({})
                 print (`new service VIRTUAL_HOST parsed as ${virtualURL.toString()}`);
 
                 // create virtual host w/ options
+                dockerServices.set (event.Actor.ID, virtualURL.hostname);
                 const virtualHost = {};
                 virtualHost.serviceID = event.Actor.ID;
                 virtualHost.options = {};
@@ -130,8 +131,7 @@ dolphin.events({})
                 };
                 // check if etcd already has a cert for this domain
                 if (certs.has (virtualURL.hostname)) {
-                    print (`pulling existing cert for ${virtualURL.hostname}`);
-                    virtualHost.cert = (await etcd.getAsync (`${certDir}/${virtualURL.hostname}`)).node.value;
+                    print (`using existing cert for ${virtualURL.hostname}`);
                 };
                 print (`adding virtual host to etcd...`);
                 await etcd.setAsync (`${vHostDir}/${virtualURL.hostname}`,
@@ -225,17 +225,15 @@ etcd.watcher (challengeDir, null, {recursive: true})
 
 // watch for new certs
 etcd.watcher (certDir, null, {recursive: true})
-.on ('set', async (event) => {
+.on ('set', (event) => {
     const domain = event.node.key.replace (`${certDir}/`, '');
     print (`found new cert for ${domain} in etcd`);
-    certs.add (domain);
-    // update the virtual host
-    print (`updating virtual host in etcd...`);
-    const virtualHost = JSON.parse ( (await etcd.getAsync (`${vHostDir}/${domain}`) ).node.value );
-    virtualHost.cert = event.node.value;
-    await etcd.setAsync (`${vHostDir}/${domain}`, 
-        JSON.stringify (virtualHost)
-    );
+    certs.add (domain, event.node.value);
+})
+.on ('expire', (event) => {
+    const domain = event.node.key.replace (`${certDir}/`, '');
+    print (`cert for ${domain} expired`);
+    certs.delete (domain);
 })
 .on ('error', (error) => {
     print (`ERROR: ${error}`);
@@ -303,10 +301,10 @@ const proxy = httpProxy.createProxyServer({})
 
 https.createServer ({
     SNICallback: (domain, callback) => {
-        if (vHosts.get(domain) && vHosts.get(domain).cert) {
+        if (certs.has(domain)) {
             return callback (null, tls.createSecureContext({
                 key: defaultKey,
-                cert: vHosts.get(domain).cert
+                cert: certs.get(domain)
             }));
         } else {
             return callback (null, false);

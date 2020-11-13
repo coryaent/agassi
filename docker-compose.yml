@@ -1,0 +1,42 @@
+version: '3.8'
+# --- BEFORE DEPLOYMENT ---
+# docker network create --driver=overlay --opt encrypted --attachable web
+services:
+  ingress:
+    image: coryagroup/agassi:test
+    secrets:
+      - lets-encrypt-account
+      - corya-group-default-key
+      - corya-group-default-cert
+    environment:
+      ETCD: etcd-01:2379,etcd-02:2379,etcd-03:2379
+      ACME_KEY: /run/secrets/lets-encrypt-account
+      DEFAULT_KEY: /run/secrets/corya-group-default-key
+      DEFAULT_CRT: /run/secrets/corya-group-default-cert
+      EMAIL: ${AGASSI_EMAIL?Variable AGASSI_EMAIL not set}
+      STAGING: 'true'
+    networks:
+      - etcd
+      - web
+    ports:
+      - 80:80
+      - 443:443
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+networks:
+  etcd:
+    external: true
+  web:
+    external: true
+
+secrets:
+  lets-encrypt-account:
+    external: true
+  corya-group-default-key:
+    external: true
+  corya-group-default-cert:
+    external: true
