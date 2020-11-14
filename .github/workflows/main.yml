@@ -51,7 +51,7 @@ jobs:
         uses: yanzay/notify-telegram@v0.1.0
         if: always()
         with:
-          chat: ${{ secrets.TELEGRAM_USERNAME }} # user id or channel name secret
+          chat: ${{ secrets.TELEGRAM_USER_ID }} # user id or channel name secret
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }} # token secret
           status: ${{ job.status }} # do not modify this line
         
