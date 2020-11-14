@@ -124,7 +124,9 @@ dolphin.events({})
                 if (isLeader) {
                     const virtualHost = {};
                     virtualHost.serviceID = event.Actor.ID;
+                    // this is where default options are set
                     virtualHost.options = {};
+                    virtualHost.options.secure = false; // do not check other ssl certs
                     virtualHost.options.target = `${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`;
                     print (`target set to ${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`);
                     // check if auth is required
