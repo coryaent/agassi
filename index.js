@@ -178,13 +178,12 @@ dolphin.events({})
         if (event.Action === 'remove') {
             print (`detected removed docker service ${event.Actor.ID}`);
             if (dockerServices.has (event.Actor.ID)) {
-                print (`docker service ${event.Actor.ID} has virual host ${dockerServices.get (event.Actor.ID)}`);
-                dockerServices.delete (event.Actor.ID);
                 // only leader handles etcd hosts
                 if (isLeader) {
-                    print (`removing virtual host ${dockerServices.get (event.Actor.ID)} from etcd...`);
+                    print (`removing virtual host ${dockerServices.get (event.Actor.ID)} from etcd and cache...`);
                     await etcd.delAsync (`${vHostDir}/${dockerServices.get (event.Actor.ID)}`);
-                }
+                };
+                dockerServices.delete (event.Actor.ID);
             } else {
                 print (`docker service ${dockerServices.get (event.Actor.ID)} has no virtual host`);
             };
