@@ -108,76 +108,81 @@ election.on ('error', (error) => {
 // listen to docker socket for new containers
 dolphin.events({})
 .on ('event', async (event) => {
-    // only leader hayndles new services
-    if (isLeader) {
-        // on service creation or update
-        if (event.Type === 'service' && event.Action === 'update') {
+    // on service creation or update
+    if (event.Type === 'service') {
+        if (event.Action === 'update') {
             print (`detected updated docker service ${event.Actor.ID}`);
             const service = await docker.getService (event.Actor.ID).inspect();
             // check that the service has the requisite label(s)
             if (service.Spec.Labels.VIRTUAL_HOST) {
                 // parse virtual host
                 const virtualURL = new URL (service.Spec.Labels.VIRTUAL_HOST);
-                print (`new service VIRTUAL_HOST parsed as ${virtualURL.toString()}`);
 
-                // create virtual host w/ options
+                // map docker service ID to hostname
                 dockerServices.set (event.Actor.ID, virtualURL.hostname);
-                const virtualHost = {};
-                virtualHost.serviceID = event.Actor.ID;
-                virtualHost.options = {};
-                virtualHost.options.target = `${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`;
-                print (`target set to ${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`);
-                // check if auth is required
-                if (service.Spec.Labels.VIRTUAL_AUTH) {
-                    virtualHost.auth = service.Spec.Labels.VIRTUAL_AUTH;
-                };
-                // check if etcd already has a cert for this domain
-                if (certs.has (virtualURL.hostname)) {
-                    print (`using existing cert for ${virtualURL.hostname}`);
-                };
-                print (`adding virtual host to etcd...`);
-                await etcd.setAsync (`${vHostDir}/${virtualURL.hostname}`,
-                    JSON.stringify (virtualHost)
-                );
+                // only the leader creates new hosts
+                if (isLeader) {
+                    const virtualHost = {};
+                    virtualHost.serviceID = event.Actor.ID;
+                    virtualHost.options = {};
+                    virtualHost.options.target = `${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`;
+                    print (`target set to ${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`);
+                    // check if auth is required
+                    if (service.Spec.Labels.VIRTUAL_AUTH) {
+                        virtualHost.auth = service.Spec.Labels.VIRTUAL_AUTH;
+                    };
+                    // check if etcd already has a cert for this domain
+                    if (certs.has (virtualURL.hostname)) {
+                        print (`using existing cert for ${virtualURL.hostname}`);
+                    };
+                    print (`adding virtual host to etcd...`);
+                    await etcd.setAsync (`${vHostDir}/${virtualURL.hostname}`,
+                        JSON.stringify (virtualHost)
+                    );
 
-                // if domain does not already have a cert
-                if (!certs.has (virtualURL.hostname)) {
-                    // place order for signed certificate
-                    print (`ordering Let's Encrypt certificate for ${virtualURL.hostname} ...`);
-                    const order = await client.createOrder({
-                        identifiers: [
-                            { type: 'dns', value: virtualURL.hostname },
-                        ]
-                    });
+                    // if domain does not already have a cert && only the leader
+                    if (!certs.has (virtualURL.hostname)) {
+                        // place order for signed certificate
+                        print (`ordering Let's Encrypt certificate for ${virtualURL.hostname} ...`);
+                        const order = await client.createOrder({
+                            identifiers: [
+                                { type: 'dns', value: virtualURL.hostname },
+                            ]
+                        });
 
-                    // get http authorization token and response
-                    print (`getting authorization token for ${virtualURL.hostname} ...`);
-                    const authorizations = await client.getAuthorizations(order);
-                    const httpChallenge = authorizations[0]['challenges'].find (
-                        (element) => element.type === 'http-01');
-                    const httpAuthorizationToken = httpChallenge.token;
-                    const httpAuthorizationResponse = await client.getChallengeKeyAuthorization(httpChallenge);
+                        // get http authorization token and response
+                        print (`getting authorization token for ${virtualURL.hostname} ...`);
+                        const authorizations = await client.getAuthorizations(order);
+                        const httpChallenge = authorizations[0]['challenges'].find (
+                            (element) => element.type === 'http-01');
+                        const httpAuthorizationToken = httpChallenge.token;
+                        const httpAuthorizationResponse = await client.getChallengeKeyAuthorization(httpChallenge);
 
-                    // add challenge and response to etcd
-                    print (`setting token and response for ${virtualURL.hostname} in etcd...`);
-                    await etcd.setAsync (`${challengeDir}/${httpAuthorizationToken}`, // key
-                        JSON.stringify({ // etcd value
-                            domain: virtualURL.hostname,
-                            order: order,
-                            challenge: httpChallenge,
-                            response: httpAuthorizationResponse
-                        }
-                    ), { ttl: 864000 }); // 10-day expiration
+                        // add challenge and response to etcd
+                        print (`setting token and response for ${virtualURL.hostname} in etcd...`);
+                        await etcd.setAsync (`${challengeDir}/${httpAuthorizationToken}`, // key
+                            JSON.stringify({ // etcd value
+                                domain: virtualURL.hostname,
+                                order: order,
+                                challenge: httpChallenge,
+                                response: httpAuthorizationResponse
+                            }
+                        ), { ttl: 864000 }); // 10-day expiration
+                    };
                 };
             };
         };
-        if (event.Type === 'service' && event.Action === 'remove') {
+
+        if (event.Action === 'remove') {
             print (`detected removed docker service ${event.Actor.ID}`);
             if (dockerServices.has (event.Actor.ID)) {
                 print (`docker service ${event.Actor.ID} has virual host ${dockerServices.get (event.Actor.ID)}`);
-                print (`removing virtual host ${dockerServices.get (event.Actor.ID)} from etcd...`);
-                await etcd.delAsync (`${vHostDir}/${dockerServices.get (event.Actor.ID)}`);
                 dockerServices.delete (event.Actor.ID);
+                // only leader handles etcd hosts
+                if (isLeader) {
+                    print (`removing virtual host ${dockerServices.get (event.Actor.ID)} from etcd...`);
+                    await etcd.delAsync (`${vHostDir}/${dockerServices.get (event.Actor.ID)}`);
+                }
             } else {
                 print (`docker service ${dockerServices.get (event.Actor.ID)} has no virtual host`);
             };
