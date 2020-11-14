@@ -7,7 +7,7 @@ Agassi is inspered by the setup detailed at [Docker Swarm Rocks](https://dockers
 
 [Roo](https://github.com/sfproductlabs/roo) addresses the redundency issue by creating a custom, in-memory, raft-consensus key-value store for certificates and service information. It does not handle basic authentication, and consists of several thousand lines of go.
 
-Agassi leverages the stability and reliability of etcd and consists of a few hundrel lines of JavaScript.
+Agassi leverages the stability and reliability of etcd and consists of a few hundred lines of JavaScript.
 
 ## Setup
 Agassi uses docker swarm's secret feature to securely store sensitive data. Private keys are not stored in etcd.
