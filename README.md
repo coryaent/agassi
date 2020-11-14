@@ -15,6 +15,8 @@ Agassi uses docker swarm's secret feature to securely store sensitive data. Priv
 ### Pre-requisites
 - Docker swarm
 - etcd
+- htpasswd
+- base64
 
 ### docker secrets
 - RSA key (for Let's Encrypt account)
@@ -52,6 +54,16 @@ VHOST_DIR= # etcd2 directory for virtual hosts (string) [default: /virtual-hosts
 STAGING= # do or do not use staging environment (boolean) [default: false]
 RENEW_INTERVAL= # interval to check for expiring certs (integer, hours) [default: 6]
 ```
+
+## Usage
+Each service requires the label `VIRTUAL_HOST` in order to register within Agassi. `VIRTUAL_HOST` is a URL with a protocol, your desired hostname, and a port number. For example, `http://example.com:8080` will be accessed at `https://example.com`. You do not need to set the destination host using `VIRTUAL_HOST`; it is read from the docker socket.
+
+Optionally, a service may also utilize the label `VIRTUAL_AUTH` in order to requrie HTTP basic authentication. The encoding for the `VIRTUAL_AUTH` label can be generated using bcrypt via `htpasswd` and `base64`.
+For example:
+```shell
+export VIRTUAL_AUTH=$(htpasswd -n -B -C 12 user | base64 -w 0)
+```
+You will be prompted for your password twice, including verification. Brypt is required to securely store the password hash in etcd, and base64 is requried to get rid of `$` characters, which cause general wonkiness in bash.
 
 ## Data
 Data is stored persistently in etcd and cached in-memory using ES6 Maps.
