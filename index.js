@@ -132,7 +132,7 @@ dolphin.events({})
                     // check if auth is required
                     if (service.Spec.Labels.VIRTUAL_AUTH) {
                         virtualHost.auth = service.Spec.Labels.VIRTUAL_AUTH;
-                        print (`virtual auth read as ${virtualHost.auth}`)
+                        print (`virtual auth read as ${virtualHost.auth}`);
                     };
                     // check if etcd already has a cert for this domain
                     if (certs.has (virtualURL.hostname)) {
