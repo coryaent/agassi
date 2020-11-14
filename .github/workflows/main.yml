@@ -46,6 +46,14 @@ jobs:
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
+
+      - name: Notify Telegram
+        uses: yanzay/notify-telegram@v0.1.0
+        if: always()
+        with:
+          chat: ${{ secrets.TELEGRAM_USERNAME }} # user id or channel name secret
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }} # token secret
+          status: ${{ job.status }} # do not modify this line
         
 #       - name: Deploy to Docker swarm
 #         uses: wshihadeh/docker-deployment-action@v1
