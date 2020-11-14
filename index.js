@@ -235,7 +235,7 @@ etcd.watcher (certDir, null, {recursive: true})
 .on ('set', (event) => {
     const domain = event.node.key.replace (`${certDir}/`, '');
     print (`found new cert for ${domain} in etcd`);
-    certs.add (domain, event.node.value);
+    certs.set (domain, event.node.value);
 })
 .on ('expire', (event) => {
     const domain = event.node.key.replace (`${certDir}/`, '');
