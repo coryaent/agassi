@@ -11,11 +11,6 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - name: Start SSH via tmate
-        uses: P3TERX/ssh2actions@main
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_USER_ID }}
 
       - name: Check Out Repo 
         uses: actions/checkout@v2
@@ -52,15 +47,6 @@ jobs:
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
-
-      - name: Deploy to Docker swarm
-        uses: wshihadeh/docker-deployment-action@v1
-        with:
-          remote_docker_host: github-deploy@ny.coryagroup.com
-          ssh_private_key: ${{ secrets.DOCKER_SSH_PRIVATE_KEY }}
-          ssh_public_key: ${{ secrets.DOCKER_SSH_PUBLIC_KEY }}
-          deployment_mode: docker-swarm
-          args: proxy 
 
       - name: Notify Telegram
         uses: yanzay/notify-telegram@v0.1.0
