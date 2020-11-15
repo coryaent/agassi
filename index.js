@@ -376,11 +376,7 @@ process.once ('SIGTERM', async () => {
     print (`closing servers...`);
     await http.close();
     await https.close();
-    proxy.close();
-    print (`stopping election...`);
-    election.stop();
-    print (`exiting...`);
-    process.exit ();
+    proxy.close(process.exit);
 });
 
 // create a new certificate order and add response to etcd 
