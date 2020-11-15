@@ -27,7 +27,9 @@ print (`loading keys and email address...`);
 const defaultKey = fs.readFileSync (process.env.DEFAULT_KEY, 'utf-8');
 const defaultCert = fs.readFileSync (process.env.DEFAULT_CRT, 'utf-8');
 const acmeKey = fs.readFileSync (process.env.ACME_KEY, 'utf-8');
-const email = 'mailto:' + (fs.readFileSync (process.env.EMAIL, 'utf-8')).trim();
+const email = ((fs.readFileSync (process.env.EMAIL, 'utf-8')).trim()).startsWith('mailto:') ?
+    (fs.readFileSync (process.env.EMAIL, 'utf-8')).trim() :
+    'mailto:' + (fs.readFileSync (process.env.EMAIL, 'utf-8')).trim();
 print (`using email ${email}...`);
 
 // acme client
@@ -148,30 +150,7 @@ dolphin.events({})
                     if (!certs.has (virtualURL.hostname)) {
                         // place order for signed certificate
                         print (`ordering Let's Encrypt certificate for ${virtualURL.hostname} ...`);
-                        const order = await client.createOrder({
-                            identifiers: [
-                                { type: 'dns', value: virtualURL.hostname },
-                            ]
-                        });
-
-                        // get http authorization token and response
-                        print (`getting authorization token for ${virtualURL.hostname} ...`);
-                        const authorizations = await client.getAuthorizations(order);
-                        const httpChallenge = authorizations[0]['challenges'].find (
-                            (element) => element.type === 'http-01');
-                        const httpAuthorizationToken = httpChallenge.token;
-                        const httpAuthorizationResponse = await client.getChallengeKeyAuthorization(httpChallenge);
-
-                        // add challenge and response to etcd
-                        print (`setting token and response for ${virtualURL.hostname} in etcd...`);
-                        await etcd.setAsync (`${challengeDir}/${httpAuthorizationToken}`, // key
-                            JSON.stringify({ // etcd value
-                                domain: virtualURL.hostname,
-                                order: order,
-                                challenge: httpChallenge,
-                                response: httpAuthorizationResponse
-                            }
-                        ), { ttl: 864000 }); // 10-day expiration
+                        await placeCertOrder (virtualURL.hostname);
                     };
                 };
             };
@@ -380,30 +359,7 @@ setInterval (async () => {
                 if (vHosts.has (domain) && daysUntilExpiration < 45) {
                     // place order for signed certificate
                     print (`renewing Let's Encrypt certificate for ${domain} ...`);
-                    const order = await client.createOrder({
-                        identifiers: [
-                            { type: 'dns', value: domain },
-                        ]
-                    });
-
-                    // get http authorization token and response
-                    print (`getting authorization token for ${domain} ...`);
-                    const authorizations = await client.getAuthorizations(order);
-                    const httpChallenge = authorizations[0]['challenges'].find (
-                        (element) => element.type === 'http-01');
-                    const httpAuthorizationToken = httpChallenge.token;
-                    const httpAuthorizationResponse = await client.getChallengeKeyAuthorization(httpChallenge);
-
-                    // add challenge and response to etcd
-                    print (`setting token and response for ${domain} in etcd...`);
-                    await etcd.setAsync (`${challengeDir}/${httpAuthorizationToken}`, // key
-                        JSON.stringify({ // etcd value
-                            domain: domain,
-                            order: order,
-                            challenge: httpChallenge,
-                            response: httpAuthorizationResponse
-                        }
-                    ), { ttl: 864000 }); // 10-day expiration
+                    await placeCertOrder (domain);
                 };
             };
         };
@@ -413,3 +369,51 @@ setInterval (async () => {
     };
         
 }, renewInterval); // run once per set interval
+
+process.once ('SIGTERM', async () => {
+    print (`SIGTERM received...`);
+    // close servers
+    print (`closing servers...`);
+    await http.close();
+    await https.close();
+    await proxy.close();
+    if (isLeader) {
+        // remove directories, preserve certs
+        print (`cleaning etcd directories...`);
+        await etcd.rmdir (challengeDir);
+        await etcd.rmdir (vHostDir);
+    };
+    print (`stopping election...`);
+    election.stop();
+    print (`exiting...`);
+    process.exit ();
+});
+
+// create a new certificate order and add response to etcd 
+async function placeCertOrder (domain) {
+
+    const order = await client.createOrder({
+        identifiers: [
+            { type: 'dns', value: domain },
+        ]
+    });
+
+    // get http authorization token and response
+    print (`getting authorization token for ${domain} ...`);
+    const authorizations = await client.getAuthorizations(order);
+    const httpChallenge = authorizations[0]['challenges'].find (
+        (element) => element.type === 'http-01');
+    const httpAuthorizationToken = httpChallenge.token;
+    const httpAuthorizationResponse = await client.getChallengeKeyAuthorization(httpChallenge);
+
+    // add challenge and response to etcd
+    print (`setting token and response for ${domain} in etcd...`);
+    await etcd.setAsync (`${challengeDir}/${httpAuthorizationToken}`, // key
+        JSON.stringify({ // etcd value
+            domain: domain,
+            order: order,
+            challenge: httpChallenge,
+            response: httpAuthorizationResponse
+        }
+    ), { ttl: 864000 }); // 10-day expiration
+};
