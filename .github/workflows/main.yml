@@ -11,11 +11,11 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      # - name: Start SSH via tmate
-      #   uses: P3TERX/ssh2actions@main
-      #   env:
-      #     TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      #     TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_USER_ID }}
+      - name: Start SSH via tmate
+        uses: P3TERX/ssh2actions@main
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_USER_ID }}
 
       - name: Check Out Repo 
         uses: actions/checkout@v2
