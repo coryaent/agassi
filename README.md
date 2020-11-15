@@ -53,6 +53,7 @@ CERT_DIR= #etcd2 directory for storing Let's Encrypt certs (string) [default: /c
 VHOST_DIR= # etcd2 directory for virtual hosts (string) [default: /virtual-hosts]
 STAGING= # do or do not use staging environment (boolean) [default: false]
 RENEW_INTERVAL= # interval to check for expiring certs (integer, hours) [default: 6]
+REALM= # displays on basic auth prompt (string) [default: Agassi]
 ```
 
 ## Usage

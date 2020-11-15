@@ -33,8 +33,10 @@
     "etcd-leader": "0.0.1",
     "fast-date-format": "^2.2.4",
     "http-proxy": "^1.18.1",
+    "http-ratelimit": "^0.2.3",
     "nano-memoize": "^1.2.1",
     "node-etcd": "^7.0.0",
+    "tsscmp": "^1.0.6",
     "uuid": "^8.3.1"
   }
 }

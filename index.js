@@ -16,7 +16,9 @@ const httpProxy = require ('http-proxy');
 const http = require ('http');
 const https = require ('https');
 const tls = require ('tls');
+const rateLimit = require ('http-ratelimit');
 const memoize = require ('nano-memoize');
+const compare = require ('tsscmp');
 const dateDiff = require ('date-range-diff');
 
 const uuid = uuidv4();
@@ -250,9 +252,7 @@ etcd.watcher (vHostDir, null, {recursive: true})
 // create HTTP server to answer challenges and redirect
 http.createServer (async (request, response) => {
     // check request path
-    print ('received http request');
     const requestURL = new URL(request.url, `http://${request.headers.host}`);
-    print (requestURL.toString());
     // if request is for ACME challenge
     if (requestURL.pathname && requestURL.pathname.startsWith('/.well-known/acme-challenge/')) {
 
@@ -273,7 +273,6 @@ http.createServer (async (request, response) => {
 
         // redirect to https
         const redirectLocation = "https://" + request.headers['host'] + request.url;
-        print (`redirecting to ${redirectLocation} ...`);
         response.writeHead(301, {
             "Location": redirectLocation
         });
@@ -282,11 +281,21 @@ http.createServer (async (request, response) => {
     };
 })
 .on ('error', (error) => print (error))
-.listen (80);
+.listen (80, null, (error) => {
+    if (error) {
+        print (error);
+        process.exit (1);
+    } else {
+        print (`listening on port 80...`);
+    };
+});
 
 // create proxy, HTTP and HTTPS servers
 const proxy = httpProxy.createProxyServer({})
 .on ('error', (error)  => print (error));
+
+// display realm on basic auth prompt
+const realm = typeof process.env.REALM === 'string' ? process.env.REALM : 'Agassi';
 
 https.createServer ({
     SNICallback: (domain, callback) => {
@@ -302,43 +311,62 @@ https.createServer ({
     key: defaultKey,
     cert: defaultCert
 }, async (request, response) => {
-    print ('received new https request');
     const requestURL = new URL(request.url, `https://${request.headers.host}`);
-    print (requestURL.hostname);
     const virtualHost = vHosts.get (requestURL.hostname);
-    // basic auth protected host
-    if (virtualHost.auth) {
-        print (`basic auth required...`);
-        // auth required but not provided
-        if (!request.headers.authorization) {
-            // prompt for password in browser
-            response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${requestURL.hostname}"`});
-            response.end ('Authorization is required.');
-            return;  
-        };
+    // only if virtualHost exists
+    if (virtualHost) {
+        // basic auth protected host
+        if (virtualHost.auth) {
+            // auth required but not provided
+            if (!request.headers.authorization) {
+                // prompt for password in browser
+                response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${realm}"`});
+                response.end ('Authorization is required.');
+                return;  
+            };
+            // failure rate limit reached
+            if (rateLimit.isRateLimited(request, 2)) {
+                response.writeHead(429, {
+                    'Content-Type': 'text/plain'
+                });
+                response.end ('Authorization failed.');
+                return;
+            };
 
-        // parse authentication header
-        const requestAuth = (Buffer.from (request.headers.authorization.replace(/^Basic/, ''), 'base64')).toString('utf-8');
-        const [requestUser, requestPassword] = requestAuth.split (':');
+            // parse authentication header
+            const requestAuth = (Buffer.from (request.headers.authorization.replace(/^Basic/, ''), 'base64')).toString('utf-8');
+            const [requestUser, requestPassword] = requestAuth.split (':');
 
-        // parse vHost auth parameter
-        const [virtualUser, virtualHash] = virtualHost.auth.split (':');
+            // parse vHost auth parameter
+            const [virtualUser, virtualHash] = virtualHost.auth.split (':');
 
-        // compare provided header with expected values
-        if (requestUser === virtualUser && (await compareHash (requestPassword, virtualHash))) {
-            print (`basic auth passed`);
-            proxy.web (request, response, virtualHost.options);
+            // compare provided header with expected values
+            if ((compare(requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
+                proxy.web (request, response, virtualHost.options);
+            } else {
+                // rate limit failed authentication
+                rateLimit.inboundRequest(request);
+                // prompt for password in browser
+                response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${realm}"`});
+                response.end ('Authorization is required.');
+            };
+
         } else {
-            response.end ('Authorization failed.');
+            // basic auth not required 
+            proxy.web (request, response, virtualHost.options);
         };
-
-    } else {
-        // basic auth not required 
-        proxy.web (request, response, virtualHost.options);
     };
 })
 .on ('error', (error) => print (error))
-.listen(443);
+.listen(443, null, (error) => {
+    if (error) {
+        print (error);
+        process.exit(1);
+    } else {
+        rateLimit.init ();
+        print (`listening on port 443...`);
+    };
+});
 
 // periodically check for expriring certificates
 const renewInterval = typeof process.env.RENEW_INTERVAL === 'string' ? parseInt (process.env.RENEW_INTERVAL) * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
