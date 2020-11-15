@@ -16,6 +16,7 @@ services:
       DEFAULT_KEY: /run/secrets/corya-group-default-key
       DEFAULT_CRT: /run/secrets/corya-group-default-cert
       EMAIL: /lets-encrypt-email
+      REALM: Corya Group
       STAGING: 'true'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
