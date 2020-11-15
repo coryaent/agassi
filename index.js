@@ -376,7 +376,7 @@ process.once ('SIGTERM', async () => {
     print (`closing servers...`);
     await http.close();
     await https.close();
-    await proxy.close();
+    proxy.close();
     print (`stopping election...`);
     election.stop();
     print (`exiting...`);
