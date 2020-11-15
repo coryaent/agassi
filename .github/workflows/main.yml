@@ -55,7 +55,6 @@ jobs:
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
 
-
       - name: Deploy to Docker swarm
         uses: wshihadeh/docker-deployment-action@v1
         with:
