@@ -377,12 +377,6 @@ process.once ('SIGTERM', async () => {
     await http.close();
     await https.close();
     await proxy.close();
-    if (isLeader) {
-        // remove directories, preserve certs
-        print (`cleaning etcd directories...`);
-        await etcd.rmdir (challengeDir);
-        await etcd.rmdir (vHostDir);
-    };
     print (`stopping election...`);
     election.stop();
     print (`exiting...`);
