@@ -16,7 +16,7 @@ const httpProxy = require ('http-proxy');
 const http = require ('http');
 const https = require ('https');
 const tls = require ('tls');
-const memoize = require ('fast-memoize');
+const memoize = require ('nano-memoize');
 const dateDiff = require ('date-range-diff');
 
 const uuid = uuidv4();
@@ -60,7 +60,7 @@ etcd.mkdirSync (vHostDir);
 const certs = new Map ();
 const vHosts = new Map ();
 const dockerServices = new Map ();
-const compareHash = memoize (bcrypt.compare); // locally cache authentication(s)
+const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
 // cache availability of certs
 const isIterable = object =>
   object != null && typeof object[Symbol.iterator] === 'function'
