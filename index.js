@@ -370,6 +370,7 @@ setInterval (async () => {
         
 }, renewInterval); // run once per set interval
 
+// graceful exit
 process.once ('SIGTERM', async () => {
     print (`SIGTERM received...`);
     // close servers
