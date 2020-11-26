@@ -293,7 +293,8 @@ http.createServer (async (request, response) => {
 // create proxy, HTTP and HTTPS servers
 const proxy = httpProxy.createProxyServer({
     secure: false,
-    followRedirects: true
+    followRedirects: true,
+    autoRewrite: true
 })
 .on ('error', (error)  => print (error));
 
