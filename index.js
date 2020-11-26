@@ -130,7 +130,7 @@ dolphin.events({})
                     virtualHost.serviceID = event.Actor.ID;
                     // this is where default options are set
                     virtualHost.options = {};
-                    virtualHost.options.secure = false; // do not check other ssl certs
+                    // virtualHost.options.secure = false; // do not check other ssl certs
                     virtualHost.options.target = `${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`;
                     print (`target set to ${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`);
                     // check if auth is required
@@ -291,7 +291,10 @@ http.createServer (async (request, response) => {
 });
 
 // create proxy, HTTP and HTTPS servers
-const proxy = httpProxy.createProxyServer({})
+const proxy = httpProxy.createProxyServer({
+    secure: false,
+    followRedirects: true
+})
 .on ('error', (error)  => print (error));
 
 // display realm on basic auth prompt
