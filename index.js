@@ -294,7 +294,11 @@ http.createServer (async (request, response) => {
 const proxy = httpProxy.createProxyServer({
     secure: false,
     followRedirects: true,
-    autoRewrite: true
+})
+.on ('proxyReq', (proxyRequest, request) => {
+    if (request.host != null) {
+        proxyRequest.setHeader ('host', request.host);
+    };
 })
 .on ('error', (error)  => print (error));
 
