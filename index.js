@@ -65,7 +65,7 @@ const dockerServices = new Map ();
 const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
 // cache availability of certs
 const isIterable = object =>
-  object != null && typeof object[Symbol.iterator] === 'function'
+  object != null && object != undefined && typeof object[Symbol.iterator] === 'function'
 
 const certNodes = etcd.getSync (`${certDir}`, {recursive: true});
 if (isIterable (certNodes.body.node.nodes)) {
@@ -249,6 +249,21 @@ etcd.watcher (vHostDir, null, {recursive: true})
     print (`ERROR: ${error}`);
 });
 
+// create proxy server
+const proxy = httpProxy.createProxyServer({
+    secure: false,
+    followRedirects: true,
+})
+.on ('proxyReq', (proxyRequest, request) => {
+    if (request.host != null) {
+        proxyRequest.setHeader ('host', request.host);
+    };
+})
+.on ('error', (error) => {
+    print (error);
+    process.exitCode = 1;
+});
+
 // create HTTP server to answer challenges and redirect
 http.createServer (async (request, response) => {
     // check request path
@@ -280,7 +295,10 @@ http.createServer (async (request, response) => {
 
     };
 })
-.on ('error', (error) => print (error))
+.on ('error', (error) => {
+    print (error);
+    process.exitCode = 1;
+})
 .listen (80, null, (error) => {
     if (error) {
         print (error);
@@ -290,21 +308,10 @@ http.createServer (async (request, response) => {
     };
 });
 
-// create proxy, HTTP and HTTPS servers
-const proxy = httpProxy.createProxyServer({
-    secure: false,
-    followRedirects: true,
-})
-.on ('proxyReq', (proxyRequest, request) => {
-    if (request.host != null) {
-        proxyRequest.setHeader ('host', request.host);
-    };
-})
-.on ('error', (error)  => print (error));
-
 // display realm on basic auth prompt
 const realm = typeof process.env.REALM === 'string' ? process.env.REALM : 'Agassi';
 
+// create HTTPS server 
 https.createServer ({
     SNICallback: (domain, callback) => {
         if (certs.has(domain)) {
@@ -313,6 +320,7 @@ https.createServer ({
                 cert: certs.get(domain)
             }));
         } else {
+            process.exitCode = 1;
             return callback (null, false);
         };
     },
@@ -365,11 +373,14 @@ https.createServer ({
         };
     };
 })
-.on ('error', (error) => print (error))
-.listen(443, null, (error) => {
+.on ('error', (error) => {
+    print (error);
+    process.exitCode = 1;
+})
+.listen (443, null, (error) => {
     if (error) {
         print (error);
-        process.exit(1);
+        process.exitCode = 1;
     } else {
         rateLimit.init ();
         print (`listening on port 443...`);
@@ -377,7 +388,7 @@ https.createServer ({
 });
 
 // periodically check for expriring certificates
-const renewInterval = typeof process.env.RENEW_INTERVAL === 'string' ? parseInt (process.env.RENEW_INTERVAL) * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
+const renewInterval = process.env.RENEW_INTERVAL ? parseInt (process.env.RENEW_INTERVAL) * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
 setInterval (async () => {
     try {
         // only leader runs renewals
@@ -407,13 +418,16 @@ setInterval (async () => {
 }, renewInterval); // run once per set interval
 
 // graceful exit
-process.once ('SIGTERM', async () => {
+process.once ('SIGTERM', () => {
     print (`SIGTERM received...`);
+    print (`Shutting down...`);
     // close servers
-    print (`closing servers...`);
-    await http.close();
-    await https.close();
-    proxy.close(process.exit);
+    http.close ();
+    https.close ();
+    proxy.close ();
+
+    // shutdown election
+    election.stop ();
 });
 
 // create a new certificate order and add response to etcd 
