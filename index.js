@@ -107,7 +107,8 @@ election.on ('leader', (node) => {
     print (`node ${node} elected as leader`);
 })
 election.on ('error', (error) => {
-    print (`ERROR: ${error}`);
+    print (error.name);
+    print (error.message);
     process.exitCode = 1;
 });
 
@@ -134,6 +135,7 @@ dockerEvents.on ('_message', async (event) => {
 
 // poll docker periodically in case of missed eventns
 const dockerPoll = setInterval (async () => {
+    print ('polling docker services...');
     const allServices = await docker.listServices ();
     // for every service
     for await (let service_ of allServices) {
@@ -142,6 +144,7 @@ const dockerPoll = setInterval (async () => {
         const service = await docker.getService (ID).inspect ();
         // docker has valid service but it is not in agassi
         if (service.Spec.Labels.VIRTUAL_HOST && !dockerServices.has (ID)) {
+            print ('found previously unknown service');
             await addService (service);
         };
     };
@@ -149,10 +152,11 @@ const dockerPoll = setInterval (async () => {
     // agassi has service that is no longer in docker
     for await (let knownService of Array.from (dockerServices.keys())) {
         if (!allServices.find ((service) => { knownService == service.ID; })) {
+            print ('removing dangling service');
             await removeService (knownService);
         };
     };
-}, 30 * 1000);
+}, 60 * 1000);
 
 // watch for new ACME challenges
 const challengeWatcher = etcd.watcher (challengeDir, null, {recursive: true})
@@ -188,7 +192,8 @@ const challengeWatcher = etcd.watcher (challengeDir, null, {recursive: true})
     };
 })
 .on ('error', (error) => {
-    print (`ERROR: ${error}`);
+    print (error.name);
+    print (error.message);
 });
 
 // watch for new certs
@@ -204,7 +209,8 @@ const certWatcher = etcd.watcher (certDir, null, {recursive: true})
     certs.delete (domain);
 })
 .on ('error', (error) => {
-    print (`ERROR: ${error}`);
+    print (error.name);
+    print (error.message);
 });
 
 // watch for new and/or removed virtual hosts
@@ -223,7 +229,8 @@ const vHostWatcher = etcd.watcher (vHostDir, null, {recursive: true})
     vHosts.delete (vHostDomain);
 })
 .on ('error', (error) => {
-    print (`ERROR: ${error}`);
+    print (error.name);
+    print (error.message);
 });
 
 // create proxy server
@@ -237,7 +244,8 @@ const proxy = httpProxy.createProxyServer({
     };
 })
 .on ('error', (error) => {
-    print (error);
+    print (error.name);
+    print (error.message);
     process.exitCode = 1;
 });
 
@@ -273,12 +281,14 @@ http.createServer (async (request, response) => {
     };
 })
 .on ('error', (error) => {
-    print (error);
+    print (error.name);
+    print (error.message);
     process.exitCode = 1;
 })
 .listen (80, null, (error) => {
     if (error) {
-        print (error);
+        print (error.name);
+        print (error.message);
         process.exitCode = 1;
     } else {
         print (`listening on port 80...`);
@@ -305,8 +315,20 @@ https.createServer ({
     cert: defaultCert
 }, async (request, response) => {
     const requestURL = new URL(request.url, `https://${request.headers.host}`);
-    const virtualHost = vHosts.get (requestURL.hostname);
-    // only if virtualHost exists
+    let virtualHost = vHosts.get (requestURL.hostname);
+    // if virtual host is not in cache
+    if (!virtualHost) {
+        try {
+            // check for virtual host in etcd
+            let vHost = await etcd.getAsync (`${vHostDir}/${requestURL.hostname}`);
+            vHosts.set (requestURL.hostname, JSON.parse (vHost.value));
+            virtualHost = vHosts.get (requestURL.hostname);
+        } catch (error) {
+            print (error.name);
+            print (error.message);
+        };
+    };
+    // if virtual host exists in cache or etcd
     if (virtualHost) {
         // basic auth protected host
         if (virtualHost.auth) {
@@ -351,12 +373,14 @@ https.createServer ({
     };
 })
 .on ('error', (error) => {
-    print (error);
+    print (error.name);
+    print (error.message);
     process.exitCode = 1;
 })
 .listen (443, null, (error) => {
     if (error) {
-        print (error);
+        print (error.name);
+        print (error.message);
         process.exitCode = 1;
     } else {
         rateLimit.init ();
@@ -388,8 +412,8 @@ const renewPoll = setInterval (async () => {
             };
         };
     } catch (error) {
-        print ('error renewing certificates');
-        print (error);
+        print (error.name);
+        print (error.message);
     };
         
 }, renewInterval); // run once per set interval
@@ -420,9 +444,9 @@ process.once ('SIGTERM', () => {
     election.stop ();
 });
 
-/*-------------------\
-|  helper functions  |
-\-------------------*/
+/*-----------------------------------------------------------------------------------------------\
+|----------------------------------- helper functions -------------------------------------------|
+\-----------------------------------------------------------------------------------------------*/
 
 // add a new docker service to agassi
 async function addService (service) {
