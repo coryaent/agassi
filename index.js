@@ -10,8 +10,9 @@ const acme = require ('acme-client');
 const Etcd = require ('node-etcd');
 const bluebird = require ('bluebird'); bluebird.promisifyAll(Etcd.prototype);
 const etcdLeader = require ('etcd-leader');
-const dolphin = require ('dolphin')();
 const Docker = require ('dockerode'); const docker = new Docker ();
+const DockerEvents = require ('docker-events');
+const dockerEvents = new DockerEvents ({docker: docker});
 const httpProxy = require ('http-proxy');
 const http = require ('http');
 const https = require ('https');
@@ -107,11 +108,12 @@ election.on ('leader', (node) => {
 })
 election.on ('error', (error) => {
     print (`ERROR: ${error}`);
+    process.exitCode = 1;
 });
 
-// listen to docker socket for new containers
-dolphin.events({})
-.on ('event', async (event) => {
+// listen to docker socket for new services
+dockerEvents.start ();
+dockerEvents.on ('_message', async (event) => {
     // on service creation or update
     if (event.Type === 'service') {
         if (event.Action === 'update') {
@@ -119,66 +121,41 @@ dolphin.events({})
             const service = await docker.getService (event.Actor.ID).inspect();
             // check that the service has the requisite label(s)
             if (service.Spec.Labels.VIRTUAL_HOST) {
-                // parse virtual host
-                const virtualURL = new URL (service.Spec.Labels.VIRTUAL_HOST);
-
-                // map docker service ID to hostname
-                dockerServices.set (event.Actor.ID, virtualURL.hostname);
-                // only the leader creates new hosts
-                if (isLeader) {
-                    const virtualHost = {};
-                    virtualHost.serviceID = event.Actor.ID;
-                    // this is where default options are set
-                    virtualHost.options = {};
-                    // virtualHost.options.secure = false; // do not check other ssl certs
-                    virtualHost.options.target = `${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`;
-                    print (`target set to ${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`);
-                    // check if auth is required
-                    if (service.Spec.Labels.VIRTUAL_AUTH) {
-                        // decode base64
-                        virtualHost.auth = ((Buffer.from (service.Spec.Labels.VIRTUAL_AUTH, 'base64')).toString('utf-8')).trim();
-                        print (`virtual auth read as ${virtualHost.auth}`);
-                    };
-                    // check if etcd already has a cert for this domain
-                    if (certs.has (virtualURL.hostname)) {
-                        print (`using existing cert for ${virtualURL.hostname}`);
-                    };
-                    print (`adding virtual host to etcd...`);
-                    await etcd.setAsync (`${vHostDir}/${virtualURL.hostname}`,
-                        JSON.stringify (virtualHost)
-                    );
-
-                    // if domain does not already have a cert && only the leader
-                    if (!certs.has (virtualURL.hostname)) {
-                        // place order for signed certificate
-                        print (`ordering Let's Encrypt certificate for ${virtualURL.hostname} ...`);
-                        await placeCertOrder (virtualURL.hostname);
-                    };
-                };
+                await addService (service);
             };
         };
 
         if (event.Action === 'remove') {
             print (`detected removed docker service ${event.Actor.ID}`);
-            if (dockerServices.has (event.Actor.ID)) {
-                // only leader handles etcd hosts
-                if (isLeader) {
-                    print (`removing virtual host ${dockerServices.get (event.Actor.ID)} from etcd and cache...`);
-                    await etcd.delAsync (`${vHostDir}/${dockerServices.get (event.Actor.ID)}`);
-                };
-                dockerServices.delete (event.Actor.ID);
-            } else {
-                print (`docker service ${dockerServices.get (event.Actor.ID)} has no virtual host`);
-            };
+            await removeService (event.Actor.ID);
         };
     };
-})
-.on ('error', (error) => {
-    print (`ERROR: ${error}`);
 });
 
+// poll docker periodically in case of missed eventns
+const dockerPoll = setInterval (async () => {
+    const allServices = await docker.listServices ();
+    // for every service
+    for await (let service_ of allServices) {
+        const ID = service_.ID;
+        // get all service details
+        const service = await docker.getService (ID).inspect ();
+        // docker has valid service but it is not in agassi
+        if (service.Spec.Labels.VIRTUAL_HOST && !dockerServices.has (ID)) {
+            await addService (service);
+        };
+    };
+
+    // agassi has service that is no longer in docker
+    for await (let knownService of Array.from (dockerServices.keys())) {
+        if (!allServices.find ((service) => { knownService == service.ID; })) {
+            await removeService (knownService);
+        };
+    };
+}, 30 * 1000);
+
 // watch for new ACME challenges
-etcd.watcher (challengeDir, null, {recursive: true})
+const challengeWatcher = etcd.watcher (challengeDir, null, {recursive: true})
 .on ('set', async (event) => {
 
     // only the leader communicates that a challenge is ready
@@ -215,7 +192,7 @@ etcd.watcher (challengeDir, null, {recursive: true})
 });
 
 // watch for new certs
-etcd.watcher (certDir, null, {recursive: true})
+const certWatcher = etcd.watcher (certDir, null, {recursive: true})
 .on ('set', (event) => {
     const domain = event.node.key.replace (`${certDir}/`, '');
     print (`found new cert for ${domain} in etcd`);
@@ -231,7 +208,7 @@ etcd.watcher (certDir, null, {recursive: true})
 });
 
 // watch for new and/or removed virtual hosts
-etcd.watcher (vHostDir, null, {recursive: true})
+const vHostWatcher = etcd.watcher (vHostDir, null, {recursive: true})
 .on ('set', (event) => {
     print (`found new virtual host in etcd`);
     const vHostDomain = event.node.key.replace (`${vHostDir}/`, '');
@@ -302,7 +279,7 @@ http.createServer (async (request, response) => {
 .listen (80, null, (error) => {
     if (error) {
         print (error);
-        process.exit (1);
+        process.exitCode = 1;
     } else {
         print (`listening on port 80...`);
     };
@@ -389,7 +366,7 @@ https.createServer ({
 
 // periodically check for expriring certificates
 const renewInterval = process.env.RENEW_INTERVAL ? parseInt (process.env.RENEW_INTERVAL) * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
-setInterval (async () => {
+const renewPoll = setInterval (async () => {
     try {
         // only leader runs renewals
         if (isLeader) {
@@ -421,14 +398,85 @@ setInterval (async () => {
 process.once ('SIGTERM', () => {
     print (`SIGTERM received...`);
     print (`Shutting down...`);
+
+    // stop docker listener
+    dockerEvents.stop ();
+
     // close servers
     http.close ();
     https.close ();
     proxy.close ();
 
+    // stop etcd watchers
+    challengeWatcher.stop ();
+    certWatcher.stop ();
+    vHostWatcher.stop ();
+
+    // stop periodic events
+    clearInterval (dockerPoll);
+    clearInterval (renewPoll);
+
     // shutdown election
     election.stop ();
 });
+
+/*-------------------\
+|  helper functions  |
+\-------------------*/
+
+// add a new docker service to agassi
+async function addService (service) {
+    // parse virtual host
+    const virtualURL = new URL (service.Spec.Labels.VIRTUAL_HOST);
+
+    // map docker service ID to hostname
+    dockerServices.set (event.Actor.ID, virtualURL.hostname);
+    // only the leader creates new hosts
+    if (isLeader) {
+        const virtualHost = {};
+        virtualHost.serviceID = event.Actor.ID;
+        // this is where default options are set
+        virtualHost.options = {};
+        // virtualHost.options.secure = false; // do not check other ssl certs
+        virtualHost.options.target = `${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`;
+        print (`target set to ${virtualURL.protocol}//${service.Spec.Name}:${virtualURL.port}`);
+        // check if auth is required
+        if (service.Spec.Labels.VIRTUAL_AUTH) {
+            // decode base64
+            virtualHost.auth = ((Buffer.from (service.Spec.Labels.VIRTUAL_AUTH, 'base64')).toString('utf-8')).trim();
+            print (`virtual auth read as ${virtualHost.auth}`);
+        };
+        // check if etcd already has a cert for this domain
+        if (certs.has (virtualURL.hostname)) {
+            print (`using existing cert for ${virtualURL.hostname}`);
+        };
+        print (`adding virtual host to etcd...`);
+        await etcd.setAsync (`${vHostDir}/${virtualURL.hostname}`,
+            JSON.stringify (virtualHost)
+        );
+
+        // if domain does not already have a cert && only the leader
+        if (!certs.has (virtualURL.hostname)) {
+            // place order for signed certificate
+            print (`ordering Let's Encrypt certificate for ${virtualURL.hostname} ...`);
+            await placeCertOrder (virtualURL.hostname);
+        };
+    };
+};
+
+async function removeService (serviceID) {
+
+    if (dockerServices.has (serviceID)) {
+        // only leader handles etcd hosts
+        if (isLeader) {
+            print (`removing virtual host ${dockerServices.get (serviceID)} from etcd and cache...`);
+            await etcd.delAsync (`${vHostDir}/${dockerServices.get (serviceID)}`);
+        };
+        dockerServices.delete (serviceID);
+    } else {
+        print (`docker service ${serviceID} has no virtual host`);
+    };
+}
 
 // create a new certificate order and add response to etcd 
 async function placeCertOrder (domain) {
