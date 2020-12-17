@@ -117,7 +117,7 @@ dockerEvents.start ();
 dockerEvents.on ('_message', async (event) => {
     // on service creation or update
     if (event.Type === 'service') {
-        if (event.Action === 'update') {
+        if (event.Action === 'update' || event.Action === 'create') {
             print (`detected updated docker service ${event.Actor.ID}`);
             const service = await docker.getService (event.Actor.ID).inspect();
             // check that the service has the requisite label(s)
