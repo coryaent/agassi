@@ -69,14 +69,14 @@ const isIterable = object =>
   object != null && object != undefined && typeof object[Symbol.iterator] === 'function'
 
 const certNodes = etcd.getSync (`${certDir}`, {recursive: true});
-if (isIterable (certNodes.body.node.nodes)) {
+if (certNodes.body.node.nodes && isIterable (certNodes.body.node.nodes)) {
     for (let certNode of certNodes.body.node.nodes) {
         certs.set (certNode.key.replace (`${certDir}/`, ''), certNode.value);
     };
 };
 // cache existing virtual hosts
 const virtualHostNodes = etcd.getSync (`${vHostDir}`, {recursive: true});
-if (isIterable (virtualHostNodes.body.node.nodes)) {
+if (virtualHostNodes.body.node.nodes && isIterable (virtualHostNodes.body.node.nodes)) {
     for (let virtualHostNode of virtualHostNodes.body.node.nodes) {
         const vHostDomain = virtualHostNode.key.replace (`${vHostDir}/`, '');
         const vHost = JSON.parse(virtualHostNode.value);
