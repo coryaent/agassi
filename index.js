@@ -153,7 +153,7 @@ const dockerPoll = setInterval (async () => {
         const service = await docker.getService (ID).inspect ();
         // docker has valid service but it is not in agassi
         if (service.Spec.Labels.VIRTUAL_HOST && !dockerServices.has (ID)) {
-            print ('found previously unknown service');
+            print (`found previously unknown service ${ID}`);
             await addService (service);
         };
     };
@@ -463,11 +463,11 @@ async function addService (service) {
     const virtualURL = new URL (service.Spec.Labels.VIRTUAL_HOST);
 
     // map docker service ID to hostname
-    dockerServices.set (service.Actor.ID, virtualURL.hostname);
+    dockerServices.set (service.ID, virtualURL.hostname);
     // only the leader creates new hosts
     if (isLeader) {
         const virtualHost = {};
-        virtualHost.serviceID = service.Actor.ID;
+        virtualHost.serviceID = service.ID;
         // this is where default options are set
         virtualHost.options = {};
         // virtualHost.options.secure = false; // do not check other ssl certs
