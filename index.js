@@ -21,6 +21,7 @@ const rateLimit = require ('http-ratelimit');
 const memoize = require ('nano-memoize');
 const compare = require ('tsscmp');
 const dateDiff = require ('date-range-diff');
+const { Service } = require('dockerode');
 
 const uuid = uuidv4();
 print (`starting process with uuid ${uuid}...`);
@@ -462,11 +463,11 @@ async function addService (service) {
     const virtualURL = new URL (service.Spec.Labels.VIRTUAL_HOST);
 
     // map docker service ID to hostname
-    dockerServices.set (event.Actor.ID, virtualURL.hostname);
+    dockerServices.set (service.Actor.ID, virtualURL.hostname);
     // only the leader creates new hosts
     if (isLeader) {
         const virtualHost = {};
-        virtualHost.serviceID = event.Actor.ID;
+        virtualHost.serviceID = service.Actor.ID;
         // this is where default options are set
         virtualHost.options = {};
         // virtualHost.options.secure = false; // do not check other ssl certs
