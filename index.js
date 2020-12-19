@@ -2,29 +2,29 @@
 require ('dotenv').config ();
 
 // dependencies
-const { v4: uuidv4 } = require ('uuid');
 const print = require ('./print.js');
+
+const os = require ('os');
 const fs = require ('fs');
-const bcrypt = require ('bcryptjs');
+
 const acme = require ('acme-client');
-const Etcd = require ('node-etcd');
-const bluebird = require ('bluebird'); bluebird.promisifyAll(Etcd.prototype);
-const etcdLeader = require ('etcd-leader');
+const dateDiff = require ('date-range-diff');
+
 const Docker = require ('dockerode'); const docker = new Docker ();
 const DockerEvents = require ('docker-events');
 const dockerEvents = new DockerEvents ({docker: docker});
+
 const httpProxy = require ('http-proxy');
 const http = require ('http');
 const https = require ('https');
 const tls = require ('tls');
 const rateLimit = require ('http-ratelimit');
-const memoize = require ('nano-memoize');
-const compare = require ('tsscmp');
-const dateDiff = require ('date-range-diff');
-const { Service } = require('dockerode');
 
-const uuid = uuidv4();
-print (`starting process with uuid ${uuid}...`);
+const memoize = require ('nano-memoize');
+const bcrypt = require ('bcryptjs');
+const compare = require ('tsscmp');
+
+print (`starting process with hostname ${os.hostname()}...`);
 
 // load keys for HTTPS server and Let's Encrypt
 print (`loading keys and email address...`);
