@@ -3,9 +3,12 @@ require ('dotenv').config ();
 
 // dependencies
 const print = require ('./print.js');
+const sleep = require ('sleepjs');
 
 const os = require ('os');
 const fs = require ('fs');
+
+const Discover = require ('node-discover');
 
 const acme = require ('acme-client');
 const dateDiff = require ('date-range-diff');
@@ -24,6 +27,10 @@ const memoize = require ('nano-memoize');
 const bcrypt = require ('bcryptjs');
 const compare = require ('tsscmp');
 
+// config
+const labelPrefix = process.env.LABEL_PREFIX ? process.env.LABEL_PREFIX : 'agassi';
+const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
+
 print (`starting process with hostname ${os.hostname()}...`);
 
 // load keys for HTTPS server and Let's Encrypt
@@ -34,7 +41,10 @@ const acmeKey = fs.readFileSync (process.env.ACME_KEY, 'utf-8');
 const email = ((fs.readFileSync (process.env.EMAIL, 'utf-8')).trim()).startsWith('mailto:') ?
     (fs.readFileSync (process.env.EMAIL, 'utf-8')).trim() :
     'mailto:' + (fs.readFileSync (process.env.EMAIL, 'utf-8')).trim();
-print (`using email ${email}...`);
+
+const clusterKey = process.env.CLUSTER_KEY ? fs.readFileSync (process.env.CLUSTER_KEY, 'utf-8') : null;
+
+
 
 // acme client
 const client = new acme.Client({
@@ -43,58 +53,33 @@ const client = new acme.Client({
 });
 print (`${ process.env.STAGING == 'true' ? 'using staging environment...':'using production environment...'}`);
 
-// parse etcd hosts
-print (`parsing etcd hosts...`);
-const etcdHosts = process.env.ETCD.split (',');
-for (let i = 0; i < etcdHosts.length; i++) {
-    etcdHosts[i] = etcdHosts[i].trim();
-};
-print (`connecting to etcd...`);
-const etcd = new Etcd (etcdHosts);
+// start cluster
+const cluster = new Discover ({
+    helloInterval: 5 * 1000,
+    checkInterval: 2 * 2000,
+    nodeTimeout: 30 * 1000,
+    address: ip.address(),
+    unicast: iprange (`${ip.address()}/24`),
+    port: 1025,
+    key: clusterKey
+}, async (error) => {
+    // callback on initialization
+    if (error) {
+        print (error.name);
+        print (error.message);
+        process.exitCode = 1;
+    };    
+})
+.on ('promotion', () => {
+    // this node is now the master
+})
+.on ('demotion', () => {
+    // this node is no longer master
+})
+.on ('master', (masterNode) => {
+    // got a new master
+});
 
-// create requisite directories for watchers
-const challengeDir = typeof process.env.CHALLENGE_DIR === 'string' ? process.env.CHALLENGE_DIR : '/challenges';
-etcd.mkdirSync (challengeDir);
-const certDir = typeof process.env.CERT_DIR === 'string' ? process.env.CERT_DIR : '/certs';
-etcd.mkdirSync (certDir);
-const vHostDir = typeof process.env.VHOST_DIR === 'string' ? process.env.VHOST_DIR : '/virtual-hosts';
-etcd.mkdirSync (vHostDir);
-
-// initialize caches of virtual hosts, current certificates, and basic authentication
-const certs = new Map ();
-const vHosts = new Map ();
-const dockerServices = new Map ();
-const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
-// cache availability of certs
-const isIterable = object =>
-  object != null && object != undefined && typeof object[Symbol.iterator] === 'function'
-
-const certNodes = etcd.getSync (`${certDir}`, {recursive: true});
-if (certNodes &&
-    certNodes.body &&
-    certNodes.body.node &&
-    certNodes.body.node.nodes && 
-    isIterable (certNodes.body.node.nodes) ) {
-    for (let certNode of certNodes.body.node.nodes) {
-        certs.set (certNode.key.replace (`${certDir}/`, ''), certNode.value);
-    };
-};
-// cache existing virtual hosts
-const virtualHostNodes = etcd.getSync (`${vHostDir}`, {recursive: true});
-if (virtualHostNodes &&
-    virtualHostNodes.body &&
-    virtualHostNodes.body.node &&
-    virtualHostNodes.body.node.nodes && 
-    isIterable (virtualHostNodes.body.node.nodes) ) {
-    for (let virtualHostNode of virtualHostNodes.body.node.nodes) {
-        const vHostDomain = virtualHostNode.key.replace (`${vHostDir}/`, '');
-        const vHost = JSON.parse(virtualHostNode.value);
-        vHosts.set (vHostDomain, vHost);
-        dockerServices.set (vHost.serviceID, vHostDomain);
-    };
-};
-
-// elect and monitor proxy leader
 const electionDir = typeof process.env.ELECTION_DIR === 'string' ? process.env.ELECTION_DIR : '/leader';
 print (`electing leader using key ${electionDir}...`);
 const election = etcdLeader(etcd, electionDir, uuid, 10).start();
