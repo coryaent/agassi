@@ -7,15 +7,16 @@ const sleep = require ('sleepjs');
 
 const os = require ('os');
 const fs = require ('fs');
+const { spawn } = require ('child_process');
 
 const Discover = require ('node-discover');
+const EventEmitter = require ('events');
 
 const acme = require ('acme-client');
 const dateDiff = require ('date-range-diff');
 
-const Docker = require ('dockerode'); const docker = new Docker ();
+const Docker = require ('dockerode');
 const DockerEvents = require ('docker-events');
-const dockerEvents = new DockerEvents ({docker: docker});
 
 const httpProxy = require ('http-proxy');
 const http = require ('http');
@@ -30,8 +31,19 @@ const compare = require ('tsscmp');
 // config
 const labelPrefix = process.env.LABEL_PREFIX ? process.env.LABEL_PREFIX : 'agassi';
 const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
+const clusterKey = process.env.CLUSTER_KEY ? fs.readFileSync (process.env.CLUSTER_KEY, 'utf-8') : null;
+const socketPath = process.env.SOCKET_PATH ? process.env.SOCKET_PATH : '/tmp/shipwreck.sock';
 
-print (`starting process with hostname ${os.hostname()}...`);
+// start shipwreck read-only docker socket proxy
+print ('starting shipwreck...');
+const shipwreck = spawn ('shipwreck', ['--to', `unix://localhost${socketPath}`], {
+    stdio: ['ignore', 'inherit', 'inherit']
+})
+.on ('error', (error) => {
+    print (error.name);
+    print (error.message);
+    process.exitCode = 1;
+});
 
 // load keys for HTTPS server and Let's Encrypt
 print (`loading keys and email address...`);
@@ -42,10 +54,6 @@ const email = ((fs.readFileSync (process.env.EMAIL, 'utf-8')).trim()).startsWith
     (fs.readFileSync (process.env.EMAIL, 'utf-8')).trim() :
     'mailto:' + (fs.readFileSync (process.env.EMAIL, 'utf-8')).trim();
 
-const clusterKey = process.env.CLUSTER_KEY ? fs.readFileSync (process.env.CLUSTER_KEY, 'utf-8') : null;
-
-
-
 // acme client
 const client = new acme.Client({
     directoryUrl: process.env.STAGING == 'true' ? acme.directory.letsencrypt.staging : acme.directory.letsencrypt.production,
@@ -53,14 +61,56 @@ const client = new acme.Client({
 });
 print (`${ process.env.STAGING == 'true' ? 'using staging environment...':'using production environment...'}`);
 
+// docker client
+const docker = new Docker ({socketPath: socketPath});
+const dockerEvents = new DockerEvents ({docker: docker});
+
+// options and variable for rqlited
+var rqlited = null;
+const rqlitedArgs = [
+    '-http-addr', '0.0.0.0:4001',
+    '-http-adv-addr', `${os.hostname()}:4001`,
+    '-raft-addr', '0.0.0.0:4002',
+    '-raft-adv-addr', `${os.hostname()}:4002`,
+    '/data'
+];
+
+// track initialization and master status
+var isMaster = false;
+var master = null;
+// Initialization {
+//     cluster: // initialize the whole cluster or just one node
+//     hostname: // a known good hostname
+// }
+const Initialization = new EventEmitter ()
+.once ('done', (initialization) => {
+    // join cluster if not master or the cluster is already init.
+    if ((!isMaster) || (initialization.cluster == false)) {
+        rqlitedArgs.unshift ('-join', `${initialization.hostname}`);
+    };
+    // start rqlite daemon
+    rqlited = spawn ('rqlited', rqlitedArgs, {
+        stdio: ['ignore', 'inherit', 'inherit']
+    })
+    .on ('error', (error) => {
+        print (error.name);
+        print (error.message);
+        process.exitCode = 1;
+    });
+    // indicate to other nodes that the cluster 
+    // (and this node) are initialized
+    cluster.advertise ('initialized');
+});
+
 // start cluster
+var peers = 0;
 const cluster = new Discover ({
     helloInterval: 5 * 1000,
-    checkInterval: 2 * 2000,
-    nodeTimeout: 30 * 1000,
+    checkInterval: 4 * 2000,
+    nodeTimeout: 60 * 1000,
     address: ip.address(),
     unicast: iprange (`${ip.address()}/24`),
-    port: 1025,
+    port: 4000,
     key: clusterKey
 }, async (error) => {
     // callback on initialization
@@ -68,42 +118,104 @@ const cluster = new Discover ({
         print (error.name);
         print (error.message);
         process.exitCode = 1;
-    };    
-})
-.on ('promotion', () => {
-    // this node is now the master
-})
-.on ('demotion', () => {
-    // this node is no longer master
-})
-.on ('master', (masterNode) => {
-    // got a new master
-});
+    };
 
-const electionDir = typeof process.env.ELECTION_DIR === 'string' ? process.env.ELECTION_DIR : '/leader';
-print (`electing leader using key ${electionDir}...`);
-const election = etcdLeader(etcd, electionDir, uuid, 10).start();
-var isLeader = false;
-election.on ('elected', async () => {
-    isLeader = true;
-    print (`this node ${uuid} elected as leader`);
+    // looking for peers
+    print ('looking for peers...');
+    const retries = 3; let attempt = 1;
+    while ((peers < 1) && (master == null) && (attempt <= retries)) {
+        // backoff
+        await sleep ( attempt * 20 * 1000);
+        if (peers < 1 || master == null) {
+            if (peers < 1) {
+                print (`no peers found, retrying (${attempt}/${retries})...`);
+            };
+            if (master == null) {
+                print (`could not determine cluster master, retrying (${attempt}/${retries})`)
+            };
+            attempt++;
+        };
+    };
+
+    // either move on or quit
+    if (peers > 0 && master != null) {
+        Initialization.emit ('done', {
+            cluster: true,
+            hostname: master.hostName
+        });
+    } else {
+        // no peers, no run
+        if (peers <= 0) {
+            print ('could not find any peers');
+            process.kill (process.pid);
+        };
+        // keep going if no master
+        // (cluster master is not necessairily rqlited master)
+        if (master == null) {
+            print ('could not determine cluster master');
+        };
+    };
+    
+})
+.on ('master', (node) => {
+    master = node;    
+})
+.on ('promotion', async () => {
+    // this node is now the master, init. Let's Encrypt account
+    isMaster = true;
+    print (`this node ${os.hostname()} is master`);
     print (`initializing Let's Encrypt account...`);
     await client.createAccount({
         termsOfServiceAgreed: true,
         contact: [email]
     });
-});
-election.on ('unelected', () => {
-    isLeader = false;
-    print (`this node ${uuid} is no longer leader`);
-});
-election.on ('leader', (node) => {
-    print (`node ${node} elected as leader`);
 })
-election.on ('error', (error) => {
-    print (error.name);
-    print (error.message);
-    process.exitCode = 1;
+.on ('demotion', () => {
+    // this node is no longer master
+    isMaster = false;
+})
+.on ('added', (node) => {
+    peers++;
+    // node added to cluster
+    if (node.advertisement == 'initialized') {
+        // initialize new node in existing cluster
+        Initialization.emit ('done', {
+            cluster: false,
+            hostname: node.hostName
+        });
+    };
+})
+.on ('removed', (node) => {
+    peers--;
+    // if this node is master, remove the lost node
+    if (isMaster) {
+        // which node to remove
+        const requestData = `{"id":"${node.hostname}"}`;
+        // details for node.js http request
+        const request = http.request ({
+            hostname: 'localhost',
+            port: 4001,
+            path: '/remove',
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': requestData.length
+            }
+        }, (response) => {
+            // print output
+            response.on ('data', (data) => {
+                print (data);
+            });
+        });
+        // print if error encountered
+        request.on ('error', (error) => {
+            print (error.name);
+            print (error.message);      
+        });
+        // send the request
+        request.write (requestData);
+        request.end ();
+    };
 });
 
 // listen to docker socket for new services
@@ -425,17 +537,13 @@ process.once ('SIGTERM', () => {
     https.close ();
     proxy.close ();
 
-    // stop etcd watchers
-    challengeWatcher.stop ();
-    certWatcher.stop ();
-    vHostWatcher.stop ();
-
     // stop periodic events
     clearInterval (dockerPoll);
     clearInterval (renewPoll);
 
-    // shutdown election
-    election.stop ();
+    // stop sub-processes
+    if (rqlited) {rqlited.kill ();};
+    shipwreck.kill ();
 });
 
 /*-----------------------------------------------------------------------------------------------\
