@@ -33,6 +33,7 @@ RUN npm install && \
 FROM node:12
 
 # copy requisite binaries
+COPY --from=rqlited-builder /opt/rqmkown /usr/local/bin/rqmkown
 COPY --from=rqlited-builder /opt/rqlited /usr/local/bin/rqlited
 
 COPY --from=shipwreck-builder /opt/shipwrecker /usr/local/bin/shipwrecker
