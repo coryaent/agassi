@@ -12,7 +12,7 @@ const { spawn } = require ('child_process');
 const Discover = require ('node-discover');
 const EventEmitter = require ('events');
 
-const axios = require ('axios');
+const rqlite = require ('./rqlite.js');
 const Query = require ('./query.js');
 
 const acme = require ('acme-client');
@@ -21,22 +21,13 @@ const dateDiff = require ('date-range-diff');
 const Docker = require ('dockerode');
 const DockerEvents = require ('docker-events');
 
-const httpProxy = require ('http-proxy');
-const http = require ('http');
-const https = require ('https');
-const tls = require ('tls');
-const rateLimit = require ('http-ratelimit');
-
-const memoize = require ('nano-memoize');
-const bcrypt = require ('bcryptjs');
-const compare = require ('tsscmp');
+const HTTP = require ('./http.js');
+const HTTPS = require ('./https.js');
 
 // config
 const labelPrefix = process.env.LABEL_PREFIX ? process.env.LABEL_PREFIX : 'agassi';
-const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
 const clusterKey = process.env.CLUSTER_KEY ? fs.readFileSync (process.env.CLUSTER_KEY, 'utf-8') : null;
 const socketPath = process.env.SOCKET_PATH ? process.env.SOCKET_PATH : '/tmp/shipwreck.sock';
-const realm = typeof process.env.REALM === 'string' ? process.env.REALM : 'Agassi';
 
 // start shipwreck read-only docker socket proxy
 print ('starting shipwreck...');
@@ -51,8 +42,6 @@ const shipwreck = spawn ('shipwrecker', [], {
 
 // load keys for HTTPS server and Let's Encrypt
 print (`loading keys and email address...`);
-const defaultKey = fs.readFileSync (process.env.DEFAULT_KEY, 'utf-8');
-const defaultCert = fs.readFileSync (process.env.DEFAULT_CRT, 'utf-8');
 const acmeKey = fs.readFileSync (process.env.ACME_KEY, 'utf-8');
 const email = ((fs.readFileSync (process.env.EMAIL, 'utf-8')).trim()).startsWith('mailto:') ?
     (fs.readFileSync (process.env.EMAIL, 'utf-8')).trim() :
@@ -78,14 +67,8 @@ const rqlitedArgs = [
     '-raft-adv-addr', `${os.hostname()}:4002`,
     '/data'
 ];
-const rqlite = axios.create ({
-    baseURL: 'http://localhost:4001',
-    timeout: 2000,
-    headers: {"Content-Type": "application/json"},
-    params: {"timings": true}
-});
 
-// track initialization and master status
+// track cluster initialization and master status
 var isMaster = false;
 var master = null;
 // Initialization {
@@ -111,25 +94,37 @@ const Initialization = new EventEmitter ()
     // (and this node) are initialized
     cluster.advertise ('initialized');
 
-    // wait for rqlited to raft up
-    await sleep (30 * 1000);
     // create tables
     if (isMaster) {
-        try { 
-            print (`creating DB tables...`);
-            const response = await rqlite.post ('/db/execute', [
-                Query.services.createTable,
-                Query.challenges.createTable,
-                Query.certificates.createTable
-            ]);
-            print (`got status ${response.statusText} in ${response.data.time} seconds`);
-        } catch (error) {
-            print (error.name);
-            print (error.message);
-        };
+        print (`creating DB tables...`);
+        const response = await rqlite.post ('/db/execute', [
+            Query.services.createTable,
+            Query.challenges.createTable,
+            Query.certificates.createTable
+        ]);
+        print (`got status ${response.statusText} in ${response.data.time} seconds`);
     };
     print ('watching docker socket...');
     dockerEvents.start ();
+    HTTP.listen (80, null, (error) => {
+        if (error) {
+            print (error.name);
+            print (error.message);
+            process.exitCode = 1;
+        } else {
+            print (`listening on port 80...`);
+        };
+    });
+    HTTPS.listen (443, null, (error) => {
+        if (error) {
+            print (error.name);
+            print (error.message);
+            process.exitCode = 1;
+        } else {
+            print (`listening on port 443...`);
+        };
+    });
+    
 });
 
 // start cluster
@@ -208,14 +203,9 @@ const cluster = new Discover ({
     peers--;
     // if this node is master, remove the lost node
     if (isMaster) {
-        try { 
-            print (`removing node ${node.hostname}...`);
-            const response = await rqlite.delete ('/remove', {"id": node.hostname});
-            print (`got status ${response.statusText} in ${response.data.time} seconds`);
-        } catch (error) {
-            print (error.name);
-            print (error.message);
-        };
+        print (`removing node ${node.hostname}...`);
+        const response = await rqlite.delete ('/remove', {"id": node.hostname});
+        print (`got status ${response.statusText} in ${response.data.time} seconds`);
     };
 });
 
@@ -264,235 +254,6 @@ const dockerPoll = setInterval (async () => {
     };
 }, 60 * 1000);
 
-// watch for new ACME challenges
-const challengeWatcher = etcd.watcher (challengeDir, null, {recursive: true})
-.on ('set', async (event) => {
-
-    // only the leader communicates that a challenge is ready
-    print (`found new ACME challenge`);
-    if (isLeader) {
-        // queue the completion on the remote ACME server and wait
-        print (`completing challenge and awaiting validation...`);
-        const value = JSON.parse (event.node.value);
-        await client.completeChallenge (value.challenge);
-        await client.waitForValidStatus(value.challenge);
-
-        // remove completed challeng
-        print (`removing completed challenge...`);
-        await etcd.delAsync (event.node.key);
-
-        // challenge is complete and valid, send cert-signing request
-        print (`creating CSR for ${value.domain} ...`);
-        const [key, csr] = await acme.forge.createCsr({
-            commonName: value.domain
-        }, defaultKey);
-
-        // finalize the order and pull the cert
-        print (`finalizing order and downloading cert for ${value.domain} ...`);
-        await client.finalizeOrder(value.order, csr);
-        const cert = await client.getCertificate(value.order);
-
-        // add cert to etcd with expiration
-        print (`adding cert to etcd...`);
-        await etcd.setAsync (`${certDir}/${value.domain}`, cert, {ttl: 7776000}); // 90-day ttl
-    };
-})
-.on ('error', (error) => {
-    print (error.name);
-    print (error.message);
-});
-
-// watch for new certs
-const certWatcher = etcd.watcher (certDir, null, {recursive: true})
-.on ('set', (event) => {
-    const domain = event.node.key.replace (`${certDir}/`, '');
-    print (`found new cert for ${domain} in etcd`);
-    certs.set (domain, event.node.value);
-})
-.on ('expire', (event) => {
-    const domain = event.node.key.replace (`${certDir}/`, '');
-    print (`cert for ${domain} expired`);
-    certs.delete (domain);
-})
-.on ('error', (error) => {
-    print (error.name);
-    print (error.message);
-});
-
-// watch for new and/or removed virtual hosts
-const vHostWatcher = etcd.watcher (vHostDir, null, {recursive: true})
-.on ('set', (event) => {
-    print (`found new virtual host in etcd`);
-    const vHostDomain = event.node.key.replace (`${vHostDir}/`, '');
-    const vHost = JSON.parse (event.node.value);
-    print (`caching virtual host for ${vHostDomain} ...`);
-    vHosts.set (vHostDomain, vHost);
-})
-.on ('delete', (event) => {
-    print (`virtual host deleted in etcd`);
-    const vHostDomain = event.node.key.replace (`${vHostDir}/`, '');
-    print (`removing virtual host ${vHostDomain} from cache...`);
-    vHosts.delete (vHostDomain);
-})
-.on ('error', (error) => {
-    print (error.name);
-    print (error.message);
-});
-
-// create proxy server
-const proxy = httpProxy.createProxyServer({
-    secure: false,
-    followRedirects: true,
-})
-.on ('proxyReq', (proxyRequest, request) => {
-    if (request.host != null) {
-        proxyRequest.setHeader ('host', request.host);
-    };
-})
-.on ('error', (error) => {
-    print (error.name);
-    print (error.message);
-    process.exitCode = 1;
-});
-
-// create HTTP server to answer challenges and redirect
-http.createServer (async (request, response) => {
-    // check request path
-    const requestURL = new URL(request.url, `http://${request.headers.host}`);
-    // if request is for ACME challenge
-    if (requestURL.pathname && requestURL.pathname.startsWith('/.well-known/acme-challenge/')) {
-
-        // pull challenge response from etcd
-        const token = requestURL.pathname.replace('/.well-known/acme-challenge/', '');
-        const value = (await etcd.getAsync (`${challengeDir}/${token}`)).node.value;
-        const challengeResponse = JSON.parse (value).response;
-
-        // write challenge response to request
-        print (`responding to challenge request...`);
-        response.writeHead(200, {
-            'Content-Type': 'text/plain'
-        });
-        response.write (challengeResponse);
-        response.end();
-
-    } else {
-
-        // redirect to https
-        const redirectLocation = "https://" + request.headers['host'] + request.url;
-        response.writeHead(301, {
-            "Location": redirectLocation
-        });
-        response.end();
-
-    };
-})
-.on ('error', (error) => {
-    print (error.name);
-    print (error.message);
-    process.exitCode = 1;
-})
-.listen (80, null, (error) => {
-    if (error) {
-        print (error.name);
-        print (error.message);
-        process.exitCode = 1;
-    } else {
-        print (`listening on port 80...`);
-    };
-});
-
-// display realm on basic auth prompt
-
-// create HTTPS server 
-https.createServer ({
-    SNICallback: (domain, callback) => {
-        if (certs.has(domain)) {
-            return callback (null, tls.createSecureContext({
-                key: defaultKey,
-                cert: certs.get(domain)
-            }));
-        } else {
-            process.exitCode = 1;
-            return callback (null, false);
-        };
-    },
-    key: defaultKey,
-    cert: defaultCert
-}, async (request, response) => {
-    const requestURL = new URL(request.url, `https://${request.headers.host}`);
-    let virtualHost = vHosts.get (requestURL.hostname);
-    // if virtual host is not in cache
-    if (!virtualHost) {
-        try {
-            // check for virtual host in etcd
-            let vHost = await etcd.getAsync (`${vHostDir}/${requestURL.hostname}`);
-            vHosts.set (requestURL.hostname, JSON.parse (vHost.value));
-            virtualHost = vHosts.get (requestURL.hostname);
-        } catch (error) {
-            print (error.name);
-            print (error.message);
-        };
-    };
-    // if virtual host exists in cache or etcd
-    if (virtualHost) {
-        // basic auth protected host
-        if (virtualHost.auth) {
-            // auth required but not provided
-            if (!request.headers.authorization) {
-                // prompt for password in browser
-                response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${realm}"`});
-                response.end ('Authorization is required.');
-                return;  
-            };
-            // failure rate limit reached
-            if (rateLimit.isRateLimited(request, 2)) {
-                response.writeHead(429, {
-                    'Content-Type': 'text/plain'
-                });
-                response.end ('Authorization failed.');
-                return;
-            };
-
-            // parse authentication header
-            const requestAuth = (Buffer.from (request.headers.authorization.replace(/^Basic/, ''), 'base64')).toString('utf-8');
-            const [requestUser, requestPassword] = requestAuth.split (':');
-
-            // parse vHost auth parameter
-            const [virtualUser, virtualHash] = virtualHost.auth.split (':');
-
-            // compare provided header with expected values
-            if ((compare(requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
-                proxy.web (request, response, virtualHost.options);
-            } else {
-                // rate limit failed authentication
-                rateLimit.inboundRequest(request);
-                // prompt for password in browser
-                response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${realm}"`});
-                response.end ('Authorization is required.');
-            };
-
-        } else {
-            // basic auth not required 
-            proxy.web (request, response, virtualHost.options);
-        };
-    };
-})
-.on ('error', (error) => {
-    print (error.name);
-    print (error.message);
-    process.exitCode = 1;
-})
-.listen (443, null, (error) => {
-    if (error) {
-        print (error.name);
-        print (error.message);
-        process.exitCode = 1;
-    } else {
-        rateLimit.init ();
-        print (`listening on port 443...`);
-    };
-});
-
 // periodically check for expriring certificates
 const renewInterval = process.env.RENEW_INTERVAL ? parseInt (process.env.RENEW_INTERVAL) * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
 const renewPoll = setInterval (async () => {
@@ -532,9 +293,9 @@ process.once ('SIGTERM', () => {
     dockerEvents.stop ();
 
     // close servers
-    http.close ();
-    https.close ();
-    proxy.close ();
+    HTTP.close ();
+    HTTPS.close ();
+    Proxy.close ();
 
     // stop periodic events
     clearInterval (dockerPoll);
