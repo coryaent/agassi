@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 int main() { 
@@ -12,7 +13,7 @@ int main() {
 	seteuid (0);
 	setegid (0);
 
-	if ( execlp ("shipwreck", "--force", "--mode", "666", "--to", socket_path, NULL) ) { exit (EXIT_FAILURE); }
+	if ( execlp ("shipwreck", "--force", "--mode", "666", "--to", strcat ("unix://localhost", socket_path), NULL) ) { exit (EXIT_FAILURE); }
 
 	exit (EXIT_SUCCESS);
 

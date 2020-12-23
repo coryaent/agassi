@@ -145,6 +145,9 @@ const cluster = new Discover ({
     isMaster = false;
 })
 .on ('added', (node) => {
+    if (node.isMaster) {
+        master = node;
+    };
     peers++;
     // node added to cluster
     if (node.advertisement == 'initialized') {
