@@ -30,7 +30,7 @@ RUN npm install && \
 #####################
 # primary container #
 #####################
-FROM node:12
+FROM debian:buster-slim
 
 # copy requisite binaries
 COPY --from=rqlited-builder /opt/rqmkown /usr/local/bin/rqmkown
