@@ -93,7 +93,7 @@ var master = null;
 //     hostname: // a known good hostname
 // }
 const Initialization = new EventEmitter ()
-.once ('done', (initialization) => {
+.once ('done', async (initialization) => {
     // join cluster if not master or the cluster is already init.
     if ((!isMaster) || (initialization.cluster == false)) {
         rqlitedArgs.unshift ('-join', `http://${initialization.hostname}:4001`);
