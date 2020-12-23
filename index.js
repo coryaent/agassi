@@ -33,6 +33,7 @@ const labelPrefix = process.env.LABEL_PREFIX ? process.env.LABEL_PREFIX : 'agass
 const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
 const clusterKey = process.env.CLUSTER_KEY ? fs.readFileSync (process.env.CLUSTER_KEY, 'utf-8') : null;
 const socketPath = process.env.SOCKET_PATH ? process.env.SOCKET_PATH : '/tmp/shipwreck.sock';
+const realm = typeof process.env.REALM === 'string' ? process.env.REALM : 'Agassi';
 
 // start shipwreck read-only docker socket proxy
 print ('starting shipwreck...');
@@ -86,7 +87,7 @@ const Initialization = new EventEmitter ()
 .once ('done', (initialization) => {
     // join cluster if not master or the cluster is already init.
     if ((!isMaster) || (initialization.cluster == false)) {
-        rqlitedArgs.unshift ('-join', `${initialization.hostname}`);
+        rqlitedArgs.unshift ('-join', `http://${initialization.hostname}:4001`);
     };
     // start rqlite daemon
     rqlited = spawn ('rqlited', rqlitedArgs, {
@@ -402,7 +403,6 @@ http.createServer (async (request, response) => {
 });
 
 // display realm on basic auth prompt
-const realm = typeof process.env.REALM === 'string' ? process.env.REALM : 'Agassi';
 
 // create HTTPS server 
 https.createServer ({

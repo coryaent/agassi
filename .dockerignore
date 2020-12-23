@@ -5,3 +5,5 @@ npm-debug.log
 *.crt
 tls.js
 playground*
+.gitignore
+*.txt
