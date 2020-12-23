@@ -3,7 +3,7 @@ require ('dotenv').config ();
 
 // dependencies
 const print = require ('./print.js');
-const sleep = require ('sleepjs');
+const { sleep } = require ('sleepjs');
 
 const os = require ('os');
 const fs = require ('fs');
@@ -11,6 +11,9 @@ const { spawn } = require ('child_process');
 
 const Discover = require ('node-discover');
 const EventEmitter = require ('events');
+
+const axios = require ('axios');
+const Query = require ('./query.js');
 
 const acme = require ('acme-client');
 const dateDiff = require ('date-range-diff');
@@ -37,7 +40,7 @@ const realm = typeof process.env.REALM === 'string' ? process.env.REALM : 'Agass
 
 // start shipwreck read-only docker socket proxy
 print ('starting shipwreck...');
-const shipwreck = spawn ('shipwreck', ['--to', `unix://localhost${socketPath}`], {
+const shipwreck = spawn ('shipwrecker', [], {
     stdio: ['ignore', 'inherit', 'inherit']
 })
 .on ('error', (error) => {
@@ -66,7 +69,7 @@ print (`${ process.env.STAGING == 'true' ? 'using staging environment...':'using
 const docker = new Docker ({socketPath: socketPath});
 const dockerEvents = new DockerEvents ({docker: docker});
 
-// options and variable for rqlited
+// options and variable for rqlited and rqlite client
 var rqlited = null;
 const rqlitedArgs = [
     '-http-addr', '0.0.0.0:4001',
@@ -75,6 +78,12 @@ const rqlitedArgs = [
     '-raft-adv-addr', `${os.hostname()}:4002`,
     '/data'
 ];
+const rqlite = axios.create ({
+    baseURL: 'http://localhost:4001',
+    timeout: 2000,
+    headers: {"Content-Type": "application/json"},
+    params: {"timings": true}
+});
 
 // track initialization and master status
 var isMaster = false;
@@ -101,6 +110,26 @@ const Initialization = new EventEmitter ()
     // indicate to other nodes that the cluster 
     // (and this node) are initialized
     cluster.advertise ('initialized');
+
+    // wait for rqlited to raft up
+    await sleep (30 * 1000);
+    // create tables
+    if (isMaster) {
+        try { 
+            print (`creating DB tables...`);
+            const response = await rqlite.post ('/db/execute', [
+                Query.services.createTable,
+                Query.challenges.createTable,
+                Query.certificates.createTable
+            ]);
+            print (`got status ${response.statusText} in ${response.data.time} seconds`);
+        } catch (error) {
+            print (error.name);
+            print (error.message);
+        };
+    };
+    print ('watching docker socket...');
+    dockerEvents.start ();
 });
 
 // start cluster
@@ -115,11 +144,9 @@ const cluster = new Discover ({
     key: clusterKey
 }, async (error) => {
     // callback on initialization
-    if (error) {
-        print (error.name);
-        print (error.message);
-        process.exitCode = 1;
-    };
+
+    // catch error with cluster
+    if (error) { print (error.name); print (error.message); process.exitCode = 1; };
 
     // looking for peers
     print ('looking for peers...');
@@ -128,12 +155,9 @@ const cluster = new Discover ({
         // backoff
         await sleep ( attempt * 20 * 1000);
         if (peers < 1 || master == null) {
-            if (peers < 1) {
-                print (`no peers found, retrying (${attempt}/${retries})...`);
-            };
-            if (master == null) {
-                print (`could not determine cluster master, retrying (${attempt}/${retries})`)
-            };
+            if (peers < 1) { print (`no peers found`); };
+            if (master == null) { print (`could not determine cluster master`); };
+            print (`retrying (${attempt}/${retries})...`);
             attempt++;
         };
     };
@@ -145,16 +169,10 @@ const cluster = new Discover ({
             hostname: master.hostName
         });
     } else {
-        // no peers, no run
-        if (peers <= 0) {
-            print ('could not find any peers');
-            process.kill (process.pid);
-        };
-        // keep going if no master
-        // (cluster master is not necessairily rqlited master)
-        if (master == null) {
-            print ('could not determine cluster master');
-        };
+        // no peers or no master, no run
+        if (peers <= 0) { print ('could not find any peers'); };
+        if (master == null) { print ('could not determine cluster master'); };
+        process.kill (process.pid);
     };
     
 })
@@ -186,41 +204,22 @@ const cluster = new Discover ({
         });
     };
 })
-.on ('removed', (node) => {
+.on ('removed', async (node) => {
     peers--;
     // if this node is master, remove the lost node
     if (isMaster) {
-        // which node to remove
-        const requestData = `{"id":"${node.hostname}"}`;
-        // details for node.js http request
-        const request = http.request ({
-            hostname: 'localhost',
-            port: 4001,
-            path: '/remove',
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': requestData.length
-            }
-        }, (response) => {
-            // print output
-            response.on ('data', (data) => {
-                print (data);
-            });
-        });
-        // print if error encountered
-        request.on ('error', (error) => {
+        try { 
+            print (`removing node ${node.hostname}...`);
+            const response = await rqlite.delete ('/remove', {"id": node.hostname});
+            print (`got status ${response.statusText} in ${response.data.time} seconds`);
+        } catch (error) {
             print (error.name);
-            print (error.message);      
-        });
-        // send the request
-        request.write (requestData);
-        request.end ();
+            print (error.message);
+        };
     };
 });
 
 // listen to docker socket for new services
-dockerEvents.start ();
 dockerEvents.on ('_message', async (event) => {
     // on service creation or update
     if (event.Type === 'service') {

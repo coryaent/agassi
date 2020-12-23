@@ -24,6 +24,7 @@
   "homepage": "https://github.com/coryagroup/agassi#readme",
   "dependencies": {
     "acme-client": "^4.0.2",
+    "axios": "^0.21.1",
     "bcryptjs": "^2.4.3",
     "date-range-diff": "^1.0.0",
     "docker-events": "0.0.2",

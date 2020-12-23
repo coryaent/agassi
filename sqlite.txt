@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS challenges (
 
 # create certificates table
 CREATE TABLE IF NOT EXISTS certificates (
-    certificate TEXT PRIMARY KEY,
-    hostname TEXT NOT NULL,
+    hostname TEXT PRIMARY KEY,
+    certificate TEXT NOT NULL,
     expiration INTEGER NOT NULL
 );
