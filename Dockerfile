@@ -37,9 +37,9 @@ COPY --from=shipwreck-builder /opt/release/shipwreck /usr/local/bin/shipwreck
 
 COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
 
-RUN chmod ug+s /usr/local/bin/shipwrecker
-
-RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi
+RUN apt-get update && apt-get install -y libcap2-bin && apt-get clean && \
+    chmod ug+s /usr/local/bin/shipwrecker && \
+    setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi
 
 EXPOSE 80
 EXPOSE 443
