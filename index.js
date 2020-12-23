@@ -86,8 +86,8 @@ var master = null;
 var peers = 0;
 
 const cluster = new Discover ({
-    helloInterval: 5 * 1000,
-    checkInterval: 4 * 2000,
+    // helloInterval: 5 * 1000,
+    // checkInterval: 4 * 2000,
     nodeTimeout: 60 * 1000,
     address: ip.address(),
     unicast: iprange (`${ip.address()}/24`),
