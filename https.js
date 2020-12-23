@@ -6,6 +6,7 @@ const rateLimit = require ('http-ratelimit');
 const memoize = require ('nano-memoize');
 const bcrypt = require ('bcryptjs');
 const compare = require ('tsscmp');
+const fs = require ('fs');
 
 const print = require ('./print.js');
 const Proxy = require ('./proxy.js');
