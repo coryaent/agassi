@@ -127,7 +127,8 @@ const cluster = new Discover ({
     
 })
 .on ('master', (node) => {
-    master = node;    
+    master = node;
+    print (`found master ${master.hostName}`);
 })
 .on ('promotion', async () => {
     // this node is now the master, init. Let's Encrypt account
@@ -146,6 +147,9 @@ const cluster = new Discover ({
 .on ('added', (node) => {
     if (node.isMaster) {
         master = node;
+        print (`found master ${master.hostName}`);
+    } else {
+        print (`found node ${node.hostName}`);
     };
     peers++;
     // node added to cluster
@@ -158,6 +162,7 @@ const cluster = new Discover ({
     };
 })
 .on ('removed', async (node) => {
+    print (`lost node ${node.hostName}`);
     peers--;
     // if this node is master, remove the lost node
     if (isMaster) {
@@ -317,6 +322,9 @@ process.once ('SIGTERM', () => {
     HTTP.close ();
     HTTPS.close ();
     Proxy.close ();
+
+    // stop cluster
+    cluster.stop ();
 
     // stop periodic events
     // clearInterval (dockerPoll);
