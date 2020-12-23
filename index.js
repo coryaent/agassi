@@ -81,10 +81,9 @@ try {
 // track cluster initialization and master status
 var isMaster = false;
 var master = null;
-
-// start cluster
 var peers = 0;
 
+// start cluster
 const cluster = new Discover ({
     // helloInterval: 5 * 1000,
     // checkInterval: 4 * 2000,
