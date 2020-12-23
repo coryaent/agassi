@@ -12,6 +12,9 @@ const { spawn, execFileSync } = require ('child_process');
 const Discover = require ('node-discover');
 const EventEmitter = require ('events');
 
+const ip = require ('ip');
+const iprange = require ('iprange');
+
 const rqlite = require ('./rqlite.js');
 const Query = require ('./query.js');
 
