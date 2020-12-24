@@ -89,10 +89,10 @@ var peers = 0;
 
 // start cluster
 const cluster = new Discover ({
-    // helloInterval: 5 * 1000,
-    // checkInterval: 4 * 2000,
+    helloInterval: 3 * 1000,
+    checkInterval: 6 * 2000,
     nodeTimeout: 60 * 1000,
-    // address: ip.address(),
+    address: ip.address(),
     unicast: iprange (`${ip.address()}/24`),
     port: 4000,
     key: clusterKey
@@ -321,19 +321,19 @@ process.once ('SIGTERM', () => {
     try {
         print ('stopping docker event listener...');
         dockerEvents.stop ();
-    } catch (error) { print (error.name); print (error.message); };
+    } catch (error) { print (error.name); print (error.message); process.exitCode = 1; };
 
     try {
         print ('stopping web services...');
         HTTP.close ();
         HTTPS.close ();
         Proxy.close ();
-    } catch (error) { print (error.name); print (error.message); };
+    } catch (error) { print (error.name); print (error.message); process.exitCode = 1; };
 
     try {
         print ('stopping discovery cluster...');
         cluster.stop ();
-    } catch (error) { print (error.name); print (error.message); };
+    } catch (error) { print (error.name); print (error.message); process.exitCode = 1; };
 
     // stop periodic events
     // clearInterval (dockerPoll);
@@ -341,13 +341,13 @@ process.once ('SIGTERM', () => {
 
     try {
         print ('stopping rqlited...');
-        rqlited.kill ();
-    } catch (error) { print (error.name); print (error.message); };
+        if (rqlited) { rqlited.kill (); };
+    } catch (error) { print (error.name); print (error.message); process.exitCode = 1; };
 
     try {
         print ('stopping shipwreck...');
         shipwreck.kill ();
-    } catch (error) { print (error.name); print (error.message); };
+    } catch (error) { print (error.name); print (error.message); process.exitCode = 1; };
 });
 
 /*-----------------------------------------------------------------------------------------------\
