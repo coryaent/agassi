@@ -143,7 +143,7 @@ const cluster = new Discover ({
 })
 .on ('added', (node) => {
     if (node.isMaster) {
-        print (`found master ${master.hostName}`);
+        print (`found master ${node.hostName}`);
     } else {
         print (`found node ${node.hostName}`);
     };
@@ -180,7 +180,7 @@ const Initialization = new EventEmitter ()
     // join cluster if not master or the cluster is already init.
     if (((!isMaster) || (initialization.cluster == false)) && initialization.hostnames.length > 0) {
         let joinHosts = '';
-        for await (let hostname of hostnames) {
+        for await (let hostname of initialization.hostnames) {
             joinHosts += `http://${hostname}:4001`;
             if (hostname != hostnames[hostnames.length - 1]) {
                 joinHosts += ',';

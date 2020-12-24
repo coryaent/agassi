@@ -1,6 +1,8 @@
 "use strict";
 // rqlite client
 
+const print = require ('./print.js');
+
 const axios = require ('axios');
 
 const rqlite = axios.create ({
