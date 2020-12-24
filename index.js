@@ -126,6 +126,7 @@ const cluster = new Discover ({
         // no peers or no master, no run
         if (peers <= 0) { print ('could not find any peers'); };
         if (master == null) { print ('could not determine cluster master'); };
+        process.exitCode = 1;
         process.kill (process.pid);
     };
     
