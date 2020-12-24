@@ -10,7 +10,7 @@ const fs = require ('fs');
 
 const print = require ('./print.js');
 const Proxy = require ('./proxy.js');
-const rqlite = require ('./rqlite.js');
+const rqlite = require ('./rqliteOpts.js');
 const Query = require ('./query.js');
 
 // config

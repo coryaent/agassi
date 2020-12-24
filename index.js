@@ -15,7 +15,8 @@ const EventEmitter = require ('events');
 const ip = require ('ip');
 const iprange = require ('iprange');
 
-const rqlite = require ('./rqlite.js');
+const axios = require ('axios');
+const rqliteOpts = require ('./rqliteOpts.js');
 const Query = require ('./query.js');
 
 const acme = require ('acme-client');
@@ -80,6 +81,7 @@ try {
     print ('error running native initialization binary rqmkown');
     process.exitCode = 1;
 };
+const rqlite = axios.create (rqliteOpts);
 
 
 // track cluster initialization and master status
@@ -163,11 +165,10 @@ const cluster = new Discover ({
     // if this node is master, remove the lost node
     if (isMaster) {
         print (`removing node ${node.hostName}...`);
-        const response = await rqlite.delete ('/remove', {"id": node.hostName});
-        if (response) {
-            try {print (`got status ${response.statusText} in ${response.data.time} seconds`);}
-            catch (error) {print (error.name); print (error.message);};
-        };
+        try {
+            const response = await rqlite.delete ('/remove', {"id": node.hostName});
+            print (`got status ${response.statusText} in ${response.data.time} seconds`);
+        } catch (error) { print (error.name); print (error.message); };
     };
 });
 
@@ -182,7 +183,7 @@ const Initialization = new EventEmitter ()
         let joinHosts = '';
         for await (let hostname of initialization.hostnames) {
             joinHosts += `http://${hostname}:4001`;
-            if (hostname != hostnames[hostnames.length - 1]) {
+            if (hostname != initialization.hostnames[initialization.hostnames.length - 1]) {
                 joinHosts += ',';
             }
         };
@@ -207,12 +208,14 @@ const Initialization = new EventEmitter ()
     // create tables
     if (isMaster) {
         print (`creating DB tables...`);
-        const response = await rqlite.post ('/db/execute', [
-            Query.services.createTable,
-            Query.challenges.createTable,
-            Query.certificates.createTable
-        ]);
-        print (`got status ${response.statusText} in ${response.data.time} seconds`);
+        try {
+            const response = await rqlite.post ('/db/execute', [
+                Query.services.createTable,
+                Query.challenges.createTable,
+                Query.certificates.createTable
+            ]);
+            print (`got status ${response.statusText} in ${response.data.time} seconds`);
+        } catch (error) { print (error.name); print (error.message); };
     };
 
     // start listeners
