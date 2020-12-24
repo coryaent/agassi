@@ -137,7 +137,6 @@ const cluster = new Discover ({
 .on ('promotion', async () => {
     // this node is now the master, init. Let's Encrypt account
     isMaster = true;
-    print (`this node ${os.hostname()} is master`);
     print (`initializing Let's Encrypt account...`);
     await client.createAccount({
         termsOfServiceAgreed: true,
