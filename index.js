@@ -317,26 +317,38 @@ const Initialization = new EventEmitter ()
 // graceful exit
 process.once ('SIGTERM', () => {
     print (`SIGTERM received...`);
-    print (`Shutting down...`);
+    print (`shutting down...`);
 
-    // stop docker listener
-    dockerEvents.stop ();
+    try {
+        print ('stopping docker event listener...');
+        dockerEvents.stop ();
+    } catch (error) { print (error.name); print (error.message); };
 
-    // close servers
-    HTTP.close ();
-    HTTPS.close ();
-    Proxy.close ();
+    try {
+        print ('stopping web services...');
+        HTTP.close ();
+        HTTPS.close ();
+        Proxy.close ();
+    } catch (error) { print (error.name); print (error.message); };
 
-    // stop cluster
-    cluster.stop ();
+    try {
+        print ('stopping discovery cluster...');
+        cluster.stop ();
+    } catch (error) { print (error.name); print (error.message); };
 
     // stop periodic events
     // clearInterval (dockerPoll);
     // clearInterval (renewPoll);
 
-    // stop sub-processes
-    if (rqlited) {rqlited.kill ();};
-    shipwreck.kill ();
+    try {
+        print ('stopping rqlited...');
+        rqlited.kill ();
+    } catch (error) { print (error.name); print (error.message); };
+
+    try {
+        print ('stopping shipwreck...');
+        shipwreck.kill ();
+    } catch (error) { print (error.name); print (error.message); };
 });
 
 /*-----------------------------------------------------------------------------------------------\
