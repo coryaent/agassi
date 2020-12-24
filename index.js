@@ -84,8 +84,7 @@ try {
 
 // track cluster initialization and master status
 var isMaster = false;
-var master = null;
-var peers = 0;
+const peers = new Set ();
 
 // start cluster
 const cluster = new Discover ({
@@ -105,35 +104,29 @@ const cluster = new Discover ({
     // looking for peers
     print ('looking for peers...');
     const retries = 3; let attempt = 1;
-    while ((peers < 1) && (master == null) && (attempt <= retries)) {
+    while ((peers.size < 1) && (attempt <= retries)) {
         // backoff
         await sleep ( attempt * 20 * 1000);
-        if (peers < 1 || master == null) {
-            if (peers < 1) { print (`no peers found`); };
-            if (master == null) { print (`could not determine cluster master`); };
+        if (peers.size < 1) {
+            if (peers.size < 1) { print (`no peers found`); };
             print (`retrying (${attempt}/${retries})...`);
             attempt++;
         };
     };
 
     // either move on or quit
-    if (peers > 0 && master != null) {
+    if (peers.size > 0) {
         Initialization.emit ('done', {
             cluster: true,
-            hostname: master.hostName
+            hostnames: Array.from (peers.values())
         });
     } else {
         // no peers or no master, no run
-        if (peers <= 0) { print ('could not find any peers'); };
-        if (master == null) { print ('could not determine cluster master'); };
+        if (peers.size <= 0) { print ('could not find any peers'); };
         process.exitCode = 1;
         process.kill (process.pid);
     };
     
-})
-.on ('master', (node) => {
-    master = node;
-    print (`found master ${master.hostName}`);
 })
 .on ('promotion', async () => {
     // this node is now the master, init. Let's Encrypt account
@@ -150,24 +143,23 @@ const cluster = new Discover ({
 })
 .on ('added', (node) => {
     if (node.isMaster) {
-        master = node;
         print (`found master ${master.hostName}`);
     } else {
         print (`found node ${node.hostName}`);
     };
-    peers++;
+    peers.add (node.hostName);
     // node added to cluster
     if (node.advertisement == 'initialized') {
         // initialize new node in existing cluster
         Initialization.emit ('done', {
             cluster: false,
-            hostname: node.hostName
+            hostnames: Array.from (peers.values())
         });
     };
 })
 .on ('removed', async (node) => {
     print (`lost node ${node.hostName}`);
-    peers--;
+    peers.delete (node.hostName);
     // if this node is master, remove the lost node
     if (isMaster) {
         print (`removing node ${node.hostName}...`);
@@ -180,14 +172,21 @@ const cluster = new Discover ({
 });
 
 // Initialization {
-//     cluster: // initialize the whole cluster or just one node
-//     hostname: // a known good hostname
+//     cluster:     // initialize the whole cluster or just one node
+//     hostnames:   // array of good hostnames
 // }
 const Initialization = new EventEmitter ()
 .once ('done', async (initialization) => {
     // join cluster if not master or the cluster is already init.
-    if ((!isMaster) || (initialization.cluster == false)) {
-        rqlitedArgs.unshift ('-join', `http://${initialization.hostname}:4001`);
+    if (((!isMaster) || (initialization.cluster == false)) && initialization.hostnames.length > 0) {
+        let joinHosts = '';
+        for await (let hostname of hostnames) {
+            joinHosts += `http://${hostname}:4001`;
+            if (hostname != hostnames[hostnames.length - 1]) {
+                joinHosts += ',';
+            }
+        };
+        rqlitedArgs.unshift ('-join', joinHosts);
     };
     // start rqlite daemon
     rqlited = spawn ('rqlited', rqlitedArgs, {
