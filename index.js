@@ -59,7 +59,11 @@ print (`${ process.env.STAGING == 'true' ? 'using staging environment...':'using
 
 // docker client
 const docker = new Docker ({socketPath: socketPath});
-const dockerEvents = new DockerEvents ({docker: docker});
+const dockerEvents = new DockerEvents ({docker: docker})
+.on ('error', (error) => {
+    print (error.name);
+    print (error.message);
+});
 
 // options and variable for rqlited and rqlite client
 var rqlited = null;
@@ -88,7 +92,7 @@ const cluster = new Discover ({
     // helloInterval: 5 * 1000,
     // checkInterval: 4 * 2000,
     nodeTimeout: 60 * 1000,
-    address: ip.address(),
+    // address: ip.address(),
     unicast: iprange (`${ip.address()}/24`),
     port: 4000,
     key: clusterKey
@@ -166,8 +170,8 @@ const cluster = new Discover ({
     peers--;
     // if this node is master, remove the lost node
     if (isMaster) {
-        print (`removing node ${node.hostname}...`);
-        const response = await rqlite.delete ('/remove', {"id": node.hostname});
+        print (`removing node ${node.hostName}...`);
+        const response = await rqlite.delete ('/remove', {"id": node.hostName});
         if (response) {
             try {print (`got status ${response.statusText} in ${response.data.time} seconds`);}
             catch (error) {print (error.name); print (error.message);};
