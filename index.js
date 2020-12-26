@@ -15,7 +15,8 @@ const EventEmitter = require ('events');
 const ip = require ('ip');
 const iprange = require ('iprange');
 
-const rqlite = require ('./rqlite.js');
+const axios = require ('axios');
+const rqliteOpts = require ('./rqliteOpts.js');
 const Query = require ('./query.js');
 
 const acme = require ('acme-client');
@@ -59,7 +60,11 @@ print (`${ process.env.STAGING == 'true' ? 'using staging environment...':'using
 
 // docker client
 const docker = new Docker ({socketPath: socketPath});
-const dockerEvents = new DockerEvents ({docker: docker});
+const dockerEvents = new DockerEvents ({docker: docker})
+.on ('error', (error) => {
+    print (error.name);
+    print (error.message);
+});
 
 // options and variable for rqlited and rqlite client
 var rqlited = null;
@@ -76,6 +81,7 @@ try {
     print ('error running native initialization binary rqmkown');
     process.exitCode = 1;
 };
+const rqlite = axios.create (rqliteOpts);
 
 
 // track cluster initialization and master status
@@ -85,8 +91,8 @@ var peers = 0;
 
 // start cluster
 const cluster = new Discover ({
-    // helloInterval: 5 * 1000,
-    // checkInterval: 4 * 2000,
+    helloInterval: 3 * 1000,
+    checkInterval: 6 * 2000,
     nodeTimeout: 60 * 1000,
     address: ip.address(),
     unicast: iprange (`${ip.address()}/24`),
@@ -101,19 +107,18 @@ const cluster = new Discover ({
     // looking for peers
     print ('looking for peers...');
     const retries = 3; let attempt = 1;
-    while ((peers < 1) && (master == null) && (attempt <= retries)) {
+    while ((peers < 1) && (attempt <= retries)) {
         // backoff
         await sleep ( attempt * 20 * 1000);
-        if (peers < 1 || master == null) {
+        if (peers < 1) {
             if (peers < 1) { print (`no peers found`); };
-            if (master == null) { print (`could not determine cluster master`); };
             print (`retrying (${attempt}/${retries})...`);
             attempt++;
         };
     };
 
     // either move on or quit
-    if (peers > 0 && master != null) {
+    if (peers > 0) {
         Initialization.emit ('done', {
             cluster: true,
             hostname: master.hostName
@@ -121,14 +126,10 @@ const cluster = new Discover ({
     } else {
         // no peers or no master, no run
         if (peers <= 0) { print ('could not find any peers'); };
-        if (master == null) { print ('could not determine cluster master'); };
+        process.exitCode = 1;
         process.kill (process.pid);
     };
     
-})
-.on ('master', (node) => {
-    master = node;
-    print (`found master ${master.hostName}`);
 })
 .on ('helloReceived', (node) => {
     if (node.isMaster == true) {
@@ -139,7 +140,6 @@ const cluster = new Discover ({
 .on ('promotion', async () => {
     // this node is now the master, init. Let's Encrypt account
     isMaster = true;
-    print (`this node ${os.hostname()} is master`);
     print (`initializing Let's Encrypt account...`);
     await client.createAccount({
         termsOfServiceAgreed: true,
@@ -158,33 +158,32 @@ const cluster = new Discover ({
         // initialize new node in existing cluster
         Initialization.emit ('done', {
             cluster: false,
-            hostname: node.hostName
+            hostnames: Array.from (peers.values())
         });
     };
 })
 .on ('removed', async (node) => {
     print (`lost node ${node.hostName}`);
-    peers--;
+    peers.delete (node.hostName);
     // if this node is master, remove the lost node
     if (isMaster) {
-        print (`removing node ${node.hostname}...`);
-        const response = await rqlite.delete ('/remove', {"id": node.hostname});
-        if (response) {
-            try {print (`got status ${response.statusText} in ${response.data.time} seconds`);}
-            catch (error) {print (error.name); print (error.message);};
-        };
+        print (`removing node ${node.hostName}...`);
+        try {
+            const response = await rqlite.delete ('/remove', {"id": node.hostName});
+            print (`got status ${response.statusText} in ${response.data.time} seconds`);
+        } catch (error) { print (error.name); print (error.message); };
     };
 });
 
 // Initialization {
-//     cluster: // initialize the whole cluster or just one node
-//     hostname: // a known good hostname
+//     cluster:     // initialize the whole cluster or just one node
+//     hostnames:   // array of good hostnames
 // }
 const Initialization = new EventEmitter ()
 .once ('done', async (initialization) => {
     // join cluster if not master or the cluster is already init.
     if ((!isMaster) || (initialization.cluster == false)) {
-        rqlitedArgs.unshift ('-join', `http://${initialization.hostname}:4001`);
+        rqlitedArgs.unshift ('-join', initialization.hostname);
     };
     // start rqlite daemon
     rqlited = spawn ('rqlited', rqlitedArgs, {
@@ -205,12 +204,14 @@ const Initialization = new EventEmitter ()
     // create tables
     if (isMaster) {
         print (`creating DB tables...`);
-        const response = await rqlite.post ('/db/execute', [
-            Query.services.createTable,
-            Query.challenges.createTable,
-            Query.certificates.createTable
-        ]);
-        print (`got status ${response.statusText} in ${response.data.time} seconds`);
+        try {
+            const response = await rqlite.execute (
+                Query.services.createTable,
+                Query.challenges.createTable,
+                Query.certificates.createTable
+            );
+            print (`got status ${response.statusText} in ${response.data.time} seconds`);
+        } catch (error) { print (error.name); print (error.message); };
     };
 
     // start listeners
@@ -314,26 +315,38 @@ const Initialization = new EventEmitter ()
 // graceful exit
 process.once ('SIGTERM', () => {
     print (`SIGTERM received...`);
-    print (`Shutting down...`);
+    print (`shutting down...`);
 
-    // stop docker listener
-    dockerEvents.stop ();
+    try {
+        print ('stopping docker event listener...');
+        dockerEvents.stop ();
+    } catch (error) { print (error.name); print (error.message); process.exitCode = 1; };
 
-    // close servers
-    HTTP.close ();
-    HTTPS.close ();
-    Proxy.close ();
+    try {
+        print ('stopping web services...');
+        HTTP.close ();
+        HTTPS.close ();
+        Proxy.close ();
+    } catch (error) { print (error.name); print (error.message); process.exitCode = 1; };
 
-    // stop cluster
-    cluster.stop ();
+    try {
+        print ('stopping discovery cluster...');
+        cluster.stop ();
+    } catch (error) { print (error.name); print (error.message); process.exitCode = 1; };
 
     // stop periodic events
     // clearInterval (dockerPoll);
     // clearInterval (renewPoll);
 
-    // stop sub-processes
-    if (rqlited) {rqlited.kill ();};
-    shipwreck.kill ();
+    try {
+        print ('stopping rqlited...');
+        if (rqlited) { rqlited.kill (); };
+    } catch (error) { print (error.name); print (error.message); process.exitCode = 1; };
+
+    try {
+        print ('stopping shipwreck...');
+        shipwreck.kill ();
+    } catch (error) { print (error.name); print (error.message); process.exitCode = 1; };
 });
 
 /*-----------------------------------------------------------------------------------------------\

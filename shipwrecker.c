@@ -13,7 +13,7 @@ int main() {
 	seteuid (0);
 	setegid (0);
 
-	if ( execlp ("shipwreck", "--force", "--mode", "666", "--to", strcat ("unix://localhost", socket_path), NULL) ) { exit (EXIT_FAILURE); }
+	if ( execlp ("shipwreck", "shipwreck", "-vvv", "--force", "--mode", "666", "--to", strcat ("unix://localhost", socket_path),(char *) NULL) ) { exit (EXIT_FAILURE); }
 
 	exit (EXIT_SUCCESS);
 
