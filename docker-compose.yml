@@ -1,0 +1,43 @@
+version: "3.8"
+
+x-deployment-options: &deployment-options
+  deploy:
+    mode: global
+    update_config:
+      parallelism: 1
+      delay: 15m
+      failure_action: rollback
+    placement:
+      constraints:
+
+services:
+
+  socket:
+    image: tecnativa/docker-socket-proxy
+    environment:
+      NETWORKS: 1
+      SERVICES: 1
+    networks:
+      - encrypted-overlay
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    <<: *deployment-options
+      - node.role == manager
+
+  reverse-proxy:
+    image: coryagroup/agassi
+    networks:
+      - encrypted-overlay
+      - www
+    <<: *deployment-options
+
+networks:
+  www:
+    external: true
+  encrypted-overlay:
+    driver: overlay
+    driver_opts:
+      encrypted: "true"
+
+volumes:
+  data:

@@ -130,6 +130,12 @@ const cluster = new Discover ({
     master = node;
     print (`found master ${master.hostName}`);
 })
+.on ('helloReceived', (node) => {
+    if (node.isMaster == true) {
+        master = node;
+        print (`found master ${master.hostName}`);
+    };
+})
 .on ('promotion', async () => {
     // this node is now the master, init. Let's Encrypt account
     isMaster = true;
@@ -145,12 +151,7 @@ const cluster = new Discover ({
     isMaster = false;
 })
 .on ('added', (node) => {
-    if (node.isMaster) {
-        master = node;
-        print (`found master ${master.hostName}`);
-    } else {
-        print (`found node ${node.hostName}`);
-    };
+    print (`found node ${node.hostName}`);
     peers++;
     // node added to cluster
     if (node.advertisement == 'initialized') {
