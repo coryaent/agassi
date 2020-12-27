@@ -11,8 +11,8 @@ int main() {
         data_dir = "/data";
     };
 
-	seteuid (0);
-	setegid (0);
+    seteuid (0);
+    setegid (0);
 
     mkdir (data_dir, 0755);
     chown (data_dir, getuid(), getgid());
