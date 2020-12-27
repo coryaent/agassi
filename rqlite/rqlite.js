@@ -1,7 +1,7 @@
 "use strict";
 // rqlite client
 
-const print = require ('./print.js');
+const print = require ('../print.js');
 
 const axios = require ('axios');
 

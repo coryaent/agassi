@@ -16,8 +16,8 @@ const ip = require ('ip');
 const iprange = require ('iprange');
 
 const axios = require ('axios');
-const rqliteOpts = require ('./rqliteOpts.js');
-const Query = require ('./query.js');
+const rqliteOpts = require ('./rqlite/rqliteOpts.js');
+const Query = require ('./rqlite/query.js');
 
 const acme = require ('acme-client');
 const dateDiff = require ('date-range-diff');
@@ -25,8 +25,8 @@ const dateDiff = require ('date-range-diff');
 const Docker = require ('dockerode');
 const DockerEvents = require ('docker-events');
 
-const HTTP = require ('./http.js');
-const HTTPS = require ('./https.js');
+const HTTP = require ('./http/http.js');
+const HTTPS = require ('./http/https.js');
 
 // config
 const labelPrefix = process.env.LABEL_PREFIX ? process.env.LABEL_PREFIX : 'agassi';

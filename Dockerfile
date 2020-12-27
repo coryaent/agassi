@@ -1,7 +1,7 @@
 # compile rqlited
 FROM golang:1.15 AS rqlited-builder
 WORKDIR /opt
-COPY rqmkown.c ./rqmkown.c
+COPY ./rqlite/rqmkown.c ./rqmkown.c
 RUN gcc rqmkown.c -o ./rqmkown && chmod ug+s ./rqmkown && \
     wget https://github.com/rqlite/rqlite/archive/v5.6.0.tar.gz && \
     tar xvf v5.6.0.tar.gz && \

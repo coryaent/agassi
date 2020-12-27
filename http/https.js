@@ -8,10 +8,10 @@ const bcrypt = require ('bcryptjs');
 const compare = require ('tsscmp');
 const fs = require ('fs');
 
-const print = require ('./print.js');
+const print = require ('../print.js');
 const Proxy = require ('./proxy.js');
-const rqlite = require ('./rqliteOpts.js');
-const Query = require ('./query.js');
+const rqlite = require ('../rqlite/rqlite.js');
+const Query = require ('../rqlite/query.js');
 
 // config
 const realm = typeof process.env.REALM === 'string' ? process.env.REALM : 'Agassi';
