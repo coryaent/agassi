@@ -26,13 +26,40 @@ services:
 
   reverse-proxy:
     image: coryagroup/agassi
+    secrets:
+      - lets-encrypt-account
+      - corya-group-default-key
+      - corya-group-default-cert
+    configs:
+      - lets-encrypt-email
     environment:
       DOCKER_SOCKET: tcp://socket:2375
+      ACME_KEY: /run/secrets/lets-encrypt-account
+      DEFAULT_KEY: /run/secrets/corya-group-default-key
+      DEFAULT_CRT: /run/secrets/corya-group-default-cert
+      EMAIL: /lets-encrypt-email
+      REALM: Corya Group
+      STAGING: 'true'
     networks:
       - encrypted-overlay
       - www
     <<: *deployment-options
       - node.labels.agassi == true
+
+secrets:
+  lets-encrypt-account:
+    external: true
+  corya-group-default-key:
+    external: true
+  corya-group-default-cert:
+    external: true
+
+configs:
+  lets-encrypt-email:
+    external: true
+
+volumes:
+  data:
 
 networks:
   www:
