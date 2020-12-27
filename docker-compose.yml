@@ -57,10 +57,7 @@ secrets:
 configs:
   lets-encrypt-email:
     external: true
-
-volumes:
-  data:
-
+ 
 networks:
   www:
     external: true
