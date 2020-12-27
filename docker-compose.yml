@@ -41,6 +41,8 @@ networks:
     driver: overlay
     driver_opts:
       encrypted: "true"
+    labels:
+      agassi: "true"
 
 volumes:
   data:

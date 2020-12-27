@@ -31,7 +31,7 @@ const HTTPS = require ('./https.js');
 // config
 const labelPrefix = process.env.LABEL_PREFIX ? process.env.LABEL_PREFIX : 'agassi';
 const clusterKey = process.env.CLUSTER_KEY ? fs.readFileSync (process.env.CLUSTER_KEY, 'utf-8') : null;
-const socketPath = process.env.SOCKET_PATH ? process.env.SOCKET_PATH : '/tmp/shipwreck.sock';
+const socketPath = process.env.DOCKER_SOCKET ? process.env.DOCKER_SOCKET : 'tpc://localhost:2375';
 
 // start shipwreck read-only docker socket proxy
 print ('starting shipwreck...');

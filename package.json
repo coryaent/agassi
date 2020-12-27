@@ -27,7 +27,7 @@
     "axios": "^0.21.1",
     "bcryptjs": "^2.4.3",
     "date-range-diff": "^1.0.0",
-    "docker-events": "0.0.2",
+    "docker-event-emitter": "^0.3.0",
     "dockerode": "^3.2.1",
     "dotenv": "^8.2.0",
     "fast-date-format": "^2.2.4",

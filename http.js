@@ -2,7 +2,7 @@
 
 const print = require ('./print.js');
 
-const rqlite = require ('./rqliteOpts.js');
+const rqlite = require ('./rqlite.js');
 
 const http = require ('http');
 
