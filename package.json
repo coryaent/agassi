@@ -1,0 +1,46 @@
+{
+  "name": "agassi",
+  "version": "0.0.0",
+  "description": "A proxy for docker containers, services, and stacks, with Let's Encrypt SSL and etcd-backed redundancy ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coryagroup/agassi.git"
+  },
+  "keywords": [
+    "docker",
+    "proxy",
+    "ssl",
+    "letsencrypt"
+  ],
+  "author": "Steve Corya",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/coryagroup/agassi/issues"
+  },
+  "homepage": "https://github.com/coryagroup/agassi#readme",
+  "dependencies": {
+    "@emmsdan/network-address": "0.0.2",
+    "acme-client": "^4.0.2",
+    "axios": "^0.21.1",
+    "bcryptjs": "^2.4.3",
+    "date-range-diff": "^1.0.0",
+    "docker-event-emitter": "^0.3.0",
+    "dockerode": "^3.2.1",
+    "dotenv": "^8.2.0",
+    "fast-date-format": "^2.2.4",
+    "get-ip-addresses": "^1.1.0",
+    "http-proxy": "^1.18.1",
+    "http-ratelimit": "^0.2.3",
+    "ip": "^1.1.5",
+    "iprange": "^0.1.0",
+    "is-in-subnet": "^4.0.1",
+    "nano-memoize": "^1.2.1",
+    "node-discover": "^1.2.0",
+    "sleepjs": "^4.0.2",
+    "tsscmp": "^1.0.6"
+  }
+}
