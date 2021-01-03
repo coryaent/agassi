@@ -48,7 +48,7 @@ async function initialize (error) {
         // if this cluster node is master, "const master"
         // will be undefined here
         const master = Array.from (Peers.values ()).find ((node) => { return node.isMaster; });
-        Discovery.emit ('complete', master);
+        discovery.emit ('complete', master);
     } else {
         // no peers, no run
         if (Peers.size <= 0) { print ('Could not find any peers.'); };
@@ -57,12 +57,12 @@ async function initialize (error) {
     }
 };
 
-const Discovery = new EventEmitter ()
+const discovery = new EventEmitter ()
 .on ('complete', async function spawnRqlited (joinHost) {
 
 });
 
-const Daemon = new EventEmitter ();
+const daemon = new EventEmitter ();
 
 module.exports = {
     start: (address, subnet) => {
@@ -84,7 +84,7 @@ module.exports = {
             if (node.advertisement == 'initialized') {
                 // initialize new node in existing cluster
                 print (`Joining rqlited cluster via ${node.hostName}...`);
-                Discovery.emit ('complete', node.hostName);
+                discovery.emit ('complete', node.hostName);
             }
         })
         .on ('removed', async function removeNode (node) {
@@ -105,7 +105,18 @@ module.exports = {
         } else {
             // do not error if isMaster is called before discover is defined
             if (this.discover) {
-
+                // iterate each node to find master
+                const master = this.discover.eachNode (function findMaster (node) {
+                    if (node.isMaster) {
+                        return node;
+                    }
+                });
+                // return false if no master found or master.hostName != hostname
+                if (master && master.hostName == hostname) {
+                    return true;
+                } else {
+                    return false;
+                }
             } else {
                 // no discover, no master
                 return false;
