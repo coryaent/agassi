@@ -11,9 +11,9 @@ const rqlited = require ('./rqlited.js');
 
 // default options
 const options = {
-    helloInterval: 3 * 1000,
-    checkInterval: 6 * 2000,
-    nodeTimeout: 60 * 1000,
+    // helloInterval: 3 * 1000,
+    // checkInterval: 6 * 2000,
+    // nodeTimeout: 60 * 1000,
     port: 4000,
 };
 
