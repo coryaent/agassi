@@ -39,14 +39,23 @@ module.exports = {
         if (joinHost) {
             dArgs.unshift ('-join', `http://${joinHost}:4001`);
         }
+        // make sure there is no spawn error
+        let spawnError = null;
         
     this.d = spawn ('rqlited', dArgs, {
             stdio: ['ignore', 'inherit', 'inherit']
         })
         .on ('error', (error) => {
+            spawnError = error;
             print (error.name);
             print (error.message);
             process.exitCode = 1;
+        });
+
+        process.nextTick ((spawnError) => {
+            if (!spawnError) {
+                status.emit ('spawned');
+            }
         });
     },
 
