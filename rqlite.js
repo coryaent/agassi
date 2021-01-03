@@ -6,14 +6,20 @@ const { hostname } = require ('os');
 
 const axios = require ('axios');
 
-axios.defaults.baseURL = `http://${hostname()}:4001`;
-axios.defaults.timeout = 2000;
-axios.defaults.headers.common['Content-Type'] = 'application/json';
+const rqlite = axios.create ({
+    baseURL: `http://${hostname()}:4001`,
+    timeout: 2000,
+    headers: { 'Content-Type' : 'application/json' }
+});
+
+// axios.defaults.baseURL = `http://${hostname()}:4001`;
+// axios.defaults.timeout = 2000;
+// axios.defaults.headers.common['Content-Type'] = 'application/json';
 
 class ParseError extends Error {
     constructor (message) {
       super (message);
-      this.name = 'InvalidParseConsistency';
+      this.name = 'InvalidConsistency';
     }
   }
 
@@ -42,12 +48,13 @@ function parseConsistency (consistency) {
     }
 }
 
-async function request (path, query) {
+async function attempt (method, path, query) {
     try {
-        const response = await axios.post (path, {
+        return await rqlite.request ({
+            method: method,
+            url: path,
             data: query
         });
-        return response;
     } catch (error) {
         print (error.name);
         print (error.message);
@@ -55,27 +62,38 @@ async function request (path, query) {
 }
 
 module.exports.db = {
-    execute: async function (query, consistency) {
-        const path = '/db/execute?timings' + '&' + parseConsistency (consistency);
-        const response = await request (path, JSON.stringify (query));
-        return response;
+    execute: async function (_query, _consistency) {
+        const method = 'post';
+        const path = '/db/execute?timings' + '&' + parseConsistency (_consistency);
+        const query = _query.isArray () ? _query : new Array (_query);
+        return await attempt (method, path, query);
     },
-    transact: async function (query, consistency) {
-        const path = '/db/execute?timings&transaction' + '&' + parseConsistency (consistency);
-        const response = await request (path, JSON.stringify (query));
-        return response;
+    transact: async function (_query, _consistency) {
+        const method = 'post';
+        const path = '/db/execute?timings&transaction' + '&' + parseConsistency (_consistency);
+        const query = _query.isArray () ? _query : new Array (_query);
+        return await attempt (method, path, query);
     },
-    query: async function (query, consistency) {
-        const path = '/db/query?timings' + '&' + parseConsistency (consistency);
-        const response = await request (path, JSON.stringify (query));
-        return response;
+    query: async function (_query, _consistency) {
+        const method = 'post';
+        const path = '/db/query?timings' + '&' + parseConsistency (_consistency);
+        const query = _query.isArray () ? _query : new Array (_query);
+        return await attempt (method, path, query);
     }
 };
 
 module.exports.cluster = {
     remove: async function (node) {
+        const method = 'post';
         const path = '/remove';
-        const response = await request (path, `{ "id": "${node}" }`);
-        return response;
+        return await attempt (method, path, {"id": node});
     }
 };
+
+module.exports.node = {
+    status: async function () {
+        const method = 'get';
+        const path = '/status';
+        return await attempt (method, path);
+    }
+}

@@ -98,6 +98,21 @@ module.exports = {
         });
     },
 
+    isMaster: (hostname) => {
+        // check if this node is master by default
+        if (!hostname) {
+            return isMaster;
+        } else {
+            // do not error if isMaster is called before discover is defined
+            if (this.discover) {
+
+            } else {
+                // no discover, no master
+                return false;
+            }
+        }
+    },
+
     stop: () => {
         if (this.discover) {
             this.discover.stop ();

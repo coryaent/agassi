@@ -3,6 +3,8 @@
 const print = require ('./print.js');
 const { spawn, execFileSync } = require ('child_process');
 const { hostname } = require ('os');
+const EventEmitter = require ('events');
+
 
 try {
     execFileSync ('rqmkown');
@@ -16,6 +18,12 @@ const rqlitedArgs = [
     '-raft-adv-addr', `${hostname()}:4002`,
     '/data'
 ];
+
+const status = new EventEmitter ();
+
+status.once ('spawned', () => {
+    // poll daemon for readiness
+});
 
 module.exports = {
     // default listen address, should be changed by cluster
