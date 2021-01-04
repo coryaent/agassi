@@ -8,17 +8,11 @@ const bcrypt = require ('bcryptjs');
 const compare = require ('tsscmp');
 const fs = require ('fs');
 
-const print = require ('./print.js');
+const Config = require ('../config.js');
+const print = require ('../print.js');
 const Proxy = require ('./proxy.js');
 const rqlite = require ('./rqliteOpts.js');
-const Query = require ('./query.js');
-
-// config
-const realm = typeof process.env.REALM === 'string' ? process.env.REALM : 'Agassi';
-
-// defaults
-const defaultKey = fs.readFileSync (process.env.DEFAULT_KEY, 'utf-8');
-const defaultCert = fs.readFileSync (process.env.DEFAULT_CRT, 'utf-8');
+const Query = require ('../rqlite/query.js');
 
 // initializations
 const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
@@ -28,7 +22,7 @@ module.exports.default = https.createServer ({
     SNICallback: (domain, callback) => {
         if (certs.has(domain)) {
             return callback (null, tls.createSecureContext({
-                key: defaultKey,
+                key: Config.defaultKey,
                 cert: certs.get(domain)
             }));
         } else {
@@ -36,8 +30,8 @@ module.exports.default = https.createServer ({
             return callback (null, false);
         };
     },
-    key: defaultKey,
-    cert: defaultCert
+    key: Config.defaultKey,
+    cert: Config.defaultCert
 }, async (request, response) => {
     const requestURL = new URL(request.url, `https://${request.headers.host}`);
     let virtualHost = vHosts.get (requestURL.hostname);
@@ -60,7 +54,7 @@ module.exports.default = https.createServer ({
             // auth required but not provided
             if (!request.headers.authorization) {
                 // prompt for password in browser
-                response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${realm}"`});
+                response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${Config.realm}"`});
                 response.end ('Authorization is required.');
                 return;  
             };
@@ -87,7 +81,7 @@ module.exports.default = https.createServer ({
                 // rate limit failed authentication
                 rateLimit.inboundRequest(request);
                 // prompt for password in browser
-                response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${realm}"`});
+                response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${Config.realm}"`});
                 response.end ('Authorization is required.');
             };
 

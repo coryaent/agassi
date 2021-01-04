@@ -37,10 +37,13 @@
     "http-ratelimit": "^0.2.3",
     "ip": "^1.1.5",
     "iprange": "^0.1.0",
+    "is-email": "^1.0.0",
     "is-in-subnet": "^4.0.1",
+    "is-url": "^1.2.4",
     "nano-memoize": "^1.2.1",
     "node-discover": "^1.2.0",
     "sleepjs": "^4.0.2",
+    "ssl-utils": "^1.0.0",
     "tsscmp": "^1.0.6"
   }
 }

@@ -1,8 +1,8 @@
 "use strict"; 
 
-const print = require ('./print.js');
+const print = require ('../print.js');
 
-const rqlite = require ('./rqlite.js');
+const rqlite = require ('../rqlite/rqlite.js');
 
 const http = require ('http');
 

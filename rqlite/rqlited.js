@@ -1,6 +1,6 @@
 "use strict";
 
-const print = require ('./print.js');
+const print = require ('../print.js');
 const { spawn, execFileSync } = require ('child_process');
 const { hostname } = require ('os');
 const EventEmitter = require ('events');

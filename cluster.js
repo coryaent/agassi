@@ -58,13 +58,14 @@ async function initialize (error) {
 };
 
 const discovery = new EventEmitter ()
-.on ('complete', async function spawnRqlited (joinHost) {
-
+.on ('complete', function spawnRqlited (joinHost) {
+    rqlited.spawn (joinHost);
 });
 
-const daemon = new EventEmitter ();
-
 module.exports = {
+    // emits 'ready' when rqlited is ready for connections
+    rqlited: rqlited.node,
+    
     start: (address, subnet) => {
         rqlited.address = address;
         options.address = address;

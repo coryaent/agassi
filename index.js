@@ -6,8 +6,14 @@ const ip = require ('ip');
 
 const Docker = require ('dockerode');
 const DockerEvents = require ('docker-events');
+const Cluster = require ('./cluster.js');
 
 const docker = new Docker ();
+const dockerEvents = new DockerEvents ({
+    docker: docker
+});
+
+const rqlite = require ('./rqlite.js');
 
 // fetch all networks
 docker.listNetworks ().then ((networks) => {
@@ -21,4 +27,13 @@ docker.listNetworks ().then ((networks) => {
         return ip.cidrSubnet (subnet).contains (address);
     });
     // start/join the cluster
+    Cluster.start (address, subnet);
+});
+
+Cluster.rqlited.once ('ready', () => {
+    dockerEvents.start ();
+});
+
+dockerEvents.on ('connect', async function checkAndAddServices () {
+
 });
