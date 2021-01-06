@@ -90,7 +90,9 @@ if (!isUrl (Config.dockerSocket)) {
 | optional variables |
 \-------------------*/
 Config.clusterKey = process.env.CLUSTER_KEY_FILE ? fs.readFileSync (process.env.CLUSTER_KEY_FILE, 'utf-8') : null;
-Config.labelPrefix = process.env.LABEL_PREFIX ? process.env.LABEL_PREFIX : 'agassi.';
+Config.serviceLabelPrefix = process.env.SERVICE_LABEL_PREFIX ? process.env.SERVICE_LABEL_PREFIX : 'agassi.';
+Config.networkLabelKey = process.env.NETWORK_LABEL_KEY ? process.env.NETWORK_LABEL_KEY : 'agassi';
+Config.networkLabelValue = process.env.NETWORK_LABEL_VALUE ? process.env.NETWORK_LABEL_VALUE : 'overlay';
 Config.realm = process.env.REALM ? process.env.REALM : 'Agassi';
 
 module.exports = Config;

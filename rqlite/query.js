@@ -7,14 +7,18 @@ module.exports.services = {
             protocol TEXT NOT NULL,
             hostname TEXT NOT NULL,
             port INTEGER NOT NULL,
-            auth TEXT 
+            domain TEXT NOT NULL,
+            auth TEXT,
+            options TEXT
         );`,
 };
 
 module.exports.challenges = {
     createTable:
         `CREATE TABLE IF NOT EXISTS challenges (
-            token TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            domain TEXT NOT NULL
+            token TEXT NOT NULL,
             response TEXT NOT NULL
         );`,
 };
@@ -22,7 +26,8 @@ module.exports.challenges = {
 module.exports.certificates = {
     createTable:
         `CREATE TABLE IF NOT EXISTS certificates (
-            hostname TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            domain TEXT NOT NULL,
             certificate TEXT NOT NULL,
             expiration INTEGER NOT NULL
         );`,

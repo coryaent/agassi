@@ -5,7 +5,10 @@ const { spawn, execFileSync } = require ('child_process');
 const { hostname } = require ('os');
 const EventEmitter = require ('events');
 const axios = require ('axios');
+const fs = require ('fs');
+const { v4: uuidv4 } = require ('uuid');
 
+// create the self-owned data directory
 try {
     execFileSync ('rqmkown');
 } catch (error) {
@@ -13,16 +16,22 @@ try {
     process.exitCode = 1;
 }
 
-const rqlitedArgs = [
-    '-http-adv-addr', `${hostname()}:4001`,
-    '-raft-adv-addr', `${hostname()}:4002`,
-    '/data'
-];
+// fetch existing uuid or create a new one
+const id = (function getUUID () {
+    const idPath = '/data/rqlited.uuid';
+    if (fs.existsSync (idPath)) {
+        return fs.readFileSync (idPath, 'utf-8');
+    } else {
+        const uuid = uuidv4 ();
+        fs.writeFileSync (idPath, uuid);
+        return uuid;
+    }
+}) ();
 
-async function isReady () {
+async function isReady (listenAddress) {
     try {
         const response = await axios.request ({
-            url: `http://${hostname()}:4001/status`,
+            url: `http://${listenAddress}:4001/status`,
             method: 'get',
             timeout: 250
         });
@@ -52,24 +61,24 @@ dStatus.once ('ready', () => {
     if (readinessCheck && readinessCheck instanceof Timeout) {
         clearInterval (readinessCheck);
     }
-})
+});
 
 module.exports = {
+    uuid: id,
     // status of this node/instance/process of rqlited
     node: dStatus,
 
-    // default listen address, should be changed by cluster
-    address: '127.0.0.1',
-
-    spawn: (joinHost) => {
+    spawn: (listenAddress, joinAddress) => {
         // concat the arguments with defaults
         const dArgs = [
-            '-http-addr', `${this.address}:4001`,
-            '-raft-addr', `${this.address}:4002`,
-        ].concat (rqlitedArgs);
+            '-node-id', id,
+            '-http-addr', `${listenAddress}:4001`,
+            '-raft-addr', `${listenAddress}:4002`,
+            '/data/rqlited'
+        ];
         // add host to join if there is one
-        if (joinHost) {
-            dArgs.unshift ('-join', `http://${joinHost}:4001`);
+        if (joinAddress) {
+            dArgs.unshift ('-join', `http://${joinAddress}:4001`);
         }
         // make sure there is no spawn error
         let spawnError = null;
@@ -86,7 +95,7 @@ module.exports = {
 
         setImmediate ((spawnError) => {
             if (!spawnError) {
-                dStatus.emit ('spawned');
+                dStatus.emit ('spawned', listenAddress);
             }
         });
     },

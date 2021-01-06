@@ -11,9 +11,7 @@ const rqlited = require ('./rqlited.js');
 
 // default options
 const options = {
-    // helloInterval: 3 * 1000,
-    // checkInterval: 6 * 2000,
-    // nodeTimeout: 60 * 1000,
+    hostname: rqlited.uuid,
     port: 4000,
 };
 
@@ -47,8 +45,8 @@ async function initialize (error) {
         // indicates completion status and joinHost
         // if this cluster node is master, "const master"
         // will be undefined here
-        const master = Array.from (Peers.values ()).find ((node) => { return node.isMaster; });
-        discovery.emit ('complete', master);
+        const joinAddress = Array.from (Peers.values ()).find ((node) => { return node.isMaster; });
+        discovery.emit ('complete', options.address, joinAddress);
     } else {
         // no peers, no run
         if (Peers.size <= 0) { print ('Could not find any peers.'); };
@@ -58,8 +56,8 @@ async function initialize (error) {
 };
 
 const discovery = new EventEmitter ()
-.on ('complete', function spawnRqlited (joinHost) {
-    rqlited.spawn (joinHost);
+.on ('complete', function spawnRqlited (listenAddress, joinAddress) {
+    rqlited.spawn (listenAddress, joinAddress);
 });
 
 module.exports = {
@@ -67,7 +65,6 @@ module.exports = {
     rqlited: rqlited.node,
     
     start: (address, subnet) => {
-        rqlited.address = address;
         options.address = address;
         options.unicast = iprange (subnet);
 
@@ -79,41 +76,42 @@ module.exports = {
             isMaster = false;
         })
         .on ('added', (node) => {
-            print (`Found ${node.isMaster ? 'master' : 'node'} ${node.hostName}.`);
-            Peers.add (node.hostName);
+            print (`Found ${node.isMaster ? 'master' : 'node'} at ${node.address}.`);
+            Peers.add (node.address);
             // node added to cluster
             if (node.advertisement == 'initialized') {
                 // initialize new node in existing cluster
-                print (`Joining rqlited cluster via ${node.hostName}...`);
-                discovery.emit ('complete', node.hostName);
+                print (`Joining rqlited cluster via ${node.address}...`);
+                discovery.emit ('complete', address, node.address);
             }
         })
         .on ('removed', async function removeNode (node) {
-            print (`Lost node ${node.hostName}.`);
-            Peers.delete (node.hostName);
+            print (`Lost node ${node.hostName} at ${node.address}.`);
+            Peers.delete (node.address);
             // if this node is master, remove the lost node
             if (isMaster) {
-                print (`Removing node ${node.hostName}...`);
+                print (`Removing node ${node.address}...`);
                 await rqlite.cluster.remove (node.hostName);
             }
         });
     },
 
-    isMaster: (hostname) => {
+    isMaster: (address) => {
         // check if this node is master by default
-        if (!hostname) {
+        if (!address) {
             return isMaster;
         } else {
             // do not error if isMaster is called before discover is defined
             if (this.discover) {
                 // iterate each node to find master
-                const master = this.discover.eachNode (function findMaster (node) {
+                let master = null;
+                this.discover.eachNode (function findMaster (node) {
                     if (node.isMaster) {
-                        return node;
+                        master = node;
                     }
                 });
                 // return false if no master found or master.hostName != hostname
-                if (master && master.hostName == hostname) {
+                if (master && master.address == address) {
                     return true;
                 } else {
                     return false;

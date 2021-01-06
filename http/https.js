@@ -16,17 +16,15 @@ const Query = require ('../rqlite/query.js');
 
 // initializations
 const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
-rateLimit.init ();
 
-module.exports.default = https.createServer ({
+const HTTPS = https.createServer ({
     SNICallback: (domain, callback) => {
         if (certs.has(domain)) {
             return callback (null, tls.createSecureContext({
-                key: Config.defaultKey,
+                key: Config.acmeKey,
                 cert: certs.get(domain)
             }));
         } else {
-            process.exitCode = 1;
             return callback (null, false);
         };
     },
@@ -54,7 +52,7 @@ module.exports.default = https.createServer ({
             // auth required but not provided
             if (!request.headers.authorization) {
                 // prompt for password in browser
-                response.writeHead(401, { 'WWW-Authenticate': `Basic realm="${Config.realm}"`});
+                response.writeHead (401, { 'WWW-Authenticate': `Basic realm="${Config.realm}"`});
                 response.end ('Authorization is required.');
                 return;  
             };
@@ -91,8 +89,10 @@ module.exports.default = https.createServer ({
         };
     };
 })
-.on ('error', (error) => {
-    print (error.name);
-    print (error.message);
-    process.exitCode = 1;
+.on ('listening', () => {
+    process.nextTick (() => {
+        rateLimit.init ()
+    });
 });
+
+module.exports = HTTPS;

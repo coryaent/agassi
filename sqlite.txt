@@ -4,7 +4,9 @@ CREATE TABLE IF NOT EXISTS services (
     protocol TEXT NOT NULL,
     hostname TEXT NOT NULL,
     port INTEGER NOT NULL,
-    auth TEXT 
+    domain TEXT NOT NULL,
+    auth TEXT,
+    options TEXT
 );
 
 # create challenges table

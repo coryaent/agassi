@@ -44,6 +44,7 @@
     "node-discover": "^1.2.0",
     "sleepjs": "^4.0.2",
     "ssl-utils": "^1.0.0",
-    "tsscmp": "^1.0.6"
+    "tsscmp": "^1.0.6",
+    "uuid": "^8.3.2"
   }
 }
