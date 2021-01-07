@@ -40,7 +40,7 @@ module.exports = {
         const httpAuthorizationResponse = await this.client.getChallengeKeyAuthorization (httpChallenge);
     
         // add challenge and response to db table
-        await rqlite.execute (`INSERT INTO challenges (domain, token, response)
+        await rqlite.dbExecute (`INSERT INTO challenges (domain, token, response)
         VALUES ('${domain}', '${httpAuthorizationToken}', '${httpAuthorizationResponse}');`, 'strong');
     
         // db consensus means it's ready
@@ -57,14 +57,14 @@ module.exports = {
         const certificate = await this.client.getCertificate (order);
 
         // remove challenge from table
-        await rqlite.execute (`DELETE FROM services WHERE token = '${httpAuthorizationToken}';`);
+        await rqlite.dbExecute (`DELETE FROM services WHERE token = '${httpAuthorizationToken}';`, 'strong');
 
         // calculate expiration date by adding 2160 hours (90 days)
         const now = new Date (); // JS (ms)
         const expiration = Math.floor (now.setUTCHours (now.getUTCHours () + 2160) / 1000); // (UNIX (s))
 
         // add certificate to db table
-        await rqlite.execute (`INSERT INTO certificates (domain, certificate, expiration)
+        await rqlite.dbExecute (`INSERT INTO certificates (domain, certificate, expiration)
         VALUES ('${domain}', '${certificate}', ${expiration});`, 'strong');
     }
 };

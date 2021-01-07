@@ -5,12 +5,6 @@ const { hostname } = require ('os');
 
 const axios = require ('axios');
 
-const rqlite = axios.create ({
-    baseURL: `http://${hostname()}:4001`,
-    timeout: 2000,
-    headers: { 'Content-Type' : 'application/json' }
-});
-
 class RqliteError extends Error {
     constructor (message) {
         super (message);
@@ -66,13 +60,19 @@ function parseQueryResults (responseData) {
     return organizedResults;
 }
 
-module.exports.db = {
-    execute: async function (_query, _consistency) {
+module.exports = {
+    client: axios.create ({
+        baseURL: `http://${hostname()}:4001`,
+        timeout: 2000,
+        headers: { 'Content-Type' : 'application/json' }
+    }),
+
+    dbExecute: async function (_query, _consistency) {
         const method = 'post';
         const path = '/db/execute?timings' + '&' + parseConsistency (_consistency);
         const query = Array.isArray (_query) ? _query : new Array (_query);
         
-        const response = (await rqlite.request ({
+        const response = (await this.client.request ({
             method: method,
             url: path,
             data: query
@@ -85,12 +85,12 @@ module.exports.db = {
         return response;
     },
 
-    transact: async function (_query, _consistency) {
+    dbTransact: async function (_query, _consistency) {
         const method = 'post';
         const path = '/db/execute?timings&transaction' + '&' + parseConsistency (_consistency);
         const query = Array.isArray (_query) ? _query : new Array (_query);
 
-        const response = (await rqlite.request ({
+        const response = (await this.client.request ({
             method: method,
             url: path,
             data: query
@@ -103,41 +103,37 @@ module.exports.db = {
         return response;
     },
 
-    query: async function (_query, _consistency) {
+    dbQuery: async function (_query, _consistency) {
         const method = 'post';
         const path = '/db/query?timings' + '&' + parseConsistency (_consistency);
         const query = Array.isArray (_query) ? _query : new Array (_query);
         
-        const responseData = (await rqlite.request ({
+        const responseData = (await this.client.request ({
             method: method,
             url: path,
             data: query
         })).data;
 
         return parseQueryResults (responseData);
-    }
-};
+    },
 
-module.exports.cluster = {
-    remove: async function (node) {
+    removeNode: async function (node) {
         const method = 'delete';
         const path = '/remove';
-        return (await rqlite.request ({
+        return (await this.client.request ({
             method: method, 
             url: path, 
             data: {"id": node}
         })).data;
-    }
-};
+    },
 
-module.exports.node = {
-    status: async function () {
+    checkStatus: async function () {
         const method = 'get';
         const path = '/status';
 
-        return (await rqlite.request ({
+        return (await this.client.request ({
             method: method,
             url: path,
         })).data;
     }
-}
+};

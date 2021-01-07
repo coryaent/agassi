@@ -16,7 +16,6 @@ module.exports.challenges = {
     createTable:
         `CREATE TABLE IF NOT EXISTS challenges (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            domain TEXT NOT NULL
             token TEXT NOT NULL,
             response TEXT NOT NULL
         );`,

@@ -1,6 +1,6 @@
 "use strict"; 
 
-const print = require ('../print.js');
+const log = require ('../logger.js');
 
 const rqlite = require ('../rqlite/rqlite.js');
 
@@ -13,18 +13,24 @@ module.exports = {
         // if request is for ACME challenge
         if (requestURL.pathname && requestURL.pathname.startsWith ('/.well-known/acme-challenge/')) {
     
-            // pull challenge response from etcd
-            const token = requestURL.pathname.replace('/.well-known/acme-challenge/', '');
-            const value = (await etcd.getAsync (`${challengeDir}/${token}`)).node.value;
-            const challengeResponse = JSON.parse (value).response;
-    
-            // write challenge response to request
-            print (`responding to challenge request...`);
-            response.writeHead(200, {
-                'Content-Type': 'text/plain'
-            });
-            response.write (challengeResponse);
-            response.end();
+            log.debug (`Received certificate challenge request for ${requestURL.hostname}.`);
+            const token = requestURL.pathname.replace ('/.well-known/acme-challenge/', '');
+            const queryResponse = await rqlite.dbQuery (`SELECT response FROM challenges
+                WHERE token = '${token}';`, 'strong');
+            if (queryResponse.results.length > 0) {
+                log.debug (`Got challenge response from database in ${queryResponse.time}.`)
+                // write challenge response to request
+                response.writeHead (200, {
+                    'Content-Type': 'text/plain'
+                });
+                response.write (queryResponse.results[0].response);
+                response.end ();
+
+                log.debug ('Sent challenge response.');
+            } else {
+                log.warn (`Could not find challenge response for ${requestURL.hostname}, ignoring request.`);
+                return;
+            }
     
         } else {
     
@@ -36,6 +42,8 @@ module.exports = {
             response.end();
     
         };
+    }).on ('listening', () => {
+        log.info ('HTTP server started.');
     }),
 
     start: () => {

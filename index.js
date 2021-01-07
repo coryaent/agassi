@@ -35,7 +35,7 @@ Docker.API.listNetworks ().then ((networks) => {
 // start listening to Docker socket
 rqlited.status.once ('ready', async () => {
     if (rqlited.isLeader ()) {
-        await rqlite.transact ([
+        await rqlite.dbTransact ([
             Query.services.createTable,
             Query.challenges.createTable,
             Query.certificates.createTable
@@ -62,7 +62,7 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
         }).map (service => service.ID);
 
         // pull rqlited services from database
-        const dbServiceIDs = (await rqlite.query ('SELECT id FROM services;')).results.map (result => result.id);
+        const dbServiceIDs = (await rqlite.dbQuery ('SELECT id FROM services;')).results.map (result => result.id);
 
         // if swarm has service that rqlited doesn't, add service and cert to rqlited
 

@@ -54,7 +54,7 @@ module.exports = {
         const auth = service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] ?
             service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] : null;
 
-        return await rqlite.execute (`INSERT OR REPLACE INTO services (id, protocol, hostname, port, domain, auth)
+        return await rqlite.dbExecute (`INSERT OR REPLACE INTO services (id, protocol, hostname, port, domain, auth)
         VALUES ('${id}', '${protocol}', '${hostname}', ${port}, '${domain}', '${auth}');`, 'strong');
     },
 
@@ -67,7 +67,7 @@ module.exports = {
             id = serviceOrID;
         }
 
-
+        
 
     }
 };
