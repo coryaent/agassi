@@ -1,5 +1,6 @@
 "use strict";
 
+const log = require ('./logger.js');
 const acme = require ('acme-client');
 const Config = require ('./config.js');
 const rqlite = require ('./rqlite.js');
@@ -15,10 +16,12 @@ module.exports = {
             _email = Config.acmeEmail;
         }
         const email = _email.startsWith ('mailto:') ? _email : 'mailto:' + _email;
+        log.debug (`Creating ACME account with email ${email.replace ('mailto:', '')}...`);
         await this.client.createAccount ({
             termsOfServiceAgreed: true,
             contact: [email]
         });
+        log.debug (`ACME account created with email ${email.replace ('mailto:', '')}.`);
     },
 
     addNewCertToDB: async (domain) => {

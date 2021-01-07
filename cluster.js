@@ -1,5 +1,7 @@
 "use strict";
 
+const log = require ('./logger.js');
+
 const Discover = require ('node-discover');
 const print = require ('./print.js');
 const { sleep } = require ('sleepjs');

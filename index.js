@@ -1,6 +1,6 @@
 "use strict";
 
-const print = require ('./print.js');
+const log = require ('./logger.js');
 
 const Config = require ('./config.js');
 
