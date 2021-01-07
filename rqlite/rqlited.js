@@ -2,7 +2,6 @@
 
 const print = require ('../print.js');
 const { spawn, execFileSync } = require ('child_process');
-const { hostname } = require ('os');
 const EventEmitter = require ('events');
 const axios = require ('axios');
 const fs = require ('fs');
@@ -28,7 +27,24 @@ const id = (function getUUID () {
     }
 }) ();
 
-async function isReady (listenAddress) {
+async function checkLeadership (listenAddress) {
+    try {
+        const response = await axios.request ({
+            url: `http://${listenAddress}:4001/status`,
+            method: 'get',
+            timeout: 250
+        });
+        if (response.data.store.raft.state == 'Leader') {
+            return true;
+        } else {
+            return false;
+        }
+    } catch {
+        return false;
+    }
+}
+
+async function checkReadiness (listenAddress) {
     try {
         const response = await axios.request ({
             url: `http://${listenAddress}:4001/status`,
@@ -47,13 +63,19 @@ async function isReady (listenAddress) {
 
 // status of the rqlited child process
 const dStatus = new EventEmitter ();
+var isLeader = null;
 var readinessCheck = null;
-dStatus.once ('spawned', () => {
+var leadershipCheck = null;
+dStatus.once ('spawned', (listenAddress) => {
     // poll daemon for readiness
     readinessCheck = setInterval (async () => {
-        if (await isReady ()) {
+        if (await checkReadiness (listenAddress) && isLeader != null) {
             dStatus.emit ('ready');
         }
+    }, 1000);
+    // poll for leader status
+    leadershipCheck = setInterval (async () => {
+        isLeader = await checkLeadership (listenAddress);
     }, 500);
 });
 dStatus.once ('ready', () => {
@@ -66,7 +88,11 @@ dStatus.once ('ready', () => {
 module.exports = {
     uuid: id,
     // status of this node/instance/process of rqlited
-    node: dStatus,
+    status: dStatus,
+
+    isLeader: () => {
+        return isLeader;
+    },
 
     spawn: (listenAddress, joinAddress) => {
         // concat the arguments with defaults
@@ -101,6 +127,11 @@ module.exports = {
     },
 
     kill: () => {
+        // stop leadership check
+        if (leadershipCheck && leadershipCheck instanceof Timeout) {
+            clearInterval (leadershipCheck);
+        }
+        // kill child process
         if (this.d && this.d instanceof ChildProcess) {
             this.d.kill ();
         }

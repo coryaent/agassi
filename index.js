@@ -3,9 +3,18 @@
 const print = require ('./print.js');
 
 const Config = require ('./config.js');
+
 const Cluster = require ('./cluster.js');
 
-const rqlite = require ('./rqlite/rqlite.js');
+const HTTP = require ('./http/http.js');
+const HTTPS = require ('./http/https.js');
+
+const ACME = require ('./acme.js');
+
+const rqlite = require ('../rqlite/rqlite.js');
+const rqlited = require ('../rqlite/rqlited.js');
+const Query = require ('../rqlite/query.js');
+
 const Docker = require('./docker.js');
 
 // fetch all networks
@@ -24,30 +33,60 @@ Docker.API.listNetworks ().then ((networks) => {
 });
 
 // start listening to Docker socket
-Cluster.rqlited.once ('ready', () => {
+rqlited.status.once ('ready', async () => {
+    if (rqlited.isLeader ()) {
+        await rqlite.transact ([
+            Query.services.createTable,
+            Query.challenges.createTable,
+            Query.certificates.createTable
+        ], 'strong');
+    }
+    HTTP.start ();
+});
+
+HTTP.server.once ('listening', () => {
     Docker.Events.start ();
 });
 
-const requisiteLabels = ['protocol', 'domain', 'port'];
-Docker.Events.on ('connect', async function checkAndAddServices () {
-    // get all service ID's
-    const swarmServiceIDs = await Docker.API.listServices ().map (service => service.ID);
+// add possible existing services on socket connection
+Docker.Events.on ('connect' , async function checkExistingServices () {
+    if (rqlited.isLeader ()) {
+        // get all service ID's
+        const allSwarmServiceIDs = await Docker.API.listServices ().map (service => service.ID);
 
-    // filter those which have the requisite labels
-    const agassiSwarmServiceIDs = swarmServiceIDs.map (async (id) => { 
-        await Docker.API.getService (id).inspect (); 
-    }).filter ((service) => {
-        requisiteLabels.every ((requisiteLabel) => {
-            Object.keys (service.Spec.Labels).some ((serviceLabel) => {
-                serviceLabel == Config.serviceLabelPrefix + requisiteLabel;
-            });
-        });
-    }).map (service => service.ID);
+        // filter those which have the requisite labels
+        const swarmServiceIDs = allSwarmServiceIDs.map (async (id) => { 
+            await Docker.API.getService (id).inspect (); 
+        }).filter ((service) => {
+            return Docker.isAgassiService (service);
+        }).map (service => service.ID);
 
-    // pull rqlited services from database
+        // pull rqlited services from database
+        const dbServiceIDs = (await rqlite.query ('SELECT id FROM services;')).results.map (result => result.id);
 
-    // if swarm has service that rqlited doesn't, add service and cert to rqlited
+        // if swarm has service that rqlited doesn't, add service and cert to rqlited
 
-    // if rqlited has service that swarm doesn't, and rqlited has no pending challenge,
-    // remove the service from rqlited without removing the cert
+        // if rqlited has service that swarm doesn't, and rqlited has no pending challenge,
+        // remove the service from rqlited without removing the cert
+    }
+    HTTPS.start ();
+});
+
+Docker.Events.on ('_message', async (event) => {
+    // on service creation or update
+    if (event.Type === 'service') {
+        const service = await Docker.API.getService (event.Actor.ID).inspect ();
+        if (Docker.isAgassiService (service)) {
+
+            if (event.action === 'update' || event.action === 'create') {
+                await Docker.addServiceToDB (service);
+                if (event.Action === 'create') {
+                    await ACME.addNewCertToDB (service.Spec.Labels[Config.serviceLabelPrefix + 'domain']);
+                }
+            }
+            if (event.Action === 'remove') {
+                await Docker.removeServiceFromDB (event.Actor.ID);
+            }
+        }
+    }
 });

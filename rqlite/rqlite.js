@@ -13,10 +13,10 @@ const rqlite = axios.create ({
 
 class RqliteError extends Error {
     constructor (message) {
-      super (message);
-      this.name = 'RqliteError';
+        super (message);
+        this.name = 'RqliteError';
     }
-  }
+}
 
 function parseConsistency (consistency) {
     switch (consistency) {
@@ -27,6 +27,7 @@ function parseConsistency (consistency) {
         case 'WEAK':
             return 'level=weak';
     
+        case null:
         case 0:
         case 'none':
         case 'NONE':
@@ -48,7 +49,7 @@ function parseQueryResults (responseData) {
     const organizedResults = {};
     const results = responseData.results[0];
     if (!results.values) {
-        organizedResults.results = null;
+        organizedResults.results = [];
     } else {
         organizedResults.results = results.values.map ((values) => {
                 const resultObject = {};

@@ -6,6 +6,8 @@ const { sleep } = require ('sleepjs');
 const EventEmitter = require ('events');
 const iprange = require ('iprange');
 
+const ACME = require ('./acme.js');
+
 const rqlite = require ('./rqlite.js');
 const rqlited = require ('./rqlited.js');
 
@@ -60,17 +62,23 @@ const discovery = new EventEmitter ()
     rqlited.spawn (listenAddress, joinAddress);
 });
 
+rqlited.status.once ('ready', () => {
+    if (module.exports.discover && module.exports.discover instanceof Discover) {
+        module.exports.discover.advertise ('initialized');
+    }
+});
+
 module.exports = {
     // emits 'ready' when rqlited is ready for connections
-    rqlited: rqlited.node,
     
     start: (address, subnet) => {
         options.address = address;
         options.unicast = iprange (subnet);
 
     this.discover = new Discover (options, initialize)
-        .on ('promotion', () => {
+        .on ('promotion', async () => {
             isMaster = true;
+            await ACME.createAccount ();
         })
         .on ('demotion', () => {
             isMaster = false;
@@ -96,35 +104,12 @@ module.exports = {
         });
     },
 
-    isMaster: (address) => {
-        // check if this node is master by default
-        if (!address) {
-            return isMaster;
-        } else {
-            // do not error if isMaster is called before discover is defined
-            if (this.discover) {
-                // iterate each node to find master
-                let master = null;
-                this.discover.eachNode (function findMaster (node) {
-                    if (node.isMaster) {
-                        master = node;
-                    }
-                });
-                // return false if no master found or master.hostName != hostname
-                if (master && master.address == address) {
-                    return true;
-                } else {
-                    return false;
-                }
-            } else {
-                // no discover, no master
-                return false;
-            }
-        }
+    isMaster: () => {
+        return isMaster;
     },
 
     stop: () => {
-        if (this.discover) {
+        if (this.discover && this.discover instanceof Discover) {
             this.discover.stop ();
         };
         rqlited.kill ();

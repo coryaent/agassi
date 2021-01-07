@@ -8,8 +8,7 @@ module.exports.services = {
             hostname TEXT NOT NULL,
             port INTEGER NOT NULL,
             domain TEXT NOT NULL,
-            auth TEXT,
-            options TEXT
+            auth TEXT
         );`,
 };
 

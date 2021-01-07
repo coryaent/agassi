@@ -1,6 +1,0 @@
-# List and inspect services
-^/(v\d\.\d+/)?services(/[0-9a-f]+)?$
-# List and inspect networks
-^/(v\d\.\d+/)?networks(/\w+)?$
-# Listen for events
-^/(v\d\.\d+/)?events$

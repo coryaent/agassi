@@ -27,6 +27,7 @@
     "acme-client": "^4.0.2",
     "axios": "^0.21.1",
     "bcryptjs": "^2.4.3",
+    "console-log-level": "^1.4.1",
     "date-range-diff": "^1.0.0",
     "docker-event-emitter": "^0.3.0",
     "dockerode": "^3.2.1",
