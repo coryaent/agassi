@@ -11,17 +11,13 @@ module.exports = {
         accountKey: Config.acmeKey
     }),
 
-    createAccount: async (_email) => {
-        if (!_email) {
-            _email = Config.acmeEmail;
-        }
-        const email = _email.startsWith ('mailto:') ? _email : 'mailto:' + _email;
-        log.debug (`Creating ACME account with email ${email.replace ('mailto:', '')}...`);
+    createAccount: async () => {
+        log.debug (`Creating ACME account with email ${Config.acmeEmail.replace ('mailto:', '')}...`);
         await this.client.createAccount ({
             termsOfServiceAgreed: true,
-            contact: [email]
+            contact: [Config.acmeEmail]
         });
-        log.debug (`ACME account created with email ${email.replace ('mailto:', '')}.`);
+        log.debug (`ACME account created with email ${Config.acmeEmail.replace ('mailto:', '')}.`);
     },
 
     addNewCertToDB: async (domain) => {

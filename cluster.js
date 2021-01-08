@@ -3,7 +3,6 @@
 const log = require ('./logger.js');
 
 const Discover = require ('node-discover');
-const print = require ('./print.js');
 const { sleep } = require ('sleepjs');
 const EventEmitter = require ('events');
 const iprange = require ('iprange');
@@ -16,7 +15,7 @@ const rqlited = require ('./rqlited.js');
 // default options
 const options = {
     hostname: rqlited.uuid,
-    port: 4000,
+    port: 4002,
 };
 
 // maintain a list of Peers external to node-discover nodes
@@ -28,34 +27,30 @@ var isMaster = false;
 // callback on discover creation
 async function initialize (error) {
 
-    // catch error with cluster
-    if (error) { print (error.name); print (error.message); process.exitCode = 1; };
+    if (error) { 
+        process.exitCode = 1;
+        throw error;
+    }
 
     // looking for Peers
-    print ('Looking for peers...');
+    log.debug ('Looking for peers...');
     const retries = 3; let attempt = 1;
     while ((Peers.size < 1) && (attempt <= retries)) {
         // backoff
         await sleep ( attempt * 20 * 1000);
         if (Peers.size < 1) {
-            if (Peers.size < 1) { print (`No peers found.`); }
-            print (`Retrying (${attempt}/${retries})...`);
+            log.debug (`No peers found. Retrying (${attempt}/${retries})...`);
             attempt++;
         }
     }
+    // indicates completion status and joinHost
+    // if this cluster node is master, "const master"
+    // will be undefined here
+    const joinAddress = Array.from (Peers.values ()).find ((node) => { return node.isMaster; });
+    discovery.emit ('complete', options.address, joinAddress);
 
-    // either move on or quit
-    if (Peers.size > 0) {
-        // indicates completion status and joinHost
-        // if this cluster node is master, "const master"
-        // will be undefined here
-        const joinAddress = Array.from (Peers.values ()).find ((node) => { return node.isMaster; });
-        discovery.emit ('complete', options.address, joinAddress);
-    } else {
-        // no peers, no run
-        if (Peers.size <= 0) { print ('Could not find any peers.'); };
-        process.exitCode = 1;
-        process.kill (process.pid);
+    if (Peers.size == 0) { 
+        log.warn ('Could not find any peers.'); 
     }
 };
 
@@ -74,6 +69,7 @@ module.exports = {
     // emits 'ready' when rqlited is ready for connections
     
     start: (address, subnet) => {
+        log.debug ('Starting automatic discovery...');
         options.address = address;
         options.unicast = iprange (subnet);
 
@@ -86,21 +82,21 @@ module.exports = {
             isMaster = false;
         })
         .on ('added', (node) => {
-            print (`Found ${node.isMaster ? 'master' : 'node'} at ${node.address}.`);
+            log.debug (`Found ${node.isMaster ? 'master' : 'node'} at ${node.address}.`);
             Peers.add (node.address);
             // node added to cluster
             if (node.advertisement == 'initialized') {
                 // initialize new node in existing cluster
-                print (`Joining rqlited cluster via ${node.address}...`);
+                log.debug (`Joining rqlited cluster via ${node.address}...`);
                 discovery.emit ('complete', address, node.address);
             }
         })
         .on ('removed', async function removeNode (node) {
-            print (`Lost node ${node.hostName} at ${node.address}.`);
+            log.debug (`Lost node ${node.hostName} at ${node.address}.`);
             Peers.delete (node.address);
             // if this node is master, remove the lost node
             if (isMaster) {
-                print (`Removing node ${node.address}...`);
+                log.debug (`Removing node ${node.address}...`);
                 await rqlite.cluster.remove (node.hostName);
             }
         });
@@ -113,7 +109,7 @@ module.exports = {
     stop: () => {
         if (this.discover && this.discover instanceof Discover) {
             this.discover.stop ();
-        };
+        }
         rqlited.kill ();
     }
 }

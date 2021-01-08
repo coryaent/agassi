@@ -44,10 +44,13 @@ module.exports = {
         };
     }).on ('listening', () => {
         log.info ('HTTP server started.');
+    }).on ('close', () => {
+        log.info ('HTTP server stopped.');
     }),
 
     start: () => {
         if (!this.server.listening) {
+            log.info ('Starting HTTP server...');
             this.server.listen (80, null, (error) => {
                 if (error) {
                     throw error;
@@ -58,6 +61,7 @@ module.exports = {
 
     stop: () => {
         if (this.server.listening) {
+            log.info ('Stopping HTTP server...');
             this.server.stop ();
         }
     }

@@ -94,5 +94,6 @@ Config.serviceLabelPrefix = process.env.SERVICE_LABEL_PREFIX ? process.env.SERVI
 Config.networkLabelKey = process.env.NETWORK_LABEL_KEY ? process.env.NETWORK_LABEL_KEY : 'agassi';
 Config.networkLabelValue = process.env.NETWORK_LABEL_VALUE ? process.env.NETWORK_LABEL_VALUE : 'overlay';
 Config.realm = process.env.REALM ? process.env.REALM : 'Agassi';
+Config.standalone = process.env.STANDALONE == 'true' ? true : false;
 
 module.exports = Config;

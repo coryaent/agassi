@@ -101,11 +101,13 @@ module.exports = {
         });
     }).on ('listening', () => {
         log.info ('HTTPS server started.');
+    }).on ('close', () => {
+        log.info ('HTTPS server stopped.');
     }),
 
     start: () => {
         if (!this.server.listening) {
-            log.debug ('Starting HTTPS server...');
+            log.info ('Starting HTTPS server...');
             this.server.listen (443, null, (error) => {
                 if (error) {
                     throw error;
@@ -116,6 +118,7 @@ module.exports = {
 
     stop: () => {
         if (this.server.listening) {
+            log.info ('Stopping HTTPS server...');
             this.server.stop ();
         }
     }

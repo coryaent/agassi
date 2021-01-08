@@ -1,7 +1,5 @@
 "use strict";
 
-const log = require ('./logger.js');
-
 const Config = require ('./config.js');
 
 const Cluster = require ('./cluster.js');
@@ -28,8 +26,12 @@ Docker.API.listNetworks ().then ((networks) => {
     const address = require ('@emmsdan/network-address').v4.find ((address) => {
         return ip.cidrSubnet (subnet).contains (address);
     });
-    // start/join the cluster
-    Cluster.start (address, subnet);
+    // start/join the cluster/standalone process
+    if (Config.standalone) {
+        rqlited.spawn (address);
+    } else {
+        Cluster.start (address, subnet);
+    }
 });
 
 // start listening to Docker socket
@@ -73,7 +75,7 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
 });
 
 Docker.Events.on ('_message', async (event) => {
-    // on service creation or update
+    // on service creation, update or removal
     if (event.Type === 'service') {
         const service = await Docker.API.getService (event.Actor.ID).inspect ();
         if (Docker.isAgassiService (service)) {

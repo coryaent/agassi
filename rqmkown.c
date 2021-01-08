@@ -6,10 +6,10 @@
 
 int main() {
 
-    char * data_dir = getenv ("DATA_DIR");
-    if (data_dir == NULL) {
-        data_dir = "/data";
-    };
+    // char * data_dir = getenv ("DATA_DIR");
+    // if (data_dir == NULL) {
+    //     data_dir = "/data";
+    // };
 
 	seteuid (0);
 	setegid (0);

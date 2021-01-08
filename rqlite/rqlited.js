@@ -1,38 +1,43 @@
 "use strict";
 
-const print = require ('../print.js');
+const log = require ('../logger.js');
 const { spawn, execFileSync } = require ('child_process');
 const EventEmitter = require ('events');
 const axios = require ('axios');
 const fs = require ('fs');
 const { v4: uuidv4 } = require ('uuid');
+const Config = require ('../config.js');
 
 // create the self-owned data directory
 try {
     execFileSync ('rqmkown');
 } catch (error) {
-    print ('Error running native initialization binary rqmkown.');
-    process.exitCode = 1;
+    log.error ('Error running native initialization binary rqmkown.');
+    throw error;
 }
 
 // fetch existing uuid or create a new one
 const id = (function getUUID () {
     const idPath = '/data/rqlited.uuid';
+    let uuid = undefined;
     if (fs.existsSync (idPath)) {
-        return fs.readFileSync (idPath, 'utf-8');
+        log.debug (`Reading rqlited node id from path ${idPath}...`);
+        uuid = fs.readFileSync (idPath, 'utf-8');
     } else {
-        const uuid = uuidv4 ();
+        log.debug ('Generating new rqlited id...');
+        uuid = uuidv4 ();
         fs.writeFileSync (idPath, uuid);
-        return uuid;
     }
+    log.debug (`Got UUID ${uuid}.`);
+    return uuid;
 }) ();
 
-async function checkLeadership (listenAddress) {
+async function pollLeadership (listenAddress) {
     try {
         const response = await axios.request ({
             url: `http://${listenAddress}:4001/status`,
             method: 'get',
-            timeout: 250
+            timeout: 500
         });
         if (response.data.store.raft.state == 'Leader') {
             return true;
@@ -44,14 +49,14 @@ async function checkLeadership (listenAddress) {
     }
 }
 
-async function checkReadiness (listenAddress) {
+async function pollConnection (listenAddress) {
     try {
         const response = await axios.request ({
             url: `http://${listenAddress}:4001/status`,
             method: 'get',
-            timeout: 250
+            timeout: 500
         });
-        if (response.data.node.start_time) {
+        if (response.data.node) {
             return true;
         } else {
             return false;
@@ -62,27 +67,72 @@ async function checkReadiness (listenAddress) {
 }
 
 // status of the rqlited child process
+var readinessCheck = undefined;
+var isConnected = undefined;
+var wasConnected = undefined;
+var connectionCheck = undefined;
+var isLeader = undefined;
+var leadershipCheck = undefined;
+
+// emits ['spawned', 'ready', 'disconnected', 'reconnected']
 const dStatus = new EventEmitter ();
-var isLeader = null;
-var readinessCheck = null;
-var leadershipCheck = null;
+// start check for readiness and leadership
 dStatus.once ('spawned', (listenAddress) => {
+    log.debug (`Starting polls for readiness and leadership of rqlited node on ${listenAddress}.`);
     // poll daemon for readiness
-    readinessCheck = setInterval (async () => {
-        if (await checkReadiness (listenAddress) && isLeader != null) {
-            dStatus.emit ('ready');
+    readinessCheck = setInterval (async function checkReadiness () {
+        if (await pollConnection (listenAddress) && typeof isLeader == 'boolean') {
+            dStatus.emit ('ready', listenAddress);
         }
     }, 1000);
-    // poll for leader status
-    leadershipCheck = setInterval (async () => {
-        isLeader = await checkLeadership (listenAddress);
-    }, 500);
+    // poll for leader status (unless standalone)
+    if (!Config.standalone) {
+        leadershipCheck = setInterval (async function checkLeadership () {
+            isLeader = await pollLeadership (listenAddress);
+        }, 1000);
+    } else {
+        isLeader = true;
+    }
 });
-dStatus.once ('ready', () => {
-    // stop the readiness check
+// start polling connection
+dStatus.once ('ready', function startConnectionCheck (listenAddress) {
+    // ready implies connected
+    isConnected = true;
+    // do not emit more 'ready' events
     if (readinessCheck && readinessCheck instanceof Timeout) {
         clearInterval (readinessCheck);
     }
+    // do not poll for connection status if not in cluster
+    if (!Config.standalone) {
+        log.debug (`Starting poll for connection status of rqlited node on ${listenAddress}.`);
+        // poll daemon for connection status
+        connectionCheck = setInterval (async function checkConnection () {
+            // remember the last connection status
+            wasConnected = isConnected;
+            isConnected = await pollConnection (listenAddress);
+
+            // if connection status change
+            if (isConnected != wasConnected) {
+                // reconnection
+                if (isConnected) {
+                    dStatus.emit ('reconnected');
+                } 
+                // disconnection
+                else {
+                    dStatus.emit ('disconnected');
+                }
+            }
+            
+        }, 1000);
+    }
+});
+// debug logging
+dStatus.on ('reconnected', () => {
+    log.debug ('Rqlited reconnected.');
+});
+
+dStatus.on ('disconnected', () => {
+    log.debug ('Rqlited disconnected.');
 });
 
 module.exports = {
@@ -91,7 +141,11 @@ module.exports = {
     status: dStatus,
 
     isLeader: () => {
-        return isLeader;
+        if (typeof isLeader == 'boolean') {
+            return isLeader;
+        } else {
+            return false;
+        }
     },
 
     spawn: (listenAddress, joinAddress) => {
@@ -114,9 +168,8 @@ module.exports = {
         })
         .on ('error', (error) => {
             spawnError = error;
-            print (error.name);
-            print (error.message);
             process.exitCode = 1;
+            throw error;
         });
 
         setImmediate ((spawnError) => {
@@ -127,13 +180,23 @@ module.exports = {
     },
 
     kill: () => {
-        // stop leadership check
+        // kill child process
+        if (this.d && this.d instanceof ChildProcess) {
+            log.debug ('Stopping rqlited process...');
+            this.d.kill ('SIGINT');
+        }
+
+        // stop any and all status checks
+        if (readinessCheck && readinessCheck instanceof Timeout) {
+            clearInterval (readinessCheck);
+        }
+
         if (leadershipCheck && leadershipCheck instanceof Timeout) {
             clearInterval (leadershipCheck);
         }
-        // kill child process
-        if (this.d && this.d instanceof ChildProcess) {
-            this.d.kill ();
+
+        if (connectionCheck && connectionCheck instanceof Timeout) {
+            clearInterval (connectionCheck);
         }
     }
 };
