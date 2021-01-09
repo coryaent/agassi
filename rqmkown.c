@@ -15,7 +15,7 @@ int main() {
 	setegid (0);
 
     // mkdir (data_dir, 0755);
-    chown (data_dir, getuid(), getgid());
+    chown ("/data", getuid(), getgid());
 
     exit (EXIT_SUCCESS);
 
