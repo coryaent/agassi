@@ -1,6 +1,6 @@
 # compile rqlited
 FROM golang:1.15 AS rqlited-builder
-ENV RQLITE_VERSION=5.8.0
+ARG RQLITE_VERSION=5.8.0
 WORKDIR /opt
 COPY rqmkown.c ./rqmkown.c
 RUN gcc rqmkown.c -o ./rqmkown && chmod ug+s ./rqmkown && \
