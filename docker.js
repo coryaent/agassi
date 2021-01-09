@@ -65,7 +65,7 @@ module.exports = {
         return false;
     },
 
-    addServiceToDB: async (serviceOrID) => {
+    pushServiceToDB: async (serviceOrID) => {
         var service = null;
         if (typeof serviceOrID == 'string') {
             service = await docker.getService (serviceOrID).inspect ();
@@ -73,21 +73,53 @@ module.exports = {
             service = serviceOrID;
         }
 
-        log.debug (`Adding docker service ${service.ID} to database...`);
-
-        const id = service.ID;
-        const protocol = service.Spec.Labels[Config.serviceLabelPrefix + 'protocol'];
-        const hostname = service.Spec.TaskTemplate.ContainerSpec.Hostname ? 
-            service.Spec.TaskTemplate.ContainerSpec.Hostname : service.Spec.Name;
-        const port = Number.parseInt (service.Spec.Labels[Config.serviceLabelPrefix + 'port'], 10);
-        const domain = service.Spec.Labels[Config.serviceLabelPrefix + 'domain'];
-        const auth = service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] ?
+        // parse variables from service
+        const swarmService = {};
+        swarmService.id = service.ID;
+        swarmService.protocol = service.Spec.Labels[Config.serviceLabelPrefix + 'protocol'];
+        swarmService.hostname = service.Spec.TaskTemplate.ContainerSpec.Hostname ? 
+                                service.Spec.TaskTemplate.ContainerSpec.Hostname : service.Spec.Name;
+        swarmService.port = Number.parseInt (service.Spec.Labels[Config.serviceLabelPrefix + 'port'], 10); // base 10
+        swarmService.domain = service.Spec.Labels[Config.serviceLabelPrefix + 'domain'];
+        swarmService.auth = service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] ?
             service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] : null;
 
-        const executionResult = await rqlite.dbExecute (`INSERT OR REPLACE INTO services (id, protocol, hostname, port, domain, auth)
-        VALUES ('${id}', '${protocol}', '${hostname}', ${port}, '${domain}', '${auth}');`);
+        // check if service exists in database already
+        const queryResult = await rqlite.dbQuery (`SELECT * FROM services WHERE id = '${service.ID}';`, 'strong');
 
-        log.debug (`Docker service ${service.ID} added to database in ${executionResult.time}.`);
+        if (!(queryResult.values.length > 0)) {
+            // service does not already exist, insert it
+            const executionResult = await rqlite.dbExecute (`INSERT INTO services 
+                (id, protocol, hostname, port, domain, auth)
+                VALUES (
+                    '${swarmService.id}', 
+                    '${swarmService.protocol}', 
+                    '${swarmService.hostname}', 
+                    ${swarmService.port}, 
+                    '${swarmService.domain}', 
+                    '${swarmService.auth}');`);
+        } else {
+            // service exists, may need to be updated
+            const dbService = queryResult.values[0];
+            // get which keys in each service (if any) are different
+            const diffKeys = Object.keys (swarmService).filter (key => {
+                return swarmService[key] !== dbService[key];
+            });
+
+            if (diffKeys.length > 0) {
+                // services do not match, update differing keys
+                const updateQuery = 'UPDATE services SET ';
+                diffKeys.forEach (key => {
+                    updateQuery += `${key} = '${swarmService[key]}' `;
+                });
+                updateQuery += `WHERE id = '${swarmService.id}';`;
+
+                const updateResults = await rqlite.dbExecute (updateQuery, 'strong');
+            } else {
+                // services match, nothing to do
+                
+            }
+        }
     },
 
     removeServiceFromDB: async (serviceOrID) => {

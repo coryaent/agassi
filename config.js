@@ -46,8 +46,8 @@ Config.acmeEmail = ((fs.readFileSync (process.env.ACME_EMAIL_FILE, 'utf-8')).tri
 /* acmeEmail is pre-     */ (fs.readFileSync (process.env.ACME_EMAIL_FILE, 'utf-8')).trim() :
 /* pended with 'mailto:' */ 'mailto:' + (fs.readFileSync (process.env.ACME_EMAIL_FILE, 'utf-8')).trim();
 
-Config.defaultCert = fs.readFileSync (process.env.DEFAULT_CERT_FILE, 'utf-8');
-Config.defaultKey = fs.readFileSync (process.env.DEFAULT_KEY_FILE, 'utf-8');
+Config.defaultCert = fs.readFileSync (process.env.DEFAULT_CERT_FILE);
+Config.defaultKey = fs.readFileSync (process.env.DEFAULT_KEY_FILE);
 
 Config.dockerSocket = process.env.DOCKER_SOCKET_URL;
 
@@ -68,7 +68,7 @@ ssl.verifyKey (Config.acmeKey, {}, function checkAcmeKey (error, result) {
 if (!isEmail (Config.acmeEmail.replace ('mailto:', ''))) {
     throw new ConfigError (`${Config.acmeEmail} does not appear to be a valid email.`);
 }
-ssl.verifyCertificateKey (Config.defaultCert, Config.defaultKey, {}, function checkDefaultPair (error, result) {
+ssl.verifyCertificateKey (Buffer.from (Config.defaultCert).toString (), Buffer.from (Config.defaultKey).toString (), {}, function checkDefaultPair (error, result) {
     if (error) {
         throw new ConfigError (`Could not validate default cert-key pair.`);
     }

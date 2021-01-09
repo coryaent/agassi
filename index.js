@@ -14,9 +14,10 @@ const rqlited = require ('../rqlite/rqlited.js');
 const Query = require ('../rqlite/query.js');
 
 const Docker = require('./docker.js');
+const ip = require ('ip');
 
 // fetch all networks
-Docker.API.listNetworks ().then ((networks) => {
+Docker.API.listNetworks ().then (function findAgassiOverlay (networks) {
     // determine which is the relevent overlay
     const overlayNetwork = networks.find ((network) => {
         return network.Labels && network.Labels[Config.networkLabelKey] == Config.networkLabelValue;
@@ -27,8 +28,8 @@ Docker.API.listNetworks ().then ((networks) => {
         return ip.cidrSubnet (subnet).contains (address);
     });
     // start/join the cluster/standalone process
-    if (Config.standalone) {
-        rqlited.spawn (address);
+    if (Config.standalone === true) {
+        rqlited.spawn (address, null, true);
     } else {
         Cluster.start (address, subnet);
     }
@@ -37,12 +38,14 @@ Docker.API.listNetworks ().then ((networks) => {
 // start listening to Docker socket
 rqlited.status.once ('ready', async () => {
     if (rqlited.isLeader ()) {
+        await ACME.createAccount ();
         await rqlite.dbTransact ([
             Query.services.createTable,
             Query.challenges.createTable,
             Query.certificates.createTable
         ]);
     }
+    Cluster.advertise ('ready');
     HTTP.start ();
 });
 
@@ -64,7 +67,7 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
         }).map (service => service.ID);
 
         // pull rqlited services from database
-        const dbServiceIDs = (await rqlite.dbQuery ('SELECT id FROM services;')).results.map (result => result.id);
+        const dbServiceIDs = (await rqlite.dbQuery ('SELECT id FROM services;', 'strong')).results.map (result => result.id);
 
         // if swarm has service that rqlited doesn't, add service and cert to rqlited
 
@@ -74,16 +77,24 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
     HTTPS.start ();
 });
 
-Docker.Events.on ('_message', async (event) => {
+rqlited.status.on ('disconnected', () => {
+    HTTPS.stop ();
+});
+
+rqlited.status.on ('reconnected', () => {
+    HTTPS.start ();
+});
+
+Docker.Events.on ('_message', async function processDockerEvent (event) {
     // on service creation, update or removal
     if (event.Type === 'service') {
         const service = await Docker.API.getService (event.Actor.ID).inspect ();
         if (Docker.isAgassiService (service)) {
 
-            if (event.action === 'update' || event.action === 'create') {
-                await Docker.addServiceToDB (service);
+            if (event.Action === 'update' || event.Action === 'create') {
+                await Docker.pushServiceToDB (service);
                 if (event.Action === 'create') {
-                    await ACME.addNewCertToDB (service.Spec.Labels[Config.serviceLabelPrefix + 'domain']);
+                    await ACME.certify (service.Spec.Labels[Config.serviceLabelPrefix + 'domain']);
                 }
             }
             if (event.Action === 'remove') {

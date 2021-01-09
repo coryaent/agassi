@@ -25,14 +25,34 @@ services:
       - node.role == manager
 
   reverse-proxy:
-    image: coryagroup/agassi
+    image: coryagroup/agassi:staging
     environment:
+      ACME_DIRECTORY_URL: https://acme-staging-v02.api.letsencrypt.org/directory
+      ACME_KEY_FILE: /run/secrets/lets-encrypt-account
+      ACME_EMAIL_FILE: /lets-encrypt-email
+      DEFAULT_CERT_FILE: /run/secrets/corya-group-default-cert
+      DEFAULT_KEY_FILE: /run/secrets/corya-group-default-key
       DOCKER_SOCKET: tcp://socket:2375
     networks:
       - encrypted-overlay
       - www
     <<: *deployment-options
       - node.labels.agassi == true
+
+config:
+
+secrets:
+  lets-encrypt-account:
+    external : true
+  corya-group-default-cert:
+    external: true
+  corya-group-default-key:
+    external: true
+
+configs:
+  lets-encrypt-email:
+    external: true
+  
 
 networks:
   www:

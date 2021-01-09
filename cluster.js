@@ -7,8 +7,6 @@ const { sleep } = require ('sleepjs');
 const EventEmitter = require ('events');
 const iprange = require ('iprange');
 
-const ACME = require ('./acme.js');
-
 const rqlite = require ('./rqlite.js');
 const rqlited = require ('./rqlited.js');
 
@@ -43,15 +41,16 @@ async function initialize (error) {
             attempt++;
         }
     }
-    // indicates completion status and joinHost
-    // if this cluster node is master, "const master"
-    // will be undefined here
-    const joinAddress = Array.from (Peers.values ()).find ((node) => { return node.isMaster; });
-    discovery.emit ('complete', options.address, joinAddress);
 
     if (Peers.size == 0) { 
         log.warn ('Could not find any peers.'); 
     }
+
+    // indicates completion status and joinHost
+    // if this cluster node is master, "const joinAddress"
+    // will be undefined here
+    const joinAddress = Array.from (Peers.values ()).find ((node) => { return node.isMaster; });
+    discovery.emit ('complete', options.address, joinAddress);
 };
 
 const discovery = new EventEmitter ()
@@ -59,16 +58,27 @@ const discovery = new EventEmitter ()
     rqlited.spawn (listenAddress, joinAddress);
 });
 
-rqlited.status.once ('ready', () => {
-    if (module.exports.discover && module.exports.discover instanceof Discover) {
-        module.exports.discover.advertise ('initialized');
-    }
-});
+// const RemovalTimeouts = new Map ();
+
+// async function removeNode (nodeID) {
+//     // if this node is master, remove the lost node
+//     if (isMaster && RemovalTimeouts.has (nodeID)) {
+//         log.debug (`Removing node ${nodeID}...`);
+//         await rqlite.cluster.remove (nodeID);
+//     }
+// }
 
 module.exports = {
     // emits 'ready' when rqlited is ready for connections
     
-    start: (address, subnet) => {
+    start: (address, subnet, standalone) => {
+        // start rqlited in standalone mode
+        if (standalone === true) {
+            log.debug ('Starting rqlited in standalone mode...');
+            rqlited.spawn (andress, null, standalone);
+            return;
+        }
+        // start automatic discovery
         log.debug ('Starting automatic discovery...');
         options.address = address;
         options.unicast = iprange (subnet);
@@ -76,30 +86,31 @@ module.exports = {
     this.discover = new Discover (options, initialize)
         .on ('promotion', async () => {
             isMaster = true;
-            await ACME.createAccount ();
         })
         .on ('demotion', () => {
             isMaster = false;
         })
         .on ('added', (node) => {
-            log.debug (`Found ${node.isMaster ? 'master' : 'node'} at ${node.address}.`);
+            log.debug (`Found cluster discover node at ${node.address}.`);
             Peers.add (node.address);
             // node added to cluster
-            if (node.advertisement == 'initialized') {
+            if (node.advertisement == 'ready' || node.advertisement == 'reconnected') {
                 // initialize new node in existing cluster
-                log.debug (`Joining rqlited cluster via ${node.address}...`);
+                log.debug (`Joining rqlited cluster via node ${node.hostName} at ${node.address}...`);
                 discovery.emit ('complete', address, node.address);
             }
         })
-        .on ('removed', async function removeNode (node) {
+        .on ('removed', (node) => {
             log.debug (`Lost node ${node.hostName} at ${node.address}.`);
             Peers.delete (node.address);
-            // if this node is master, remove the lost node
-            if (isMaster) {
-                log.debug (`Removing node ${node.address}...`);
-                await rqlite.cluster.remove (node.hostName);
-            }
         });
+    },
+
+    advertise: (advertisement) => {
+        if (module.exports.discover && module.exports.discover instanceof Discover) {
+            module.exports.discover.advertise (advertisement);
+            log.debug (`Set cluster discover advertisement to ${advertisement}.`);
+        }
     },
 
     isMaster: () => {
@@ -108,6 +119,7 @@ module.exports = {
 
     stop: () => {
         if (this.discover && this.discover instanceof Discover) {
+            log.debug ('Stopping cluster auto-discovery...');
             this.discover.stop ();
         }
         rqlited.kill ();
