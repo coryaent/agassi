@@ -7,8 +7,8 @@ const { sleep } = require ('sleepjs');
 const EventEmitter = require ('events');
 const iprange = require ('iprange');
 
-const rqlite = require ('./rqlite.js');
-const rqlited = require ('./rqlited.js');
+const rqlite = require ('./rqlite/rqlite.js');
+const rqlited = require ('./rqlite/rqlited.js');
 
 // default options
 const options = {

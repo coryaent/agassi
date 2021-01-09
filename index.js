@@ -9,9 +9,9 @@ const HTTPS = require ('./http/https.js');
 
 const ACME = require ('./acme.js');
 
-const rqlite = require ('../rqlite/rqlite.js');
-const rqlited = require ('../rqlite/rqlited.js');
-const Query = require ('../rqlite/query.js');
+const rqlite = require ('./rqlite/rqlite.js');
+const rqlited = require ('./rqlite/rqlited.js');
+const Query = require ('./rqlite/query.js');
 
 const Docker = require('./docker.js');
 const ip = require ('ip');
