@@ -33,7 +33,6 @@ const id = (function getUUID () {
 }) ();
 
 async function pollStatus (listenAddress) {
-
     try {
         const response = await axios.request ({
             url: `http://${listenAddress}:4001/status`,
