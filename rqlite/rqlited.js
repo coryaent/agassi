@@ -32,6 +32,27 @@ const id = (function getUUID () {
     return uuid;
 }) ();
 
+async function pollStatus (listenAddress) {
+
+    try {
+        const response = await axios.request ({
+            url: `http://${listenAddress}:4001/status`,
+            method: 'get',
+            timeout: 500
+        });
+
+        return [
+            // check for connection
+            new Boolean (response.data.store.raft.state).valueOf (),
+            // check for leadership
+            new Boolean (response.data.store.raft.state == 'Leader').valueOf ()
+        ];
+
+    } catch {
+        return [false, false];
+    }
+}
+
 async function pollLeadership (listenAddress) {
     try {
         const response = await axios.request ({
@@ -148,7 +169,7 @@ module.exports = {
         }
     },
 
-    spawn: (listenAddress, joinAddress) => {
+    spawn: (listenAddress, joinAddress, standalone) => {
         // concat the arguments with defaults
         const dArgs = [
             '-node-id', id,
@@ -174,7 +195,7 @@ module.exports = {
 
         setImmediate ((spawnError) => {
             if (!spawnError) {
-                dStatus.emit ('spawned', listenAddress);
+                dStatus.emit ('spawned', listenAddress, standalone);
             }
         });
     },
