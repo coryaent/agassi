@@ -1,14 +1,14 @@
 # compile rqlited
 FROM golang:1.15 AS rqlited-builder
-ENV VERSION=5.8.0
+ENV RQLITE_VERSION=5.8.0
 WORKDIR /opt
 COPY rqmkown.c ./rqmkown.c
 RUN gcc rqmkown.c -o ./rqmkown && chmod ug+s ./rqmkown && \
-    wget https://github.com/rqlite/rqlite/archive/v${VERSION}.tar.gz && \
-    tar xvf v${VERSION}.tar.gz && \
-    cd /opt/rqlite-${VERSION}/cmd/rqlited && \
+    wget https://github.com/rqlite/rqlite/archive/v${RQLITE_VERSION}.tar.gz && \
+    tar xvf rqlite-${RQLITE_VERSION}.tar.gz && \
+    cd /opt/rqlite-${RQLITE_VERSION}/cmd/rqlited && \
     go build -o /opt/rqlited && \
-    cd /opt/rqlite-${VERSION}/cmd/rqlite && \
+    cd /opt/rqlite-${RQLITE_VERSION}/cmd/rqlite && \
     go build -o /opt/rqlite
 
 # bundle agassi
