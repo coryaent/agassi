@@ -82,7 +82,9 @@ ssl.verifyCertificateKey (Buffer.from (Config.defaultCert).toString (), Buffer.f
         throw new ConfigError (`Default certificate does not match default key.`);
     }
 });
-if (!isUrl (Config.dockerSocket)) {
+try {
+    new URL (Config.dockerSocket);
+} catch {
     throw new ConfigError (`${Config.dockerSocket} does not appear to be a valid URL.`);
 }
 
