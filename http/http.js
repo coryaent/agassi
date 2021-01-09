@@ -16,7 +16,7 @@ module.exports = {
             log.debug (`Received certificate challenge request for ${requestURL.hostname}.`);
             const token = requestURL.pathname.replace ('/.well-known/acme-challenge/', '');
             const queryResponse = await rqlite.dbQuery (`SELECT response FROM challenges
-                WHERE token = '${token}';`, 'strong');
+                WHERE token = '${token}';`);
             if (queryResponse.results.length > 0) {
                 log.debug (`Got challenge response from database in ${queryResponse.time}.`)
                 // write challenge response to request

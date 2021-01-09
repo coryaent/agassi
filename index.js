@@ -41,7 +41,7 @@ rqlited.status.once ('ready', async () => {
             Query.services.createTable,
             Query.challenges.createTable,
             Query.certificates.createTable
-        ], 'strong');
+        ]);
     }
     HTTP.start ();
 });

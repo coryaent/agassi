@@ -85,7 +85,7 @@ module.exports = {
             service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] : null;
 
         const executionResult = await rqlite.dbExecute (`INSERT OR REPLACE INTO services (id, protocol, hostname, port, domain, auth)
-        VALUES ('${id}', '${protocol}', '${hostname}', ${port}, '${domain}', '${auth}');`, 'strong');
+        VALUES ('${id}', '${protocol}', '${hostname}', ${port}, '${domain}', '${auth}');`);
 
         log.debug (`Docker service ${service.ID} added to database in ${executionResult.time}.`);
     },

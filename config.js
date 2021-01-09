@@ -95,5 +95,8 @@ Config.networkLabelKey = process.env.NETWORK_LABEL_KEY ? process.env.NETWORK_LAB
 Config.networkLabelValue = process.env.NETWORK_LABEL_VALUE ? process.env.NETWORK_LABEL_VALUE : 'overlay';
 Config.realm = process.env.REALM ? process.env.REALM : 'Agassi';
 Config.standalone = process.env.STANDALONE == 'true' ? true : false;
+Config.certRenewalThreshold = process.env.CERT_RENEWAL_THRESHOLD ? parseInt (process.env.CERT_RENEWAL_THRESHOLD) : 45; // days
+Config.certExpirationSafeguard = process.env.CERT_EXPIRATION_SAFEGUARD ? parseInt (process.env.CERT_EXPIRATION_SAFEGUARD) : 7; //days
+Config.certMaintenanceInterval = process.env.CERT_MAINTENANCE_INTERVAL ? parseInt (process.env.CERT_MAINTENANCE_INTERVAL) : 6; // hours
 
 module.exports = Config;
