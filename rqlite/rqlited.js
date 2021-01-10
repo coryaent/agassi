@@ -32,6 +32,7 @@ const id = (function getUUID () {
 }) ();
 
 // status of the rqlited child process
+var readinessCheck = undefined;
 var statusCheck = undefined;
 var isConnected = undefined;
 var wasConnected = undefined;
@@ -61,16 +62,17 @@ const dStatus = new EventEmitter ();
 dStatus.once ('spawned', (listenAddress, standalone) => {
     log.debug (`Starting status poll for rqlited node on ${listenAddress}...`);
     // periodicall poll status
-    statusCheck = setInterval (async function checkReadiness () {
+    readinessCheck = setInterval (async function checkReadiness () {
         [isConnected, isLeader] = await pollStatus (listenAddress);
         if (isConnected) {
             dStatus.emit ('ready', listenAddress, standalone);
-            process.nextTick (clearInterval (statusCheck))
         }
     }, 1000);
 });
 // start regular status check
 dStatus.once ('ready', (listenAddress, standalone) => {
+
+    clearInterval (readinessCheck);
     // do not poll connection status if not in cluster
     if (standalone !== true) {
         // poll daemon for connection status
@@ -113,6 +115,7 @@ module.exports = {
     spawn: (listenAddress, joinAddress, standalone) => {
         // concat the arguments with defaults
         const dArgs = [
+            '-on-disk',
             '-node-id', id,
             '-http-addr', `${listenAddress}:4001`,
             '-raft-addr', `${listenAddress}:4002`,
@@ -142,6 +145,10 @@ module.exports = {
     },
 
     kill: () => {
+        // stop any and all status checks
+        if (readinessCheck && readinessCheck instanceof Timeout) {
+            clearInterval (readinessCheck);
+        }
         // stop any and all status checks
         if (statusCheck && statusCheck instanceof Timeout) {
             clearInterval (statusCheck);

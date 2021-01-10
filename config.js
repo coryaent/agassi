@@ -68,6 +68,7 @@ ssl.verifyKey (Buffer.from (Config.acmeKey).toString (), {}, function checkAcmeK
 if (!isEmail (Config.acmeEmail.replace ('mailto:', ''))) {
     throw new ConfigError (`${Config.acmeEmail} does not appear to be a valid email.`);
 }
+// see https://kb.wisc.edu/iam/page.php?id=4064
 // ssl.verifyCertificateKey (Buffer.from (Config.defaultCert).toString (), Buffer.from (Config.defaultKey).toString (), {}, function checkDefaultPair (error, result) {
 //     if (error) {
 //         throw new ConfigError (`Could not validate default cert-key pair.`);
