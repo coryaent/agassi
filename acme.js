@@ -22,12 +22,11 @@ async function performMaintenance () {
         const serviceQueryResponse = await rqlite.dbQuery ('SELECT domain FROM services;');
         const serviceDomains = serviceQueryResponse.results.map (result => result.domain);
 
-        const certQueryResponse = await rqlite.dbQuery (`SELECT id, expiration, domain FROM certificates
-        ORDER BY expiration DESC;`);
-        const latestCerts = certQueryResponse.results;
+        const allCertQueryResponse = await rqlite.dbQuery (`SELECT id, expiration, domain FROM certificates;`, 'strong');
+        const allCerts = allCertQueryResponse.results;
 
         // cleanup expired certs
-        latestCerts.forEach (async (cert) => {
+        allCerts.forEach (async (cert) => {
             const unixTime = Math.floor (Date.now () / 1000);
             // if cert is expired
             if (cert.expiration < unixTime) {
@@ -37,10 +36,14 @@ async function performMaintenance () {
             }
         });
 
-        // check that the latest cert exists in docker services
-        const potentialRenewals = latestCerts.find (cert => {
-            // cert domain has current docker service
-            return serviceDomains.includes (cert.domain);
+        // get only the latest certs
+        const potentialRenewals = [];
+        serviceDomains.forEach (async (domain) => {
+            const latestCertQueryResponse = await rqlite.dbQuery (`SELECT id, expiration, domain FROM certificates
+            WHERE domain = '${domain}' ORDER BY expiration DESC LIMIT 1;`, 'strong');
+            if (latestCertQueryResponse.results.length > 0) {
+                potentialRenewals.push (latestCertQueryResponse.results[0]);
+            }
         });
 
         // check that the current time is past the expiration threshold
@@ -51,7 +54,9 @@ async function performMaintenance () {
         });
 
         // get new certs as needed
-        certsToRenew.map (cert => cert.domain).forEach (addNewCertToDB);
+        certsToRenew.map (cert => cert.domain).forEach (async (domain) => {
+            await addNewCertToDB (domain);
+        });
     }
 }
 
@@ -82,8 +87,8 @@ async function addNewCertToDB (domain) {
     const httpAuthorizationResponse = await client.getChallengeKeyAuthorization (httpChallenge);
 
     // add challenge and response to db table
-    await rqlite.dbExecute (`INSERT INTO challenges (domain, token, response)
-    VALUES ('${domain}', '${httpAuthorizationToken}', '${httpAuthorizationResponse}');`);
+    await rqlite.dbExecute (`INSERT INTO challenges (token, response)
+    VALUES ('${httpAuthorizationToken}', '${httpAuthorizationResponse}');`);
 
     // db consensus means it's ready
     await client.completeChallenge (httpChallenge);
@@ -99,7 +104,7 @@ async function addNewCertToDB (domain) {
     const certificate = await client.getCertificate (order);
 
     // remove challenge from table
-    await rqlite.dbExecute (`DELETE FROM services WHERE token = '${httpAuthorizationToken}';`);
+    await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${httpAuthorizationToken}';`);
 
     // calculate expiration date by adding 2160 hours (90 days)
     const jsTime = new Date (); // JS (ms)

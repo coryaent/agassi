@@ -1,5 +1,7 @@
 "use strict";
 
+const log = require ('./logger.js');
+
 const Config = require ('./config.js');
 
 const Cluster = require ('./cluster.js');
@@ -28,15 +30,12 @@ Docker.API.listNetworks ().then (function findAgassiOverlay (networks) {
         return ip.cidrSubnet (subnet).contains (address);
     });
     // start/join the cluster/standalone process
-    if (Config.standalone === true) {
-        rqlited.spawn (address, null, true);
-    } else {
-        Cluster.start (address, subnet);
-    }
+    Cluster.start (address, subnet, Config.standalone);
 });
 
 // start listening to Docker socket
 rqlited.status.once ('ready', async () => {
+    Cluster.advertise ('ready');
     if (rqlited.isLeader ()) {
         await ACME.createAccount ();
         await rqlite.dbTransact ([
@@ -45,7 +44,6 @@ rqlited.status.once ('ready', async () => {
             Query.certificates.createTable
         ]);
     }
-    Cluster.advertise ('ready');
     HTTP.start ();
 });
 
@@ -60,46 +58,73 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
         const allSwarmServiceIDs = await Docker.API.listServices ().map (service => service.ID);
 
         // filter those which have the requisite labels
-        const swarmServiceIDs = allSwarmServiceIDs.map (async (id) => { 
+        const agassiSwarmServices = allSwarmServiceIDs.map (async (id) => { 
             await Docker.API.getService (id).inspect (); 
         }).filter ((service) => {
             return Docker.isAgassiService (service);
-        }).map (service => service.ID);
+        });
 
         // pull rqlited services from database
         const dbServiceIDs = (await rqlite.dbQuery ('SELECT id FROM services;', 'strong')).results.map (result => result.id);
 
         // if swarm has service that rqlited doesn't, add service and cert to rqlited
+        agassiSwarmServices.filter (service => !dbServiceIDs.includes (service.ID)).forEach (async (service) => {
+            await Docker.pushServiceToDB (service);
+            await ACME.certify (service.Spec.Labels[Config.serviceLabelPrefix + 'domain']);
+        });
 
-        // if rqlited has service that swarm doesn't, and rqlited has no pending challenge,
-        // remove the service from rqlited without removing the cert
+        // if rqlited has service that swarm doesn't, remvoe the service and not the cert
+        dbServiceIDs.filter (id => !allSwarmServiceIDs.includes (id)).forEach (async (id) => {
+            await Docker.removeServiceFromDB (id);
+        });
     }
     HTTPS.start ();
 });
 
+HTTPS.server.once ('listening', () => {
+    ACME.maintenance.start ();
+});
+
 rqlited.status.on ('disconnected', () => {
+    Cluster.advertise ('disconnected');
     HTTPS.stop ();
 });
 
 rqlited.status.on ('reconnected', () => {
+    Cluster.advertise ('reconnected');
     HTTPS.start ();
 });
 
 Docker.Events.on ('_message', async function processDockerEvent (event) {
-    // on service creation, update or removal
-    if (event.Type === 'service') {
-        const service = await Docker.API.getService (event.Actor.ID).inspect ();
-        if (Docker.isAgassiService (service)) {
+    if (rqlited.isLeader ()) {
+        // on service creation, update or removal
+        if (event.Type === 'service') {
+            const service = await Docker.API.getService (event.Actor.ID).inspect ();
+            if (Docker.isAgassiService (service)) {
 
-            if (event.Action === 'update' || event.Action === 'create') {
-                await Docker.pushServiceToDB (service);
-                if (event.Action === 'create') {
-                    await ACME.certify (service.Spec.Labels[Config.serviceLabelPrefix + 'domain']);
+                if (event.Action === 'update' || event.Action === 'create') {
+                    await Docker.pushServiceToDB (service);
+                    if (event.Action === 'create') {
+                        await ACME.certify (service.Spec.Labels[Config.serviceLabelPrefix + 'domain']);
+                    }
                 }
-            }
-            if (event.Action === 'remove') {
-                await Docker.removeServiceFromDB (event.Actor.ID);
+                if (event.Action === 'remove') {
+                    await Docker.removeServiceFromDB (event.Actor.ID);
+                }
             }
         }
     }
+});
+
+process.on ('SIGINT', () => {
+    log.info ('SIGINT ignored, use SIGTERM to exit.');
+});
+
+process.on ('SIGTERM', () => {
+    log.info ('SIGTERM received, exiting...');
+    ACME.maintenance.stop ();
+    Docker.Events.stop ();
+    HTTPS.stop ();
+    HTTP.stop ();
+    Cluster.stop ();
 });
