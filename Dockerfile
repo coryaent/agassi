@@ -44,7 +44,7 @@ COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
 COPY nsswitch.conf /etc/nsswitch.conf
 
 # allow system ports as non-root
-RUN apt-get update && apt-get install -y libcap2-bin && apt-get clean && \
+RUN apt-get update && apt-get install -y openssl libcap2-bin && apt-get clean && \
     setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi
 
 USER 150:150
