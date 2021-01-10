@@ -19,11 +19,14 @@ var maintenanceInterval = undefined;
 async function performMaintenance () {
 
     if (rqlited.isLeader ()) {
+        log.debug ('Performing maintenance on certificate and service tables...');
         const serviceQueryResponse = await rqlite.dbQuery ('SELECT domain FROM services;');
         const serviceDomains = serviceQueryResponse.results.map (result => result.domain);
+        log.debug (`Found ${serviceDomains.length} services in table in ${serviceQueryResponse.time}.`);
 
-        const allCertQueryResponse = await rqlite.dbQuery (`SELECT id, expiration, domain FROM certificates;`, 'strong');
+        const allCertQueryResponse = await rqlite.dbQuery (`SELECT id, expiration FROM certificates;`, 'strong');
         const allCerts = allCertQueryResponse.results;
+        log.debug (`Found ${allCerts.length} certificates in table in ${allCertQueryResponse.time}.`);
 
         // cleanup expired certs
         allCerts.forEach (async (cert) => {
@@ -32,7 +35,7 @@ async function performMaintenance () {
             if (cert.expiration < unixTime) {
                 // remove cert from db
                 const executionResponse = await rqlite.dbExecute (`DELETE FROM certificates WHERE id = ${cert.id};`);
-                log.debug (`Removed expired certificate with id ${cert.id} for domain ${cert.domain} in ${executionResponse.time}.`);
+                log.debug (`Removed expired certificate with id ${cert.id} in ${executionResponse.time}.`);
             }
         });
 
@@ -52,6 +55,7 @@ async function performMaintenance () {
             // latest cert for domain is past threshold
             return cert.expiration < unixTime + Config.certRenewalThreshold * secondsInDay;
         });
+        log.debug (`Found ${certsToRenew.length} certificates whose expiration is past threshold.`);
 
         // get new certs as needed
         certsToRenew.map (cert => cert.domain).forEach (async (domain) => {
@@ -62,16 +66,25 @@ async function performMaintenance () {
 
 async function hasCert (domain) {
     // check if a cert expiration is beyond a certain safeguard
-    const queryResponse = await rqlite.dbQuery (`SELECT id, expiration FROM certificates
-    WHERE domain = '${domain}';`);
+    log.debug (`Checking for current certificates for domain ${domain}...`);
+    const queryResponse = await rqlite.dbQuery (`SELECT expiration FROM certificates
+    WHERE domain = '${domain}';`, 'strong');
 
-    return queryResponse.results.some (cert => {
+    const hasCurrent = queryResponse.results.some (cert => {
         const unixTime = Math.floor (Date.now () / 1000);
         return cert.expiration > unixTime + Config.certExpirationSafeguard * secondsInDay;
     });
+
+    hasCurrent ?
+        log.debug (`Found one or more current certificates for domain ${domain}.`) :
+        log.debug (`Could not find any current certificates for domain ${domain}.`);
+
+    return hasCurrent;
 }
 
 async function addNewCertToDB (domain) {
+    const start = Date.now ();
+    log.debug (`Adding new certifiate for domain ${domain}...`);
 
     const order = await client.createOrder ({
         identifiers: [
@@ -113,6 +126,8 @@ async function addNewCertToDB (domain) {
     // add certificate to db table
     await rqlite.dbExecute (`INSERT INTO certificates (domain, certificate, expiration)
     VALUES ('${domain}', '${certificate}', ${expiration});`);
+
+    log.debug (`Added new certificate for domain ${domain} in ${(Date.now () - start) / 1000}s.`);
 }
 
 module.exports = {
