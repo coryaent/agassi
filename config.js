@@ -68,20 +68,20 @@ ssl.verifyKey (Buffer.from (Config.acmeKey).toString (), {}, function checkAcmeK
 if (!isEmail (Config.acmeEmail.replace ('mailto:', ''))) {
     throw new ConfigError (`${Config.acmeEmail} does not appear to be a valid email.`);
 }
-ssl.verifyCertificateKey (Buffer.from (Config.defaultCert).toString (), Buffer.from (Config.defaultKey).toString (), {}, function checkDefaultPair (error, result) {
-    if (error) {
-        throw new ConfigError (`Could not validate default cert-key pair.`);
-    }
-    if (!result.certStatus.valid) {
-        throw new ConfigError (`Default certificate does not appear to be valid.`);
-    }
-    if (!result.keyStatus.valid) {
-        throw new ConfigError (`Default key does not appear to be valid.`);
-    }
-    if (!result.match) {
-        throw new ConfigError (`Default certificate does not match default key.`);
-    }
-});
+// ssl.verifyCertificateKey (Buffer.from (Config.defaultCert).toString (), Buffer.from (Config.defaultKey).toString (), {}, function checkDefaultPair (error, result) {
+//     if (error) {
+//         throw new ConfigError (`Could not validate default cert-key pair.`);
+//     }
+//     if (!result.certStatus.valid) {
+//         throw new ConfigError (`Default certificate does not appear to be valid.`);
+//     }
+//     if (!result.keyStatus.valid) {
+//         throw new ConfigError (`Default key does not appear to be valid.`);
+//     }
+//     if (!result.match) {
+//         throw new ConfigError (`Default certificate does not match default key.`);
+//     }
+// });
 try {
     new URL (Config.dockerSocket);
 } catch {
