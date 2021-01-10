@@ -57,11 +57,11 @@ Config.dockerSocket = process.env.DOCKER_SOCKET_URL;
 if (!isUrl (Config.acmeDirectory)) {
     throw new ConfigError (`${Config.acmeDirectory} does not appear to be a valid URL.`);
 }
-ssl.verifyKey (Config.acmeKey, {}, function checkAcmeKey (error, result) {
+ssl.verifyKey (Buffer.from (Config.acmeKey).toString (), {}, function checkAcmeKey (error, result) {
     if (error) {
         throw new ConfigError (`Could not validate ACME key or the key is not valid.`);
     }
-    if (!result.keyStatus.valid) {
+    if (!result.valid) {
         throw new ConfigError (`ACME key does not appear to be valid.`);
     }
 });
