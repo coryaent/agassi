@@ -101,5 +101,6 @@ Config.standalone = process.env.STANDALONE == 'true' ? true : false;
 Config.certRenewalThreshold = process.env.CERT_RENEWAL_THRESHOLD ? parseInt (process.env.CERT_RENEWAL_THRESHOLD) : 45; // days
 Config.certExpirationSafeguard = process.env.CERT_EXPIRATION_SAFEGUARD ? parseInt (process.env.CERT_EXPIRATION_SAFEGUARD) : 7; //days
 Config.certMaintenanceInterval = process.env.CERT_MAINTENANCE_INTERVAL ? parseInt (process.env.CERT_MAINTENANCE_INTERVAL) : 6; // hours
+Config.logLevel = process.env.LOG_LEVEL ? process.env.LOG_LEVEL : 'info';
 
 module.exports = Config;
