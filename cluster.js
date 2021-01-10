@@ -14,6 +14,7 @@ const rqlited = require ('./rqlite/rqlited.js');
 const options = {
     hostname: rqlited.uuid,
     port: 4002,
+    nodeTimeout: 10 * 1000
 };
 
 // maintain a list of Peers external to node-discover nodes

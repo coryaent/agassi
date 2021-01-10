@@ -79,7 +79,7 @@ dStatus.once ('ready', (listenAddress, standalone) => {
         statusCheck = setInterval (async function checkStatus () {
             // remember the last connection status
             wasConnected = isConnected;
-            [isConnected, isLeader] = await pollConnection (listenAddress);
+            [isConnected, isLeader] = await pollStatus (listenAddress);
 
             // if connection status change
             if (isConnected != wasConnected) {
