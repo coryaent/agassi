@@ -55,7 +55,7 @@ async function initialize (error) {
 };
 
 const discovery = new EventEmitter ()
-.on ('complete', function spawnRqlited (listenAddress, joinAddress) {
+.once ('complete', function spawnRqlited (listenAddress, joinAddress) {
     rqlited.spawn (listenAddress, joinAddress);
 });
 
@@ -70,7 +70,6 @@ const discovery = new EventEmitter ()
 // }
 
 module.exports = {
-    // emits 'ready' when rqlited is ready for connections
     
     start: (address, subnet, standalone) => {
         // start rqlited in standalone mode
@@ -97,7 +96,6 @@ module.exports = {
             // node added to cluster
             if (node.advertisement == 'ready' || node.advertisement == 'reconnected') {
                 // initialize new node in existing cluster
-                log.debug (`Joining rqlited cluster via node ${node.hostName} at ${node.address}...`);
                 discovery.emit ('complete', address, node.address);
             }
         })

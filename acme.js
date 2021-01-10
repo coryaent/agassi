@@ -157,6 +157,7 @@ module.exports = {
         stop: () => {
             if (maintenanceInterval && maintenanceInterval instanceof Timeout) {
                 clearInterval (maintenanceInterval);
+                maintenanceInterval = undefined;
             }
         }
     }
