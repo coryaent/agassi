@@ -44,8 +44,14 @@ COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
 COPY nsswitch.conf /etc/nsswitch.conf
 
 # allow system ports as non-root
-RUN apt-get update && apt-get install -y openssl libcap2-bin && apt-get clean && \
+RUN apt-get update && apt-get install -y \
+    curl=7.64.0-4+deb10u1 \
+    openssl=1.1.1d-0+deb10u4 \
+    libcap2-bin=1:2.25-2 \
+    && apt-get clean && \
     setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi
+
+STOPSIGNAL SIGTERM
 
 HEALTHCHECK	--interval=5s --timeout=2s --start-period=15s \
     CMD curl --fail http://$(hostname)/status || exit 1
