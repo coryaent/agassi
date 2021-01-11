@@ -47,6 +47,11 @@ COPY nsswitch.conf /etc/nsswitch.conf
 RUN apt-get update && apt-get install -y openssl libcap2-bin && apt-get clean && \
     setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi
 
+HEALTHCHECK	--interval=5s
+		--timeout=2s
+		--start-period=15s
+		CMD curl --fail http://$(hostname)/status || exit 1
+
 USER 150:150
 
 VOLUME ["/data"]
