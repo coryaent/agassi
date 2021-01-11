@@ -115,6 +115,7 @@ module.exports = {
     spawn: (listenAddress, joinAddress, standalone) => {
         // concat the arguments with defaults
         const dArgs = [
+            '-raft-open-timeout', '15s',
             '-on-disk',
             '-node-id', id,
             '-http-addr', `${listenAddress}:4001`,
