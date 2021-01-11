@@ -150,12 +150,14 @@ module.exports = {
     maintenance: {
         start: () => {
             if (!maintenanceInterval) {
+                log.info ('Starting automatic certificate renewal...');
                 maintenanceInterval = setInterval (performMaintenance, Config.certMaintenanceInterval * msInHour);
             }
         },
 
         stop: () => {
             if (maintenanceInterval && maintenanceInterval instanceof Timeout) {
+                log.info ('Stopping automatic certificate renewal...');
                 clearInterval (maintenanceInterval);
                 maintenanceInterval = undefined;
             }

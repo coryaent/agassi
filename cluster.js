@@ -59,11 +59,11 @@ const discovery = new EventEmitter ()
     rqlited.spawn (listenAddress, joinAddress);
 });
 
-// const RemovalTimeouts = new Map ();
+const RemovalTimeouts = new Map ();
 
 // async function removeNode (nodeID) {
 //     // if this node is master, remove the lost node
-//     if (isMaster && RemovalTimeouts.has (nodeID)) {
+//     if (RemovalTimeouts.has (nodeID)) {
 //         log.debug (`Removing node ${nodeID}...`);
 //         await rqlite.cluster.remove (nodeID);
 //     }
@@ -93,6 +93,7 @@ module.exports = {
         .on ('added', (node) => {
             log.debug (`Found cluster discover node at ${node.address}.`);
             Peers.add (node.address);
+            RemovalTimeouts.delete (node.address);
             // node added to cluster
             if (node.advertisement == 'ready' || node.advertisement == 'reconnected') {
                 // initialize new node in existing cluster

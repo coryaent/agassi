@@ -87,12 +87,10 @@ HTTPS.server.once ('listening', () => {
 
 rqlited.status.on ('disconnected', () => {
     Cluster.advertise ('disconnected');
-    HTTPS.stop ();
 });
 
 rqlited.status.on ('reconnected', () => {
     Cluster.advertise ('reconnected');
-    HTTPS.start ();
 });
 
 Docker.Events.on ('_message', async function processDockerEvent (event) {
