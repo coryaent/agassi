@@ -49,7 +49,7 @@ module.exports = {
     }),
 
     start: () => {
-        if (!this.server.listening) {
+        if (this.server && !this.server.listening) {
             log.info ('Starting HTTP server...');
             this.server.listen (80, null, (error) => {
                 if (error) {
@@ -60,7 +60,7 @@ module.exports = {
     },
 
     stop: () => {
-        if (this.server.listening) {
+        if (this.server && this.server.listening) {
             log.info ('Stopping HTTP server...');
             this.server.stop ();
         }

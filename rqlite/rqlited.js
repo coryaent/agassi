@@ -15,21 +15,23 @@ try {
     throw error;
 }
 
-// fetch existing uuid or create a new one
-const id = (function getUUID () {
+function getUUID () {
     const idPath = '/data/rqlited.uuid';
     let uuid = undefined;
     if (fs.existsSync (idPath)) {
-        log.debug (`Reading rqlited node id from path ${idPath}...`);
         uuid = fs.readFileSync (idPath, 'utf-8');
+        log.debug (`Reading rqlited node id from path ${idPath}...`);
     } else {
-        log.debug ('Generating new rqlited id...');
         uuid = uuidv4 ();
         fs.writeFileSync (idPath, uuid);
+        log.debug ('Generating new rqlited id...');
     }
     log.debug (`Got UUID ${uuid}.`);
     return uuid;
-}) ();
+}
+
+// fetch existing uuid or create a new one
+const id = getUUID ();
 
 // status of the rqlited child process
 var readinessCheck = undefined;
@@ -100,6 +102,8 @@ dStatus.on ('reconnected', () => log.debug ('Rqlited reconnected.'));
 dStatus.on ('disconnected', () => log.debug ('Rqlited disconnected.'));
 
 module.exports = {
+    getUUID,
+
     uuid: id,
     // status of this node/instance/process of rqlited
     status: dStatus,
@@ -124,7 +128,7 @@ module.exports = {
         ];
         // add host to join if there is one
         if (joinAddress) {
-            dArgs.unshift ('-join', `http://${joinAddress}:4001`);
+            dArgs.unshift ('-join', joinAddress.map (address => `http://${address}:4001`).toString ());
         }
         // make sure there is no spawn error
         let spawnError = null;

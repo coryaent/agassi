@@ -14,7 +14,7 @@ const rqlited = require ('./rqlite/rqlited.js');
 const options = {
     hostname: rqlited.uuid,
     port: 4002,
-    nodeTimeout: 10 * 1000
+    nodeTimeout: 5 * 1000
 };
 
 // maintain a list of Peers external to node-discover nodes
@@ -50,7 +50,7 @@ async function initialize (error) {
     // indicates completion status and joinHost
     // if this cluster node is master, "const joinAddress"
     // will be undefined here
-    const joinAddress = Array.from (Peers.values ()).find ((node) => { return node.isMaster; });
+    const joinAddress = isMaster ? undefined : Array.from (Peers.values ());
     discovery.emit ('complete', options.address, joinAddress);
 };
 
@@ -107,8 +107,8 @@ module.exports = {
     },
 
     advertise: (advertisement) => {
-        if (module.exports.discover && module.exports.discover instanceof Discover) {
-            module.exports.discover.advertise (advertisement);
+        if (this.discover && this.discover instanceof Discover) {
+            this.discover.advertise (advertisement);
             log.debug (`Set cluster discover advertisement to ${advertisement}.`);
         }
     },
