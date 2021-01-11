@@ -75,6 +75,7 @@ dStatus.once ('spawned', (listenAddress, standalone) => {
 dStatus.once ('ready', (listenAddress, standalone) => {
 
     clearInterval (readinessCheck);
+    readinessCheck = undefined;
     // do not poll connection status if not in cluster
     if (standalone !== true) {
         // poll daemon for connection status
@@ -151,11 +152,11 @@ module.exports = {
 
     kill: () => {
         // stop any and all status checks
-        if (readinessCheck && readinessCheck instanceof Timeout) {
+        if (readinessCheck) {
             clearInterval (readinessCheck);
         }
         // stop any and all status checks
-        if (statusCheck && statusCheck instanceof Timeout) {
+        if (statusCheck) {
             clearInterval (statusCheck);
         }
         // kill child process

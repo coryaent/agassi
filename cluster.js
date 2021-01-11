@@ -14,7 +14,7 @@ const rqlited = require ('./rqlite/rqlited.js');
 const options = {
     hostname: rqlited.uuid,
     port: 4002,
-    nodeTimeout: 5 * 1000
+    nodeTimeout: 10 * 1000
 };
 
 // maintain a list of Peers external to node-discover nodes
@@ -51,11 +51,12 @@ async function initialize (error) {
     // if this cluster node is master, "const joinAddress"
     // will be undefined here
     const joinAddress = isMaster ? undefined : Array.from (Peers.values ());
+    if (joinAddress) { await sleep (5000); }
     discovery.emit ('complete', options.address, joinAddress);
 };
 
 const discovery = new EventEmitter ()
-.once ('complete', function spawnRqlited (listenAddress, joinAddress) {
+.once ('complete', async function spawnRqlited (listenAddress, joinAddress) {
     rqlited.spawn (listenAddress, joinAddress);
 });
 

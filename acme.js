@@ -156,7 +156,7 @@ module.exports = {
         },
 
         stop: () => {
-            if (maintenanceInterval && maintenanceInterval instanceof Timeout) {
+            if (maintenanceInterval) {
                 log.info ('Stopping automatic certificate renewal...');
                 clearInterval (maintenanceInterval);
                 maintenanceInterval = undefined;
