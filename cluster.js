@@ -6,6 +6,7 @@ const Discover = require ('node-discover');
 const { sleep } = require ('sleepjs');
 const EventEmitter = require ('events');
 const iprange = require ('iprange');
+const retry = require ('async-retry');
 
 const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
@@ -14,7 +15,6 @@ const rqlited = require ('./rqlite/rqlited.js');
 const options = {
     hostname: rqlited.uuid,
     port: 4002,
-    nodeTimeout: 10 * 1000
 };
 
 // maintain a list of Peers external to node-discover nodes
@@ -31,28 +31,40 @@ async function initialize (error) {
         throw error;
     }
 
-    // looking for Peers
-    log.debug ('Looking for peers...');
-    const retries = 3; let attempt = 1;
-    while ((Peers.size < 1) && (attempt <= retries)) {
-        // backoff
-        await sleep ( attempt * 20 * 1000);
-        if (Peers.size < 1) {
-            log.debug (`No peers found. Retrying (${attempt}/${retries})...`);
-            attempt++;
-        }
+    // look for for Peers
+    const retries = 5; 
+    if (!isMaster) {
+        await retry ((cancel, attempt) => {
+            log.debug (`Looking for peers. Attempt (${attempt}/${retries})...`);
+            if (Peers.size < 1) {
+                throw new Error ('No peers found.');
+            }
+            discovery.emit ('complete', options.address, Array.from (Peers.values ()));
+        }, {
+            retries: retries,
+            minTimeout: 2000,
+        });
     }
 
-    if (Peers.size == 0) { 
-        log.warn ('Could not find any peers.'); 
-    }
+    // log.debug ('Looking for peers...');
+    // let attempt = 1;
+    // while ((Peers.size < 1) && (attempt <= retries)) {
+    //     // backoff
+    //     await sleep ( attempt * 20 * 1000);
+    //     if (Peers.size < 1) {
+    //         attempt++;
+    //     }
+    // }
+
+    // if (Peers.size == 0) { 
+    //     log.warn ('Could not find any peers.'); 
+    // }
 
     // indicates completion status and joinHost
     // if this cluster node is master, "const joinAddress"
     // will be undefined here
-    const joinAddress = isMaster ? undefined : Array.from (Peers.values ());
-    if (joinAddress) { await sleep (5000); }
-    discovery.emit ('complete', options.address, joinAddress);
+    // const joinAddress = isMaster ? undefined : Array.from (Peers.values ());
+    // discovery.emit ('complete', options.address, joinAddress);
 };
 
 const discovery = new EventEmitter ()
@@ -87,6 +99,7 @@ module.exports = {
     this.discover = new Discover (options, initialize)
         .on ('promotion', async () => {
             isMaster = true;
+            discovery.emit ('complete', options.address, null);
         })
         .on ('demotion', () => {
             isMaster = false;

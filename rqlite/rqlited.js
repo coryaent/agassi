@@ -160,7 +160,7 @@ module.exports = {
             clearInterval (statusCheck);
         }
         // kill child process
-        if (this.d && this.d instanceof ChildProcess) {
+        if (this.d) {
             log.debug ('Stopping rqlited process...');
             this.d.kill ('SIGINT');
         }
