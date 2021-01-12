@@ -6,13 +6,16 @@ const Discover = require ('node-discover');
 const { sleep } = require ('sleepjs');
 const EventEmitter = require ('events');
 const iprange = require ('iprange');
-const retry = require ('async-retry');
+// const retry = require ('async-retry');
+const { hostname } = require ('os');
 
 const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
 
 // default options
 const options = {
+    // helloInterval: 5 * 1000, 
+    // checkInterval: 10 * 1000,
     hostname: rqlited.uuid,
     port: 4002,
 };
@@ -31,40 +34,40 @@ async function initialize (error) {
         throw error;
     }
 
-    // look for for Peers
-    const retries = 5; 
-    if (!isMaster) {
-        await retry ((cancel, attempt) => {
-            log.debug (`Looking for peers. Attempt (${attempt}/${retries})...`);
-            if (Peers.size < 1) {
-                throw new Error ('No peers found.');
-            }
-            discovery.emit ('complete', options.address, Array.from (Peers.values ()));
-        }, {
-            retries: retries,
-            minTimeout: 2000,
-        });
+    // // look for for Peers
+    // const retries = 5; 
+    // if (!isMaster) {
+    //     await retry ((cancel, attempt) => {
+    //         log.debug (`Looking for peers. Attempt (${attempt}/${retries})...`);
+    //         if (Peers.size < 1) {
+    //             throw new Error ('No peers found.');
+    //         }
+    //         discovery.emit ('complete', options.address, Array.from (Peers.values ()));
+    //     }, {
+    //         retries: retries,
+    //         minTimeout: 2000,
+    //     });
+    // }
+
+    log.debug ('Looking for peers...');
+    let attempt = 1;
+    while ((Peers.size < 1) && (attempt <= retries)) {
+        // backoff
+        await sleep ( attempt * 10 * 1000);
+        if (Peers.size < 1) {
+            attempt++;
+        }
     }
 
-    // log.debug ('Looking for peers...');
-    // let attempt = 1;
-    // while ((Peers.size < 1) && (attempt <= retries)) {
-    //     // backoff
-    //     await sleep ( attempt * 20 * 1000);
-    //     if (Peers.size < 1) {
-    //         attempt++;
-    //     }
-    // }
-
-    // if (Peers.size == 0) { 
-    //     log.warn ('Could not find any peers.'); 
-    // }
+    if (Peers.size == 0) { 
+        log.warn ('Could not find any peers.'); 
+    }
 
     // indicates completion status and joinHost
     // if this cluster node is master, "const joinAddress"
     // will be undefined here
-    // const joinAddress = isMaster ? undefined : Array.from (Peers.values ());
-    // discovery.emit ('complete', options.address, joinAddress);
+    const joinAddress = isMaster ? undefined : Array.from (Peers.values ());
+    discovery.emit ('complete', options.address, joinAddress);
 };
 
 const discovery = new EventEmitter ()
@@ -98,14 +101,15 @@ module.exports = {
 
     this.discover = new Discover (options, initialize)
         .on ('promotion', async () => {
+            log.debug (`Node ${hostname ()} elected as cluster master.`);
             isMaster = true;
-            discovery.emit ('complete', options.address, null);
         })
         .on ('demotion', () => {
+            log.debug (`Node ${hostname ()} demoted.`)
             isMaster = false;
         })
         .on ('added', (node) => {
-            log.debug (`Found cluster discover node at ${node.address}.`);
+            log.debug (`Found cluster discover ${node.isMaster ? 'master' : 'node'} at ${node.address}.`);
             Peers.add (node.address);
             RemovalTimeouts.delete (node.address);
             // node added to cluster
