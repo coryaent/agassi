@@ -49,9 +49,10 @@ async function initialize (error) {
     //     });
     // }
 
-    log.debug ('Looking for peers...');
-    let attempt = 1;
+    // log.debug ('Looking for peers...');
+    const retries = 3; let attempt = 1;
     while ((Peers.size < 1) && (attempt <= retries)) {
+        log.debug (`Looking for peers. Attempt (${attempt}/${retries})...`);
         // backoff
         await sleep ( attempt * 10 * 1000);
         if (Peers.size < 1) {
@@ -101,11 +102,11 @@ module.exports = {
 
     this.discover = new Discover (options, initialize)
         .on ('promotion', async () => {
-            log.debug (`Node ${hostname ()} elected as cluster master.`);
+            log.debug (`Node ${options.address} elected as cluster master.`);
             isMaster = true;
         })
         .on ('demotion', () => {
-            log.debug (`Node ${hostname ()} demoted.`)
+            log.debug (`Node ${options.address} demoted.`)
             isMaster = false;
         })
         .on ('added', (node) => {
