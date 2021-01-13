@@ -57,7 +57,7 @@ module.exports = {
         Object.keys (has).forEach ((label) => {
             // issue a warning for each missing label
             if (!has[label]) {
-                log.warn (`Docker service ${service.ID} is missing requisite label ${has}.`);
+                log.warn (`Docker service ${service.ID} is missing requisite label ${label}.`);
             }
         });
         
