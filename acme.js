@@ -85,49 +85,56 @@ async function hasCert (domain) {
 async function addNewCertToDB (domain) {
     const start = Date.now ();
     log.debug (`Adding new certifiate for domain ${domain}...`);
+    
+    try {
+        const order = await client.createOrder ({
+            identifiers: [
+                { type: 'dns', value: domain },
+            ]
+        });
 
-    const order = await client.createOrder ({
-        identifiers: [
-            { type: 'dns', value: domain },
-        ]
-    });
+        // get http authorization token and response
+        const authorizations = await client.getAuthorizations (order);
+        const httpChallenge = authorizations[0]['challenges'].find (
+            (element) => element.type === 'http-01');
+        const httpAuthorizationToken = httpChallenge.token;
+        const httpAuthorizationResponse = await client.getChallengeKeyAuthorization (httpChallenge);
 
-    // get http authorization token and response
-    const authorizations = await client.getAuthorizations (order);
-    const httpChallenge = authorizations[0]['challenges'].find (
-        (element) => element.type === 'http-01');
-    const httpAuthorizationToken = httpChallenge.token;
-    const httpAuthorizationResponse = await client.getChallengeKeyAuthorization (httpChallenge);
+        // add challenge and response to db table
+        await rqlite.dbExecute (`INSERT INTO challenges (token, response)
+        VALUES ('${httpAuthorizationToken}', '${httpAuthorizationResponse}');`);
 
-    // add challenge and response to db table
-    await rqlite.dbExecute (`INSERT INTO challenges (token, response)
-    VALUES ('${httpAuthorizationToken}', '${httpAuthorizationResponse}');`);
+        // db consensus means it's ready
+        await client.completeChallenge (httpChallenge);
+        await client.waitForValidStatus (httpChallenge);
 
-    // db consensus means it's ready
-    await client.completeChallenge (httpChallenge);
-    await client.waitForValidStatus (httpChallenge);
+        // challenge is complete and valid, send cert-signing request
+        const [key, csr] = await acme.forge.createCsr ({
+            commonName: domain
+        }, Config.defaultKey);
 
-    // challenge is complete and valid, send cert-signing request
-    const [key, csr] = await acme.forge.createCsr ({
-        commonName: domain
-    }, Config.defaultKey);
+        // finalize the order and pull the cert
+        await client.finalizeOrder (order, csr);
+        const certificate = await client.getCertificate (order);
 
-    // finalize the order and pull the cert
-    await client.finalizeOrder (order, csr);
-    const certificate = await client.getCertificate (order);
+        // remove challenge from table
+        await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${httpAuthorizationToken}';`);
 
-    // remove challenge from table
-    await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${httpAuthorizationToken}';`);
+        // calculate expiration date by adding 2160 hours (90 days)
+        const jsTime = new Date (); // JS (ms)
+        const expiration = Math.floor (jsTime.setUTCHours (jsTime.getUTCHours () + 2160) / 1000); // (UNIX (s))
 
-    // calculate expiration date by adding 2160 hours (90 days)
-    const jsTime = new Date (); // JS (ms)
-    const expiration = Math.floor (jsTime.setUTCHours (jsTime.getUTCHours () + 2160) / 1000); // (UNIX (s))
+        // add certificate to db table
+        await rqlite.dbExecute (`INSERT INTO certificates (domain, certificate, expiration)
+        VALUES ('${domain}', '${certificate}', ${expiration});`);
 
-    // add certificate to db table
-    await rqlite.dbExecute (`INSERT INTO certificates (domain, certificate, expiration)
-    VALUES ('${domain}', '${certificate}', ${expiration});`);
+        log.debug (`Added new certificate for domain ${domain} in ${(Date.now () - start) / 1000}s.`);
 
-    log.debug (`Added new certificate for domain ${domain} in ${(Date.now () - start) / 1000}s.`);
+    } catch (error) {
+        log.error (error.name);
+        log.error (error.message);
+        log.error (`Could not add certificate for domain ${domain} to database.`);
+    }
 }
 
 module.exports = {
@@ -147,7 +154,7 @@ module.exports = {
         }
     },
 
-    maintenance: {
+    Maintenance: {
         start: () => {
             if (!maintenanceInterval) {
                 log.info ('Starting automatic certificate renewal...');

@@ -57,6 +57,7 @@ HTTP.server.once ('listening', () => {
 // add possible existing services on socket connection
 Docker.Events.on ('connect' , async function checkExistingServices () {
     if (rqlited.isLeader ()) {
+        log.debug ('Checking existing docker services for agassi labels...');
         // get all service ID's
         const allSwarmServiceIDs = await Docker.API.listServices ().map (service => service.ID);
 
@@ -69,6 +70,8 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
 
         // pull rqlited services from database
         const dbServiceIDs = (await rqlite.dbQuery ('SELECT id FROM services;', 'strong')).results.map (result => result.id);
+
+        log.debug (`Database has (${dbServiceIDs.length}/${agassiSwarmServices.length}) docker services.`);
 
         // if swarm has service that rqlited doesn't, add service and cert to rqlited
         agassiSwarmServices.filter (service => !dbServiceIDs.includes (service.ID)).forEach (async (service) => {
@@ -85,7 +88,7 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
 });
 
 HTTPS.server.once ('listening', () => {
-    ACME.maintenance.start ();
+    ACME.Maintenance.start ();
 });
 
 rqlited.status.on ('disconnected', () => {
@@ -123,7 +126,7 @@ process.on ('SIGINT', () => {
 
 process.on ('SIGTERM', () => {
     log.info ('SIGTERM received, exiting...');
-    ACME.maintenance.stop ();
+    ACME.Maintenance.stop ();
     Docker.Events.stop ();
     HTTPS.stop ();
     HTTP.stop ();

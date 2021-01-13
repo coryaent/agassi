@@ -95,12 +95,14 @@ dStatus.once ('ready', (listenAddress, standalone) => {
                     dStatus.emit ('disconnected');
                 }
             }
-        }, 450);
+        }, 400);
     }
 });
 // debug logging
 dStatus.on ('reconnected', () => log.debug ('Rqlited reconnected.'));
 dStatus.on ('disconnected', () => log.debug ('Rqlited disconnected.'));
+
+var d = null;
 
 module.exports = {
     getUUID,
@@ -134,7 +136,7 @@ module.exports = {
         // make sure there is no spawn error
         let spawnError = null;
         
-    this.d = spawn ('rqlited', dArgs, {
+    d = spawn ('rqlited', dArgs, {
             stdio: ['ignore', 'inherit', 'inherit']
         })
         .on ('error', (error) => {
@@ -160,9 +162,9 @@ module.exports = {
             clearInterval (statusCheck);
         }
         // kill child process
-        if (this.d) {
+        if (d) {
             log.debug ('Stopping rqlited process...');
-            this.d.kill ('SIGINT');
+            d.kill ('SIGINT');
         }
     }
 };

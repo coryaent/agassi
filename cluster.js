@@ -6,18 +6,15 @@ const Discover = require ('node-discover');
 const { sleep } = require ('sleepjs');
 const EventEmitter = require ('events');
 const iprange = require ('iprange');
-// const retry = require ('async-retry');
-const { hostname } = require ('os');
 
 const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
 
 // default options
 const options = {
-    // helloInterval: 5 * 1000, 
-    // checkInterval: 10 * 1000,
     hostname: rqlited.uuid,
     port: 4002,
+    nodeTimeout: 10 * 1000
 };
 
 // maintain a list of Peers external to node-discover nodes
@@ -34,27 +31,12 @@ async function initialize (error) {
         throw error;
     }
 
-    // // look for for Peers
-    // const retries = 5; 
-    // if (!isMaster) {
-    //     await retry ((cancel, attempt) => {
-    //         log.debug (`Looking for peers. Attempt (${attempt}/${retries})...`);
-    //         if (Peers.size < 1) {
-    //             throw new Error ('No peers found.');
-    //         }
-    //         discovery.emit ('complete', options.address, Array.from (Peers.values ()));
-    //     }, {
-    //         retries: retries,
-    //         minTimeout: 2000,
-    //     });
-    // }
-
     // log.debug ('Looking for peers...');
     const retries = 3; let attempt = 1;
     while ((Peers.size < 1) && (attempt <= retries)) {
         log.debug (`Looking for peers. Attempt (${attempt}/${retries})...`);
         // backoff
-        await sleep ( attempt * 10 * 1000);
+        await sleep ( attempt * 30 * 1000);
         if (Peers.size < 1) {
             attempt++;
         }
@@ -78,13 +60,15 @@ const discovery = new EventEmitter ()
 
 const RemovalTimeouts = new Map ();
 
-// async function removeNode (nodeID) {
-//     // if this node is master, remove the lost node
-//     if (RemovalTimeouts.has (nodeID)) {
-//         log.debug (`Removing node ${nodeID}...`);
-//         await rqlite.cluster.remove (nodeID);
-//     }
-// }
+async function removeNode (nodeID) {
+    // if this node is master, remove the lost node
+    if (RemovalTimeouts.has (nodeID)) {
+        log.debug (`Removing node ${nodeID}...`);
+        await rqlite.cluster.remove (nodeID);
+    }
+}
+
+var discover = null;
 
 module.exports = {
     
@@ -100,7 +84,7 @@ module.exports = {
         options.address = address;
         options.unicast = iprange (subnet);
 
-    this.discover = new Discover (options, initialize)
+    discover = new Discover (options, initialize)
         .on ('promotion', async () => {
             log.debug (`Node ${options.address} elected as cluster master.`);
             isMaster = true;
@@ -112,8 +96,12 @@ module.exports = {
         .on ('added', (node) => {
             log.debug (`Found cluster discover ${node.isMaster ? 'master' : 'node'} at ${node.address}.`);
             Peers.add (node.address);
-            RemovalTimeouts.delete (node.address);
-            // node added to cluster
+            // clear pending removal
+            if (RemovalTimeouts.has (node.hostName)) {
+                clearTimeout (RemovalTimeouts.get (node.hostName));
+                RemovalTimeouts.delete (node.hostName);
+            }
+            // maybe join an existing cluster
             if (node.advertisement == 'ready' || node.advertisement == 'reconnected') {
                 // initialize new node in existing cluster
                 discovery.emit ('complete', address, node.address);
@@ -122,12 +110,14 @@ module.exports = {
         .on ('removed', (node) => {
             log.debug (`Lost node ${node.hostName} at ${node.address}.`);
             Peers.delete (node.address);
+            // set pending removal
+            RemovalTimeouts.set (node.hostName, setTimeout (removeNode, 60 * 1000, node.hostName));
         });
     },
 
     advertise: (advertisement) => {
-        if (this.discover && this.discover instanceof Discover) {
-            this.discover.advertise (advertisement);
+        if (discover && discover instanceof Discover) {
+            discover.advertise (advertisement);
             log.debug (`Set cluster discover advertisement to ${advertisement}.`);
         }
     },
@@ -137,9 +127,9 @@ module.exports = {
     },
 
     stop: () => {
-        if (this.discover && this.discover instanceof Discover) {
+        if (discover && discover instanceof Discover) {
             log.debug ('Stopping cluster auto-discovery...');
-            this.discover.stop ();
+            discover.stop ();
         }
         rqlited.kill ();
     }

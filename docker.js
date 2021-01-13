@@ -57,7 +57,7 @@ module.exports = {
         Object.keys (has).forEach ((label) => {
             // issue a warning for each missing label
             if (!has[label]) {
-                log.warn (`Docker service ${service.ID} is missing requisite label ${has}`);
+                log.warn (`Docker service ${service.ID} is missing requisite label ${has}.`);
             }
         });
         
@@ -88,6 +88,7 @@ module.exports = {
         const queryResult = await rqlite.dbQuery (`SELECT * FROM services WHERE id = '${service.ID}';`, 'strong');
 
         if (!(queryResult.values.length > 0)) {
+            log.debug (`Service ${service.ID} does not exist in database, adding it...`);
             // service does not already exist, insert it
             const executionResult = await rqlite.dbExecute (`INSERT INTO services 
                 (id, protocol, hostname, port, domain, auth)
@@ -98,6 +99,8 @@ module.exports = {
                     ${swarmService.port}, 
                     '${swarmService.domain}', 
                     '${swarmService.auth}');`);
+
+            log.debug (`Added service ${service.ID} in ${executionResult.time}.`);
         } else {
             // service exists, may need to be updated
             const dbService = queryResult.values[0];
@@ -107,6 +110,7 @@ module.exports = {
             });
 
             if (diffKeys.length > 0) {
+                log.debug (`Updating service ${service.ID} in database...`);
                 // services do not match, update differing keys
                 const updateQuery = 'UPDATE services SET ';
                 diffKeys.forEach (key => {
@@ -114,10 +118,11 @@ module.exports = {
                 });
                 updateQuery += `WHERE id = '${swarmService.id}';`;
 
-                const updateResults = await rqlite.dbExecute (updateQuery, 'strong');
+                const updateResults = await rqlite.dbExecute (updateQuery);
+                log.debug (`Updated ${diffKeys.length} for service ${service.ID} in ${updateResults.time}.`);
             } else {
                 // services match, nothing to do
-                
+                log.debug (`Service ${service.ID} already exists in database.`);
             }
         }
     },
