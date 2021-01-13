@@ -65,7 +65,7 @@ module.exports = {
     initialize: (address) => {
         client = axios.create ({
             baseURL: `http://${address}:4001`,
-            timeout: 2000,
+            timeout: 10 * 1000,
             headers: { 'Content-Type' : 'application/json' }
         })
     },
