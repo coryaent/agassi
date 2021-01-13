@@ -45,7 +45,7 @@ async function pollStatus (listenAddress) {
         const response = await axios.request ({
             url: `http://${listenAddress}:4001/status`,
             method: 'get',
-            timeout: 500
+            timeout: 300
         });
         return [
             // check for connection
@@ -95,7 +95,7 @@ dStatus.once ('ready', (listenAddress, standalone) => {
                     dStatus.emit ('disconnected');
                 }
             }
-        }, 1000);
+        }, 450);
     }
 });
 // debug logging
@@ -123,8 +123,8 @@ module.exports = {
             '-raft-open-timeout', '15s',
             '-on-disk',
             '-node-id', id,
-            '-http-addr', `${listenAddress}:4001`,
-            '-raft-addr', `${listenAddress}:4002`,
+            '-http-adv', `${listenAddress}:4001`,
+            '-raft-adv', `${listenAddress}:4002`,
             '/data/rqlited'
         ];
         // add host to join if there is one

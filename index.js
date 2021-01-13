@@ -29,7 +29,8 @@ Docker.API.listNetworks ().then (function findAgassiOverlay (networks) {
     const address = require ('@emmsdan/network-address').v4.find ((address) => {
         return ip.cidrSubnet (subnet).contains (address);
     });
-    // start/join the cluster/standalone process
+    // start/join the cluster/standalone process and set client address
+    rqlite.initialize (address);
     Cluster.start (address, subnet, Config.standalone);
 });
 
@@ -38,11 +39,13 @@ rqlited.status.once ('ready', async () => {
     Cluster.advertise ('ready');
     if (rqlited.isLeader ()) {
         await ACME.createAccount ();
-        await rqlite.dbTransact ([
+        log.debug ('Initializing rqlite tables...');
+        const tableCreationTransaction = await rqlite.dbTransact ([
             Query.services.createTable,
             Query.challenges.createTable,
             Query.certificates.createTable
         ]);
+        log.debug (`Initialized tables in ${tableCreationTransaction.time}.`);
     }
     HTTP.start ();
 });

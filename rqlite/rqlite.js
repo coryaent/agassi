@@ -1,8 +1,6 @@
 "use strict";
 // rqlite client
 
-const { hostname } = require ('os');
-
 const axios = require ('axios');
 
 class RqliteError extends Error {
@@ -61,11 +59,15 @@ function parseQueryResults (responseData) {
 }
 
 module.exports = {
-    client: axios.create ({
-        baseURL: `http://${hostname()}:4001`,
-        timeout: 2000,
-        headers: { 'Content-Type' : 'application/json' }
-    }),
+
+    initialize: (address) => {
+
+    this.client = axios.create ({
+            baseURL: `http://${address}:4001`,
+            timeout: 2000,
+            headers: { 'Content-Type' : 'application/json' }
+        })
+    },
 
     dbExecute: async function (_query, _consistency) {
         const method = 'post';
