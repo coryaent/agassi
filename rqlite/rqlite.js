@@ -58,11 +58,12 @@ function parseQueryResults (responseData) {
     return organizedResults;
 }
 
+var client = null;
+
 module.exports = {
 
     initialize: (address) => {
-
-    this.client = axios.create ({
+        client = axios.create ({
             baseURL: `http://${address}:4001`,
             timeout: 2000,
             headers: { 'Content-Type' : 'application/json' }
@@ -74,7 +75,7 @@ module.exports = {
         const path = '/db/execute?timings' + '&' + parseConsistency (_consistency);
         const query = Array.isArray (_query) ? _query : new Array (_query);
         
-        const response = (await this.client.request ({
+        const response = (await client.request ({
             method: method,
             url: path,
             data: query
@@ -92,7 +93,7 @@ module.exports = {
         const path = '/db/execute?timings&transaction' + '&' + parseConsistency (_consistency);
         const query = Array.isArray (_query) ? _query : new Array (_query);
 
-        const response = (await this.client.request ({
+        const response = (await client.request ({
             method: method,
             url: path,
             data: query
@@ -110,7 +111,7 @@ module.exports = {
         const path = '/db/query?timings' + '&' + parseConsistency (_consistency);
         const query = Array.isArray (_query) ? _query : new Array (_query);
         
-        const responseData = (await this.client.request ({
+        const responseData = (await client.request ({
             method: method,
             url: path,
             data: query
@@ -122,7 +123,7 @@ module.exports = {
     removeNode: async function (node) {
         const method = 'delete';
         const path = '/remove';
-        return (await this.client.request ({
+        return (await client.request ({
             method: method, 
             url: path, 
             data: {"id": node}
@@ -133,7 +134,7 @@ module.exports = {
         const method = 'get';
         const path = '/status';
 
-        return (await this.client.request ({
+        return (await client.request ({
             method: method,
             url: path,
         })).data;
