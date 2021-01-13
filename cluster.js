@@ -65,6 +65,7 @@ async function removeNode (nodeID) {
     if (RemovalTimeouts.has (nodeID)) {
         log.debug (`Removing node ${nodeID}...`);
         await rqlite.cluster.remove (nodeID);
+        RemovalTimeouts.delete (nodeID);
     }
 }
 
