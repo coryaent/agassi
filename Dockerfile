@@ -53,9 +53,6 @@ RUN apt-get update && apt-get install -y \
 
 STOPSIGNAL SIGTERM
 
-HEALTHCHECK	--interval=5s --timeout=2s --start-period=15s \
-    CMD curl --fail http://$(hostname)/status || exit 1
-
 USER 150:150
 
 VOLUME ["/data"]
