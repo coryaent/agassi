@@ -123,8 +123,8 @@ module.exports = {
             '-raft-open-timeout', '15s',
             '-on-disk',
             '-node-id', id,
-            '-http-adv', `${listenAddress}:4001`,
-            '-raft-adv', `${listenAddress}:4002`,
+            '-http-addr', `${listenAddress}:4001`,
+            '-raft-addr', `${listenAddress}:4002`,
             '/data/rqlited'
         ];
         // add host to join if there is one
