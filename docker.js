@@ -50,6 +50,11 @@ module.exports = {
     Events: dockerEvents,
 
     isAgassiService: (service) => {
+        // no labels at all, not an agassi service
+        if (!service.Spec.Labels) {
+            return false;
+        }
+        
         // determine which (if any) labels are missing
         const missingLabels = requisiteLabels.filter ((requisiteLabel) => {
             // check that some service label is set
