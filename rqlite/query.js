@@ -4,10 +4,11 @@ module.exports.services = {
     createTable: 
         `CREATE TABLE IF NOT EXISTS services (
             id TEXT PRIMARY KEY,
-            protocol TEXT NOT NULL,
-            hostname TEXT NOT NULL,
-            port INTEGER NOT NULL,
             domain TEXT NOT NULL,
+            options TEXT NOT NULL,
+            protocol TEXT,
+            hostname TEXT,
+            port INTEGER,
             auth TEXT
         );`,
 };

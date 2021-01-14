@@ -102,7 +102,7 @@ dStatus.once ('ready', (listenAddress, standalone) => {
 dStatus.on ('reconnected', () => log.debug ('Rqlited reconnected.'));
 dStatus.on ('disconnected', () => log.debug ('Rqlited disconnected.'));
 
-var d = null;
+var instance = null;
 
 module.exports = {
     getUUID,
@@ -136,7 +136,7 @@ module.exports = {
         // make sure there is no spawn error
         let spawnError = null;
         
-    d = spawn ('rqlited', dArgs, {
+        instance = spawn ('rqlited', dArgs, {
             stdio: ['ignore', 'inherit', 'inherit']
         })
         .on ('error', (error) => {
@@ -162,9 +162,9 @@ module.exports = {
             clearInterval (statusCheck);
         }
         // kill child process
-        if (d) {
+        if (instance) {
             log.debug ('Stopping rqlited process...');
-            d.kill ('SIGINT');
+            instance.kill ('SIGINT');
         }
     }
 };

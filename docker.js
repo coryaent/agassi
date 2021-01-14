@@ -23,42 +23,62 @@ const dockerEvents = new DockerEvents ({
 
 const requisiteLabels = ['protocol', 'domain', 'port'];
 
+const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
+
+function parseProxyOptions (labels) {
+    const options = {};
+
+    Object.keys (labels).forEach ((labelKey) => {
+        // filter labels that start with the prefix
+        if (labelKey.startsWith (Config.serviceLabelPrefix)) {
+            const agassiLabel = labelKey.replace (Config.serviceLabelPrefix, '');
+            // filter labels that define a proxy option
+            if (optRegEx.test (agassiLabel)) {
+                const optionKey = agassiLabel.substring (agassiLabel.lastIndexOf (Config.serviceLabelSeperator) + 1);
+                // set the proxy options
+                options[optionKey] = labels[labelKey];
+            }
+        }
+    });
+
+    return options;
+}
+
 module.exports = {
     API: docker,
 
     Events: dockerEvents,
 
     isAgassiService: (service) => {
-        // which labels it has
-        const has = {};
-
-        // for every requisite label
-        const hasAll = requisiteLabels.every ((requisiteLabel) => {
+        // determine which (if any) labels are missing
+        const missingLabels = requisiteLabels.filter ((requisiteLabel) => {
             // check that some service label is set
-            const hasRequisiteLabel = Object.keys (service.Spec.Labels).some ((serviceLabel) => {
+            return Object.keys (service.Spec.Labels).some ((serviceLabel) => {
                 return serviceLabel == Config.serviceLabelPrefix + requisiteLabel;
             });
-            // track which labels are (not) set for debugging
-            has[requisiteLabel] = hasRequisiteLabel;
-            return hasRequisiteLabel;
         });
 
         // has all requisite labels, nothing to debug
-        if (hasAll) {
+        if (missingLabels.legnth == 0) {
             return true;
         }
 
-        // has no labels, nothing to debug
-        if (Object.values (has).every (label => {return !label;})) {
+        // has zero requisite labels, nothing to debug
+        if (requisiteLabels.every (label => missingLabels.has (label))) {
             return false;
         }
 
+        // if agassi.domain and agassi.opt.target are set, the service is fine
+        const options = parseProxyOptions (service.Spec.Labels);
+        if (!missingLabels.has ('domain') && (options.target || options.forward)) {
+            return true;
+        }
+
+
         // has some but not all requisite labels
-        Object.keys (has).forEach ((label) => {
+        missingLabels.forEach ((label) => {
             // issue a warning for each missing label
-            if (!has[label]) {
-                log.warn (`Docker service ${service.ID} is missing requisite label ${label}.`);
-            }
+            log.warn (`Docker service ${service.ID} is missing requisite label ${label}.`);
         });
         
         // all or nothing on the labels
@@ -75,14 +95,23 @@ module.exports = {
 
         // parse variables from service
         const swarmService = {};
+        // service and domain are strictly required
         swarmService.id = service.ID;
-        swarmService.protocol = service.Spec.Labels[Config.serviceLabelPrefix + 'protocol'];
+        swarmService.domain = service.Spec.Labels[Config.serviceLabelPrefix + 'domain'];
+
+        swarmService.protocol = service.Spec.Labels[Config.serviceLabelPrefix + 'protocol'] ?
+                                service.Spec.Labels[Config.serviceLabelPrefix + 'protocol'] : null;
+
         swarmService.hostname = service.Spec.TaskTemplate.ContainerSpec.Hostname ? 
                                 service.Spec.TaskTemplate.ContainerSpec.Hostname : service.Spec.Name;
-        swarmService.port = Number.parseInt (service.Spec.Labels[Config.serviceLabelPrefix + 'port'], 10); // base 10
-        swarmService.domain = service.Spec.Labels[Config.serviceLabelPrefix + 'domain'];
-        swarmService.auth = service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] ?
-            service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] : null;
+        // parse port in base 10
+        swarmService.port =     service.Spec.Labels[Config.serviceLabelPrefix + 'port'] ?
+                                Number.parseInt (service.Spec.Labels[Config.serviceLabelPrefix + 'port'], 10) : null;
+                                
+        swarmService.auth =     service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] ?
+                                service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] : null;
+
+        swarmService.options =  JSON.stringify (parseProxyOptions (service.Spec.Labels));
 
         // check if service exists in database already
         const queryResult = await rqlite.dbQuery (`SELECT * FROM services WHERE id = '${service.ID}';`, 'strong');
@@ -91,14 +120,15 @@ module.exports = {
             log.debug (`Service ${service.ID} does not exist in database, adding it...`);
             // service does not already exist, insert it
             const executionResult = await rqlite.dbExecute (`INSERT INTO services 
-                (id, protocol, hostname, port, domain, auth)
+                (id, domain, protocol, hostname, port, auth, options)
                 VALUES (
                     '${swarmService.id}', 
-                    '${swarmService.protocol}', 
-                    '${swarmService.hostname}', 
-                    ${swarmService.port}, 
-                    '${swarmService.domain}', 
-                    '${swarmService.auth}');`);
+                    '${swarmService.domain}',
+                    ${swarmService.protocol}, 
+                    ${swarmService.hostname}, 
+                    ${swarmService.port},  
+                    ${swarmService.auth},
+                    ${swarmService.options});`);
 
             log.debug (`Added service ${service.ID} in ${executionResult.time}.`);
         } else {
@@ -114,12 +144,12 @@ module.exports = {
                 // services do not match, update differing keys
                 const updateQuery = 'UPDATE services SET ';
                 diffKeys.forEach (key => {
-                    updateQuery += `${key} = '${swarmService[key]}' `;
+                    updateQuery += `${key} = ${swarmService[key]} `;
                 });
                 updateQuery += `WHERE id = '${swarmService.id}';`;
 
                 const updateResults = await rqlite.dbExecute (updateQuery);
-                log.debug (`Updated ${diffKeys.length} for service ${service.ID} in ${updateResults.time}.`);
+                log.debug (`Updated ${diffKeys.length} records for service ${service.ID} in ${updateResults.time}.`);
             } else {
                 // services match, nothing to do
                 log.debug (`Service ${service.ID} already exists in database.`);

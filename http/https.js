@@ -21,7 +21,7 @@ const Server = https.createServer ({
     SNICallback: async (domain, callback) => {
         // get latest cert
         const queryResponse = await rqlite.dbQuery (`SELECT certificate FROM certificates
-        WHERE domain = '${domain}' ORDER BY expiration DESC;`, null);
+        WHERE domain = '${domain}' ORDER BY expiration DESC LIMIT 1;`, null);
 
         if (queryResponse.results.length > 0) {
             // got cert
@@ -34,13 +34,13 @@ const Server = https.createServer ({
             // did not get cert, use default
             log.warn (`No certificate found for ${domain}.`);
             return callback (null, false);
-        };
+        }
     },
     key: Config.defaultKey,
     cert: Config.defaultCert
 }, async (request, response) => {
     const requestURL = new URL (request.url, `https://${request.headers.host}`);
-    const queryResponse = await rqlite.dbQuery (`SELECT protocol, hostname, port, auth FROM services
+    const queryResponse = await rqlite.dbQuery (`SELECT protocol, hostname, port, auth, options FROM services
     WHERE domain = '${requestURL.hostname}';`, null);
 
     // if there is no matching agassi service
@@ -50,8 +50,13 @@ const Server = https.createServer ({
     }
 
     log.debug (`Got virtual host for domain ${requestURL.hostname} in ${queryResponse.time}.`);
+
+    // parse proxy options
     const virtualHost = queryResponse.results[0];
-    const target = `${virtualHost.protocol}://${virtualHost.hostname}:${virtualHost.port}`;
+    const proxyOptions = JSON.parse (virtualHost.options)
+    if (!proxyOptions.target && !proxyOptions.forward) {
+        proxyOptions.target = `${virtualHost.protocol}://${virtualHost.hostname}:${virtualHost.port}`;
+    }
 
     // basic auth protected host
     if (virtualHost.auth) {
@@ -61,7 +66,8 @@ const Server = https.createServer ({
             response.writeHead (401, { 'WWW-Authenticate': `Basic realm="${Config.realm}"`});
             response.end ('Authorization is required.');
             return;
-        };
+        }
+
         // failure rate limit reached
         if (rateLimit.isRateLimited(request, 2)) {
             response.writeHead(429, {
@@ -69,30 +75,31 @@ const Server = https.createServer ({
             });
             response.end ('Authorization failed.');
             return;
-        };
+        }
 
         // parse authentication header
-        const requestAuth = (Buffer.from (request.headers.authorization.replace(/^Basic/, ''), 'base64')).toString('utf-8');
+        const requestAuth = (Buffer.from (request.headers.authorization.replace (/^Basic/, ''), 'base64')).toString ('utf-8');
         const [requestUser, requestPassword] = requestAuth.split (':');
 
         // parse vHost auth parameter
         const [virtualUser, virtualHash] = virtualHost.auth.split (':');
 
         // compare provided header with expected values
-        if ((compare(requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
-            Proxy.web (request, response, { target: target });
+        if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
+            Proxy.web (request, response, proxyOptions);
         } else {
             // rate limit failed authentication
             rateLimit.inboundRequest (request);
             // prompt for password in browser
             response.writeHead (401, { 'WWW-Authenticate': `Basic realm="${Config.realm}"`});
             response.end ('Authorization is required.');
-        };
+        }
 
     } else {
         // basic auth not required
-        Proxy.web (request, response, { target: target });
-    };
+        Proxy.web (request, response, proxyOptions);
+    }
+
 }).once ('listening', () => {
     log.debug ('Initializing HTTPS rate limiter...');
     process.nextTick (() => {
