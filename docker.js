@@ -51,14 +51,14 @@ module.exports = {
 
     isAgassiService: (service) => {
         // no labels at all, not an agassi service
-        if (!service || !service.Spec || !service.Spec.Labels) {
+        if (!service.Spec.TaskTemplate.ContainerSpec.Labels) {
             return false;
         }
 
         // determine which (if any) labels are missing
         const missingLabels = requisiteLabels.filter ((requisiteLabel) => {
             // check that some service label is set
-            return Object.keys (service.Spec.Labels).some ((serviceLabel) => {
+            return Object.keys (service.Spec.TaskTemplate.ContainerSpec.Labels).some ((serviceLabel) => {
                 return serviceLabel == Config.serviceLabelPrefix + requisiteLabel;
             });
         });
@@ -74,7 +74,7 @@ module.exports = {
         }
 
         // if agassi.domain and agassi.opt.target are set, the service is fine
-        const options = parseProxyOptions (service.Spec.Labels);
+        const options = parseProxyOptions (service.Spec.TaskTemplate.ContainerSpec.Labels);
         if (!missingLabels.has ('domain') && (options.target || options.forward)) {
             return true;
         }
@@ -102,21 +102,21 @@ module.exports = {
         const swarmService = {};
         // service and domain are strictly required
         swarmService.id = service.ID;
-        swarmService.domain = service.Spec.Labels[Config.serviceLabelPrefix + 'domain'];
+        swarmService.domain = service.Spec.TaskTemplate.ContainerSpec.Labels[Config.serviceLabelPrefix + 'domain'];
 
-        swarmService.protocol = service.Spec.Labels[Config.serviceLabelPrefix + 'protocol'] ?
-                                service.Spec.Labels[Config.serviceLabelPrefix + 'protocol'] : null;
+        swarmService.protocol = service.Spec.TaskTemplate.ContainerSpec.Labels[Config.serviceLabelPrefix + 'protocol'] ?
+                                service.Spec.TaskTemplate.ContainerSpec.Labels[Config.serviceLabelPrefix + 'protocol'] : null;
 
         swarmService.hostname = service.Spec.TaskTemplate.ContainerSpec.Hostname ? 
                                 service.Spec.TaskTemplate.ContainerSpec.Hostname : service.Spec.Name;
         // parse port in base 10
-        swarmService.port =     service.Spec.Labels[Config.serviceLabelPrefix + 'port'] ?
-                                Number.parseInt (service.Spec.Labels[Config.serviceLabelPrefix + 'port'], 10) : null;
+        swarmService.port =     service.Spec.TaskTemplate.ContainerSpec.Labels[Config.serviceLabelPrefix + 'port'] ?
+                                Number.parseInt (service.Spec.TaskTemplate.ContainerSpec.Labels[Config.serviceLabelPrefix + 'port'], 10) : null;
                                 
-        swarmService.auth =     service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] ?
-                                service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] : null;
+        swarmService.auth =     service.Spec.TaskTemplate.ContainerSpec.Labels[Config.serviceLabelPrefix + 'auth'] ?
+                                service.Spec.TaskTemplate.ContainerSpec.Labels[Config.serviceLabelPrefix + 'auth'] : null;
 
-        swarmService.options =  JSON.stringify (parseProxyOptions (service.Spec.Labels));
+        swarmService.options =  JSON.stringify (parseProxyOptions (service.Spec.TaskTemplate.ContainerSpec.Labels));
 
         // check if service exists in database already
         const queryResult = await rqlite.dbQuery (`SELECT * FROM services WHERE id = '${service.ID}';`, 'strong');
