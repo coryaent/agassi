@@ -50,7 +50,7 @@ rqlited.status.once ('ready', async () => {
     HTTP.start ();
 });
 
-HTTP.server.once ('listening', () => {
+HTTP.Server.once ('listening', () => {
     Docker.Events.start ();
 });
 
@@ -87,7 +87,7 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
     HTTPS.start ();
 });
 
-HTTPS.server.once ('listening', () => {
+HTTPS.Server.once ('listening', () => {
     ACME.Maintenance.start ();
 });
 
