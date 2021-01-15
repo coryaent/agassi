@@ -165,7 +165,7 @@ module.exports = {
         log.debug (`Checking database for service ${service.ID}...`);
         const queryResult = await rqlite.dbQuery (`SELECT * FROM services WHERE id = '${service.ID}';`, 'strong');
 
-        if (!(queryResult.values.length > 0)) {
+        if (!(queryResult.results.length > 0)) {
             log.debug (`Service ${service.ID} does not exist in database, adding it...`);
             // service does not already exist, insert it
             const executionResult = await rqlite.dbExecute (`INSERT INTO services 
@@ -182,7 +182,7 @@ module.exports = {
             log.debug (`Added service ${service.ID} in ${executionResult.time}.`);
         } else {
             // service exists, may need to be updated
-            const dbService = queryResult.values[0];
+            const dbService = queryResult.results[0];
             // get which keys in each service (if any) are different
             const diffKeys = Object.keys (swarmService).filter (key => {
                 return swarmService[key] !== dbService[key];
