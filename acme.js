@@ -157,14 +157,18 @@ module.exports = {
     Maintenance: {
         start: () => {
             if (!maintenanceInterval) {
-                log.info ('Starting automatic certificate renewal...');
+                if (rqlited.isLeader ()) {
+                    log.info ('Starting automatic certificate renewal...');
+                }
                 maintenanceInterval = setInterval (performMaintenance, Config.certMaintenanceInterval * msInHour);
             }
         },
 
         stop: () => {
             if (maintenanceInterval) {
-                log.info ('Stopping automatic certificate renewal...');
+                if (rqlited.isLeader ()) {
+                    log.info ('Stopping automatic certificate renewal...');
+                }
                 clearInterval (maintenanceInterval);
                 maintenanceInterval = undefined;
             }
