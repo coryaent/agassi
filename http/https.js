@@ -17,6 +17,8 @@ const Proxy = require ('./proxy.js');
 // initializations
 const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
 
+const base64RegEx = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+
 const Server = https.createServer ({
     SNICallback: async (domain, callback) => {
         // get latest cert
@@ -82,7 +84,10 @@ const Server = https.createServer ({
         const [requestUser, requestPassword] = requestAuth.split (':');
 
         // parse vHost auth parameter
-        const [virtualUser, virtualHash] = virtualHost.auth.split (':');
+        const vHostAuth = base64RegEx.test (virtualHost.auth) ? // test if the provided agassi.auth is base64 encoded
+            (Buffer.from (virtualHash.auth, 'base64')).toString ('utf-8') : virtualHost.auth;
+
+        const [virtualUser, virtualHash] = vHostAuth.split (':');
 
         // compare provided header with expected values
         if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
