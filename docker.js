@@ -105,13 +105,13 @@ module.exports = {
         }
 
         // has zero requisite labels, nothing to debug
-        if (requisiteLabels.every ((label) => { return missingLabels.has (label); })) {
+        if (requisiteLabels.every ((label) => { return missingLabels.includes (label); })) {
             return false;
         }
 
         // if agassi.domain and agassi.opt.target are set, the service is fine
         const options = parseProxyOptions (labels);
-        if (!missingLabels.has ('domain') && (options.target || options.forward)) {
+        if (!missingLabels.includes ('domain') && (options.target || options.forward)) {
             return true;
         }
 
