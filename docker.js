@@ -25,7 +25,41 @@ const requisiteLabels = ['protocol', 'domain', 'port'];
 
 const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
 
+function parseServiceLabels (service) {
+    // merge service labels, prefering container labels to service labels
+    const labels = {};
+    const labelsMap = new Map ();
+
+    //  service:
+    //    image:
+    //    deploy:
+    //      labels:
+    if (labels) {
+        const serviceLabels = labels;
+        Object.keys (serviceLabels).forEach ((labelKey) => {
+            labelsMap.set (labelKey, serviceLabels[labelKey]);
+        });
+    }
+
+    //  service:
+    //    image:
+    //    labels:
+    if (service.Spec.TaskTemplate.ContainerSpec.Labels) {
+        const containerLabels = service.Spec.TaskTemplate.ContainerSpec.Labels;
+        Object.keys (containerLabels).forEach ((labelKey) => {
+            labelsMap.set (labelKey, containerLabels[labelKey]);
+        });
+    }
+
+    labelsMap.forEach ((value, key) => {
+        labels[key] = value;
+    });
+
+    return labels;
+}
+
 function parseProxyOptions (labels) {
+    // get http-proxy options
     const options = {};
 
     Object.keys (labels).forEach ((labelKey) => {
@@ -50,15 +84,17 @@ module.exports = {
     Events: dockerEvents,
 
     isAgassiService: (service) => {
+        const labels = parseServiceLabels (service);
+
         // no labels at all, not an agassi service
-        if (!service.Spec.Labels) {
+        if (!Object.keys (labels).length > 0) {
             return false;
         }
 
         // determine which (if any) labels are missing
         const missingLabels = requisiteLabels.filter ((requisiteLabel) => {
             // check that some service label is set
-            return Object.keys (service.Spec.Labels).some ((serviceLabel) => {
+            return Object.keys (labels).some ((serviceLabel) => {
                 return serviceLabel == Config.serviceLabelPrefix + requisiteLabel;
             });
         });
@@ -74,7 +110,7 @@ module.exports = {
         }
 
         // if agassi.domain and agassi.opt.target are set, the service is fine
-        const options = parseProxyOptions (service.Spec.Labels);
+        const options = parseProxyOptions (labels);
         if (!missingLabels.has ('domain') && (options.target || options.forward)) {
             return true;
         }
@@ -98,25 +134,27 @@ module.exports = {
             service = serviceOrID;
         }
 
+        const labels = parseServiceLabels (service);
+
         // parse variables from service
         const swarmService = {};
         // service and domain are strictly required
-        swarmService.id = service.ID;
-        swarmService.domain = service.Spec.Labels[Config.serviceLabelPrefix + 'domain'];
+        swarmService.id =       service.ID;
+        swarmService.domain =   labels[Config.serviceLabelPrefix + 'domain'];
 
-        swarmService.protocol = service.Spec.Labels[Config.serviceLabelPrefix + 'protocol'] ?
-                                service.Spec.Labels[Config.serviceLabelPrefix + 'protocol'] : null;
+        swarmService.protocol = labels[Config.serviceLabelPrefix + 'protocol'] ?
+                                labels[Config.serviceLabelPrefix + 'protocol'] : null;
 
         swarmService.hostname = service.Spec.TaskTemplate.ContainerSpec.Hostname ? 
                                 service.Spec.TaskTemplate.ContainerSpec.Hostname : service.Spec.Name;
         // parse port in base 10
-        swarmService.port =     service.Spec.Labels[Config.serviceLabelPrefix + 'port'] ?
-                                Number.parseInt (service.Spec.Labels[Config.serviceLabelPrefix + 'port'], 10) : null;
+        swarmService.port =     labels[Config.serviceLabelPrefix + 'port'] ?
+                                Number.parseInt (labels[Config.serviceLabelPrefix + 'port'], 10) : null;
                                 
-        swarmService.auth =     service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] ?
-                                service.Spec.Labels[Config.serviceLabelPrefix + 'auth'] : null;
+        swarmService.auth =     labels[Config.serviceLabelPrefix + 'auth'] ?
+                                labels[Config.serviceLabelPrefix + 'auth'] : null;
 
-        swarmService.options =  JSON.stringify (parseProxyOptions (service.Spec.Labels));
+        swarmService.options =  JSON.stringify (parseProxyOptions (labels));
 
         // check if service exists in database already
         const queryResult = await rqlite.dbQuery (`SELECT * FROM services WHERE id = '${service.ID}';`, 'strong');

@@ -62,11 +62,13 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
         const allSwarmServiceIDs = (await Docker.API.listServices ()).map (service => service.ID);
 
         // filter those which have the requisite labels
-        const allSwarmServices = [];
+        const agassiSwarmServices = [];
         allSwarmServiceIDs.forEach (async (id) => { 
-            allSwarmServices.push (await Docker.API.getService (id).inspect ());
+            const service = await Docker.API.getService (id).inspect ();
+            if (Docker.isAgassiService (service)) {
+                agassiSwarmServices.push (service);
+            }
         });
-        const agassiSwarmServices = allSwarmServices.filter (service => Docker.isAgassiService (service));
 
         // pull rqlited services from database
         const dbServiceIDs = (await rqlite.dbQuery ('SELECT id FROM services;', 'strong')).results.map (result => result.id);
@@ -76,7 +78,7 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
         // if swarm has service that rqlited doesn't, add service and cert to rqlited
         agassiSwarmServices.filter (service => !dbServiceIDs.includes (service.ID)).forEach (async (service) => {
             await Docker.pushServiceToDB (service);
-            await ACME.certify (service.Spec.TaskTemplate.ContainerSpec.Labels[Config.serviceLabelPrefix + 'domain']);
+            await ACME.certify (parseServiceLabels(service)[Config.serviceLabelPrefix + 'domain']);
         });
 
         // if rqlited has service that swarm doesn't, remvoe the service and not the cert
@@ -109,7 +111,7 @@ Docker.Events.on ('_message', async function processDockerEvent (event) {
                 if (event.Action === 'update' || event.Action === 'create') {
                     await Docker.pushServiceToDB (service);
                     if (event.Action === 'create') {
-                        await ACME.certify (service.Spec.TaskTemplate.ContainerSpec.Labels[Config.serviceLabelPrefix + 'domain']);
+                        await ACME.certify (parseServiceLabels(service)[Config.serviceLabelPrefix + 'domain']);
                     }
                 }
                 if (event.Action === 'remove') {
