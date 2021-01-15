@@ -18,6 +18,7 @@ const Proxy = require ('./proxy.js');
 const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
 
 const base64RegEx = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+// const bcryptRegEx = /\$2[xy]\$/;
 
 const Server = https.createServer ({
     SNICallback: async (domain, callback) => {
