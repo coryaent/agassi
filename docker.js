@@ -101,7 +101,6 @@ module.exports = {
             });
         });
         const missingLabels = requisiteLabels.filter (label => !hasLabels.includes (label));
-        log.debug (`Service ${service.ID} is missing (${missingLabels.length}/${requisiteLabels.length}) requisite labels.`);
 
         // has all requisite labels, nothing to debug
         if (missingLabels.legnth == 0) {
