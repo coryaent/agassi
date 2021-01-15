@@ -34,8 +34,8 @@ function parseServiceLabels (service) {
     //    image:
     //    deploy:
     //      labels:
-    if (labels) {
-        const serviceLabels = labels;
+    if (service.Spec.Labels) {
+        const serviceLabels = service.Spec.Labels;
         Object.keys (serviceLabels).forEach ((labelKey) => {
             labelsMap.set (labelKey, serviceLabels[labelKey]);
         });
@@ -84,7 +84,9 @@ module.exports = {
     Events: dockerEvents,
 
     isAgassiService: (service) => {
+        log.debug (`Checking labels for service ${service.ID}...`);
         const labels = parseServiceLabels (service);
+        log.debug (labels);
 
         // no labels at all, not an agassi service
         if (!Object.keys (labels).length > 0) {
@@ -98,6 +100,7 @@ module.exports = {
                 return serviceLabel == Config.serviceLabelPrefix + requisiteLabel;
             });
         });
+        log.debug (`Service ${service.ID} is missing (${missingLabels.length}/${requisiteLabels.length}) requisite labels.`);
 
         // has all requisite labels, nothing to debug
         if (missingLabels.legnth == 0) {
@@ -110,7 +113,9 @@ module.exports = {
         }
 
         // if agassi.domain and agassi.opt.target are set, the service is fine
+        log.debug (`Checking options for service ${service.ID}...`);
         const options = parseProxyOptions (labels);
+        log.debug (options);
         if (!missingLabels.includes ('domain') && (options.target || options.forward)) {
             return true;
         }
@@ -157,6 +162,7 @@ module.exports = {
         swarmService.options =  JSON.stringify (parseProxyOptions (labels));
 
         // check if service exists in database already
+        log.debug (`Checking database for service ${service.ID}...`);
         const queryResult = await rqlite.dbQuery (`SELECT * FROM services WHERE id = '${service.ID}';`, 'strong');
 
         if (!(queryResult.values.length > 0)) {
