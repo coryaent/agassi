@@ -62,11 +62,11 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
         const allSwarmServiceIDs = (await Docker.API.listServices ()).map (service => service.ID);
 
         // filter those which have the requisite labels
-        const agassiSwarmServices = (allSwarmServiceIDs.map (async (id) => { 
-            await Docker.API.getService (id).inspect (); 
-        })).filter ((service) => {
-            return Docker.isAgassiService (service);
+        const allSwarmServices = [];
+        allSwarmServiceIDs.forEach (async (id) => { 
+            allSwarmServices.push (await Docker.API.getService (id).inspect ());
         });
+        const agassiSwarmServices = allSwarmServices.filter (service => Docker.isAgassiService (service));
 
         // pull rqlited services from database
         const dbServiceIDs = (await rqlite.dbQuery ('SELECT id FROM services;', 'strong')).results.map (result => result.id);
