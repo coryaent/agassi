@@ -86,28 +86,28 @@ module.exports = {
     isAgassiService: (service) => {
         log.debug (`Checking labels for service ${service.ID}...`);
         const labels = parseServiceLabels (service);
-        log.debug (labels);
 
         // no labels at all, not an agassi service
         if (!Object.keys (labels).length > 0) {
             return false;
         }
 
-        // determine which (if any) labels are missing
+        // for each requisite label
         const hasLabels = requisiteLabels.filter ((requisiteLabel) => {
-            // check that some service label is set
-            return Object.keys (labels).some ((serviceLabel) => {
-                return serviceLabel == Config.serviceLabelPrefix + requisiteLabel;
-            });
+            // check that the keys parsed labels includes the requisite label
+            return Object.keys (labels).includes (Config.serviceLabelPrefix + requisiteLabel);
         });
+        log.debug (`Service ${service.ID} has labels ${hasLabels.toString ()}.`);
+        // determine which (if any) labels are missing
         const missingLabels = requisiteLabels.filter (label => !hasLabels.includes (label));
+        log.debug (`Service ${service.ID} is missing labels ${missingLabels.toString ()}.`);
 
-        // has all requisite labels, nothing to debug
+        // has all requisite labels, nothing further to check
         if (missingLabels.legnth == 0) {
             return true;
         }
 
-        // has zero requisite labels, nothing to debug
+        // has zero requisite labels, nothing further to check
         if (hasLabels.length == 0) {
             return false;
         }
