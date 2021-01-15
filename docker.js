@@ -105,7 +105,7 @@ module.exports = {
         }
 
         // has zero requisite labels, nothing to debug
-        if (requisiteLabels.every ((label) => { missingLabels.has (label); })) {
+        if (requisiteLabels.every ((label) => { return missingLabels.has (label); })) {
             return false;
         }
 
