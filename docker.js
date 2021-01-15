@@ -94,12 +94,13 @@ module.exports = {
         }
 
         // determine which (if any) labels are missing
-        const missingLabels = requisiteLabels.filter ((requisiteLabel) => {
+        const hasLabels = requisiteLabels.filter ((requisiteLabel) => {
             // check that some service label is set
             return Object.keys (labels).some ((serviceLabel) => {
                 return serviceLabel == Config.serviceLabelPrefix + requisiteLabel;
             });
         });
+        const missingLabels = requisiteLabels.filter (label => !hasLabels.includes (label));
         log.debug (`Service ${service.ID} is missing (${missingLabels.length}/${requisiteLabels.length}) requisite labels.`);
 
         // has all requisite labels, nothing to debug
@@ -108,7 +109,7 @@ module.exports = {
         }
 
         // has zero requisite labels, nothing to debug
-        if (requisiteLabels.every ((label) => { return missingLabels.includes (label); })) {
+        if (hasLabels.length == 0) {
             return false;
         }
 
@@ -116,7 +117,7 @@ module.exports = {
         log.debug (`Checking options for service ${service.ID}...`);
         const options = parseProxyOptions (labels);
         log.debug (options);
-        if (!missingLabels.includes ('domain') && (options.target || options.forward)) {
+        if (hasLabels.includes ('domain') && (options.target || options.forward)) {
             return true;
         }
 
