@@ -171,11 +171,11 @@ module.exports = {
                 VALUES (
                     '${swarmService.id}', 
                     '${swarmService.domain}',
-                    ${swarmService.protocol}, 
-                    ${swarmService.hostname}, 
-                    ${swarmService.port},  
-                    ${swarmService.auth},
-                    ${swarmService.options});`);
+                    '${swarmService.protocol}', 
+                    '${swarmService.hostname}', 
+                    '${swarmService.port}',  
+                    '${swarmService.auth}',
+                    '${swarmService.options}');`);
 
             log.debug (`Added service ${service.ID} in ${executionResult.time}.`);
         } else {
@@ -191,7 +191,7 @@ module.exports = {
                 // services do not match, update differing keys
                 const updateQuery = 'UPDATE services SET ';
                 diffKeys.forEach (key => {
-                    updateQuery += `${key} = ${swarmService[key]} `;
+                    updateQuery += `${key} = '${swarmService[key]}' `;
                 });
                 updateQuery += `WHERE id = '${swarmService.id}';`;
 
