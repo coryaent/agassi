@@ -129,6 +129,8 @@ module.exports = {
 
     isAgassiService,
 
+    parseServiceLabels,
+
     pushServiceToDB: async (serviceOrID) => {
         var service = null;
         if (typeof serviceOrID == 'string') {

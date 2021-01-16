@@ -79,7 +79,7 @@ Docker.Events.on ('connect' , async function checkExistingServices () {
         // if swarm has service that rqlited doesn't, add service and cert to rqlited
         agassiSwarmServices.filter (service => !dbServiceIDs.includes (service.ID)).forEach (async (service) => {
             await Docker.pushServiceToDB (service);
-            await ACME.certify (parseServiceLabels(service)[Config.serviceLabelPrefix + 'domain']);
+            await ACME.certify (Docker.parseServiceLabels(service)[Config.serviceLabelPrefix + 'domain']);
         });
 
         // if rqlited has service that swarm doesn't, remvoe the service and not the cert
@@ -112,7 +112,7 @@ Docker.Events.on ('_message', async function processDockerEvent (event) {
                 if (event.Action === 'update' || event.Action === 'create') {
                     await Docker.pushServiceToDB (service);
                     if (event.Action === 'create') {
-                        await ACME.certify (parseServiceLabels(service)[Config.serviceLabelPrefix + 'domain']);
+                        await ACME.certify (Docker.parseServiceLabels(service)[Config.serviceLabelPrefix + 'domain']);
                     }
                 }
                 if (event.Action === 'remove') {
