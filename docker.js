@@ -94,8 +94,7 @@ function isAgassiService (service) {
     });
 
     // has all requisite labels, nothing further to check
-    log.debug (`Service ${service.ID} has (${hasLabels.length}/${requisiteLabels.length}) labels.`);
-    if (hasLabels.legnth == requisiteLabels.length) {
+    if (hasLabels.length == requisiteLabels.length) {
         return true;
     }
 
