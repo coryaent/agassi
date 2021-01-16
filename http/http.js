@@ -1,31 +1,38 @@
 "use strict"; 
 
-const log = require ('../logger.js');
-
-const rqlite = require ('../rqlite/rqlite.js');
-
 const http = require ('http');
+const log = require ('../logger.js');
+const rqlite = require ('../rqlite/rqlite.js');
+const ACME = require ('../acme.js');
 
 const Server = http.createServer (async (request, response) => {
     // check request path
-    const requestURL = new URL(request.url, `http://${request.headers.host}`);
+    const requestURL = new URL (request.url, `http://${request.headers.host}`);
     // if request is for ACME challenge
     if (requestURL.pathname && requestURL.pathname.startsWith ('/.well-known/acme-challenge/')) {
 
         log.debug (`Received certificate challenge request for ${requestURL.hostname}.`);
         const token = requestURL.pathname.replace ('/.well-known/acme-challenge/', '');
-        const queryResponse = await rqlite.dbQuery (`SELECT response FROM challenges
+        const challengeQuery = await rqlite.dbQuery (`SELECT response, challenge, order, timestamp, id FROM challenges
             WHERE token = '${token}';`);
-        if (queryResponse.results.length > 0) {
-            log.debug (`Got challenge response from database in ${queryResponse.time}.`)
+        if (challengeQuery.results.length > 0) {
+            log.debug (`Got challenge response from database in ${challengeQuery.time}.`)
             // write challenge response to request
             response.writeHead (200, {
                 'Content-Type': 'text/plain'
             });
-            response.write (queryResponse.results[0].response);
+            response.write (challengeQuery.results[0].response);
             response.end ();
 
             log.debug ('Sent challenge response.');
+
+            ACME.ChallengeEvents.emit ('completion', 
+                JSON.parse (challengeQuery.results[0].challenge),
+                JSON.parse (challengeQuery.results[0].order),
+                challengeQuery.results[0].timestamp,
+                requestURL.hostname,
+                challengeQuery.results[0].id
+            );
         } else {
             log.warn (`Could not find challenge response for ${requestURL.hostname}, ignoring request.`);
             return;

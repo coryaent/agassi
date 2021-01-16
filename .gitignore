@@ -4,3 +4,4 @@ node_modules
 *.crt
 tls.js
 playground*
+error-output.txt

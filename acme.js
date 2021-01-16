@@ -3,6 +3,7 @@
 const log = require ('./logger.js');
 const acme = require ('acme-client');
 const Config = require ('./config.js');
+const EventEmitter = require ('events');
 const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
 
@@ -14,6 +15,7 @@ const client = new acme.Client ({
     accountKey: Config.acmeKey
 });
 
+// maintenance routine
 var maintenanceInterval = undefined;
 
 async function performMaintenance () {
@@ -29,7 +31,7 @@ async function performMaintenance () {
         log.debug (`Found ${allCerts.length} certificates in table in ${allCertQueryResponse.time}.`);
 
         // cleanup expired certs
-        allCerts.forEach (async (cert) => {
+        for (let cert of allCerts) {
             const unixTime = Math.floor (Date.now () / 1000);
             // if cert is expired
             if (cert.expiration < unixTime) {
@@ -37,17 +39,17 @@ async function performMaintenance () {
                 const executionResponse = await rqlite.dbExecute (`DELETE FROM certificates WHERE id = ${cert.id};`);
                 log.debug (`Removed expired certificate with id ${cert.id} in ${executionResponse.time}.`);
             }
-        });
+        }
 
         // get only the latest certs
         const potentialRenewals = [];
-        serviceDomains.forEach (async (domain) => {
+        for (let domain of serviceDomains) {
             const latestCertQueryResponse = await rqlite.dbQuery (`SELECT id, expiration, domain FROM certificates
             WHERE domain = '${domain}' ORDER BY expiration DESC LIMIT 1;`, 'strong');
             if (latestCertQueryResponse.results.length > 0) {
                 potentialRenewals.push (latestCertQueryResponse.results[0]);
             }
-        });
+        }
 
         // check that the current time is past the expiration threshold
         const certsToRenew = potentialRenewals.filter (cert => {
@@ -59,13 +61,13 @@ async function performMaintenance () {
 
         // get new certs as needed
         certsToRenew.map (cert => cert.domain).forEach (async (domain) => {
-            await addNewCertToDB (domain);
+            await initiateChallenge (domain);
         });
     }
 }
 
+// check if a cert expiration is beyond a certain safeguard
 async function hasCert (domain) {
-    // check if a cert expiration is beyond a certain safeguard
     log.debug (`Checking for current certificates for domain ${domain}...`);
     const queryResponse = await rqlite.dbQuery (`SELECT expiration FROM certificates
     WHERE domain = '${domain}';`, 'strong');
@@ -82,7 +84,7 @@ async function hasCert (domain) {
     return hasCurrent;
 }
 
-async function addNewCertToDB (domain) {
+async function initiateChallenge (domain) {
     const start = Date.now ();
     log.debug (`Adding new certifiate for domain ${domain}...`);
     
@@ -101,11 +103,29 @@ async function addNewCertToDB (domain) {
         const httpAuthorizationResponse = await client.getChallengeKeyAuthorization (httpChallenge);
 
         // add challenge and response to db table
-        await rqlite.dbExecute (`INSERT INTO challenges (token, response)
-        VALUES ('${httpAuthorizationToken}', '${httpAuthorizationResponse}');`);
+        const challengeInsertion = await rqlite.dbExecute (`INSERT INTO challenges 
+            (token, response, challenge, order, timestamp)
+            VALUES (
+                '${httpAuthorizationToken}', 
+                '${httpAuthorizationResponse}', 
+                '${JSON.stringify (httpChallenge)}',
+                '${JSON.stringify (order)}',
+                '${start}');`);
+        log.debug (`Added challenge to database in ${challengeInsertion.time}.`);
 
         // db consensus means it's ready
         await client.completeChallenge (httpChallenge);
+
+    } catch (error) {
+        log.error (error.name);
+        log.error (error.message);
+    }
+}
+
+const ChallengeEvents = new EventEmitter ()
+.on ('completion', async function addNewCertToDB (httpChallenge, order, timestamp, domain, id) {
+
+    try {
         await client.waitForValidStatus (httpChallenge);
 
         // challenge is complete and valid, send cert-signing request
@@ -118,7 +138,7 @@ async function addNewCertToDB (domain) {
         const certificate = await client.getCertificate (order);
 
         // remove challenge from table
-        await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${httpAuthorizationToken}';`);
+        await rqlite.dbExecute (`DELETE FROM challenges WHERE id = '${id}';`);
 
         // calculate expiration date by adding 2160 hours (90 days)
         const jsTime = new Date (); // JS (ms)
@@ -128,14 +148,15 @@ async function addNewCertToDB (domain) {
         await rqlite.dbExecute (`INSERT INTO certificates (domain, certificate, expiration)
         VALUES ('${domain}', '${certificate}', ${expiration});`);
 
-        log.debug (`Added new certificate for domain ${domain} in ${(Date.now () - start) / 1000}s.`);
+        log.debug (`Added new certificate for domain ${domain} in ${(Date.now () - timestamp) / 1000}s.`);
 
     } catch (error) {
         log.error (error.name);
         log.error (error.message);
         log.error (`Could not add certificate for domain ${domain} to database.`);
     }
-}
+});
+
 
 module.exports = {
 
@@ -148,9 +169,11 @@ module.exports = {
         log.debug (`ACME account created with email ${Config.acmeEmail.replace ('mailto:', '')}.`);
     },
 
+    ChallengeEvents,
+
     certify: async (domain) => {
         if (!(await hasCert (domain))) {
-            await addNewCertToDB (domain);
+            await initiateChallenge (domain);
         }
     },
 
