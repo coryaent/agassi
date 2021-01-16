@@ -84,7 +84,6 @@ module.exports = {
     Events: dockerEvents,
 
     isAgassiService: (service) => {
-        log.debug (`Checking labels for service ${service.ID}...`);
         const labels = parseServiceLabels (service);
 
         // no labels at all, not an agassi service
@@ -99,6 +98,7 @@ module.exports = {
         });
 
         // has all requisite labels, nothing further to check
+        log.debug (`Service ${service.ID} has (${hasLabels.length}/${requisiteLabels.length}).`);
         if (hasLabels.legnth == requisiteLabels.length) {
             return true;
         }
