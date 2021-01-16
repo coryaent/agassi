@@ -97,13 +97,9 @@ module.exports = {
             // check that the keys parsed labels includes the requisite label
             return Object.keys (labels).includes (Config.serviceLabelPrefix + requisiteLabel);
         });
-        log.debug (`Service ${service.ID} has labels ${hasLabels.toString ()}.`);
-        // determine which (if any) labels are missing
-        const missingLabels = requisiteLabels.filter (label => !hasLabels.includes (label));
-        log.debug (`Service ${service.ID} is missing labels ${missingLabels.toString ()}.`);
 
         // has all requisite labels, nothing further to check
-        if (missingLabels.legnth == 0) {
+        if (hasLabels.legnth == requisiteLabels.length) {
             return true;
         }
 
@@ -122,7 +118,7 @@ module.exports = {
 
 
         // has some but not all requisite labels
-        missingLabels.forEach ((label) => {
+        requisiteLabels.filter (label => !hasLabels.includes (label)).forEach ((label) => {
             // issue a warning for each missing label
             log.warn (`Docker service ${service.ID} is missing requisite label ${label}.`);
         });
