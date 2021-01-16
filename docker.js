@@ -78,54 +78,57 @@ function parseProxyOptions (labels) {
     return options;
 }
 
+function isAgassiService (service) {
+    
+    const labels = parseServiceLabels (service);
+
+    // no labels at all, not an agassi service
+    if (!Object.keys (labels).length > 0) {
+        return false;
+    }
+
+    // for each requisite label
+    const hasLabels = requisiteLabels.filter ((requisiteLabel) => {
+        // check that the keys parsed labels includes the requisite label
+        return Object.keys (labels).includes (Config.serviceLabelPrefix + requisiteLabel);
+    });
+
+    // has all requisite labels, nothing further to check
+    log.debug (`Service ${service.ID} has (${hasLabels.length}/${requisiteLabels.length}) labels.`);
+    if (hasLabels.legnth == requisiteLabels.length) {
+        return true;
+    }
+
+    // has zero requisite labels, nothing further to check
+    if (hasLabels.length == 0) {
+        return false;
+    }
+
+    // if agassi.domain and agassi.opt.target are set, the service is fine
+    log.debug (`Checking options for service ${service.ID}...`);
+    const options = parseProxyOptions (labels);
+    log.debug (options);
+    if (hasLabels.includes ('domain') && (options.target || options.forward)) {
+        return true;
+    }
+
+
+    // has some but not all requisite labels
+    requisiteLabels.filter (label => !hasLabels.includes (label)).forEach ((label) => {
+        // issue a warning for each missing label
+        log.warn (`Docker service ${service.ID} is missing requisite label ${label}.`);
+    });
+    
+    // all or nothing on the labels
+    return false;
+}
+
 module.exports = {
     API: docker,
 
     Events: dockerEvents,
 
-    isAgassiService: (service) => {
-        const labels = parseServiceLabels (service);
-
-        // no labels at all, not an agassi service
-        if (!Object.keys (labels).length > 0) {
-            return false;
-        }
-
-        // for each requisite label
-        const hasLabels = requisiteLabels.filter ((requisiteLabel) => {
-            // check that the keys parsed labels includes the requisite label
-            return Object.keys (labels).includes (Config.serviceLabelPrefix + requisiteLabel);
-        });
-
-        // has all requisite labels, nothing further to check
-        log.debug (`Service ${service.ID} has (${hasLabels.length}/${requisiteLabels.length}).`);
-        if (hasLabels.legnth == requisiteLabels.length) {
-            return true;
-        }
-
-        // has zero requisite labels, nothing further to check
-        if (hasLabels.length == 0) {
-            return false;
-        }
-
-        // if agassi.domain and agassi.opt.target are set, the service is fine
-        log.debug (`Checking options for service ${service.ID}...`);
-        const options = parseProxyOptions (labels);
-        log.debug (options);
-        if (hasLabels.includes ('domain') && (options.target || options.forward)) {
-            return true;
-        }
-
-
-        // has some but not all requisite labels
-        requisiteLabels.filter (label => !hasLabels.includes (label)).forEach ((label) => {
-            // issue a warning for each missing label
-            log.warn (`Docker service ${service.ID} is missing requisite label ${label}.`);
-        });
-        
-        // all or nothing on the labels
-        return false;
-    },
+    isAgassiService,
 
     pushServiceToDB: async (serviceOrID) => {
         var service = null;
