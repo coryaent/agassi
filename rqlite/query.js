@@ -16,11 +16,10 @@ module.exports.services = {
 module.exports.challenges = {
     createTable:
         `CREATE TABLE IF NOT EXISTS challenges (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
             token TEXT NOT NULL,
             response TEXT NOT NULL,
             domain TEXT NOT NULL,
-            order TEXT NOT NULL,
+            acme_order TEXT NOT NULL,
             challenge TEXT NOT NULL,
             timestamp INTEGER NOT NULL
         );`,
@@ -29,7 +28,6 @@ module.exports.challenges = {
 module.exports.certificates = {
     createTable:
         `CREATE TABLE IF NOT EXISTS certificates (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
             domain TEXT NOT NULL,
             certificate TEXT NOT NULL,
             expiration INTEGER NOT NULL

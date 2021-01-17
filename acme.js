@@ -26,7 +26,7 @@ async function performMaintenance () {
         const serviceDomains = serviceQueryResponse.results.map (result => result.domain);
         log.debug (`Found ${serviceDomains.length} services in table in ${serviceQueryResponse.time}.`);
 
-        const allCertQueryResponse = await rqlite.dbQuery (`SELECT id, expiration FROM certificates;`, 'strong');
+        const allCertQueryResponse = await rqlite.dbQuery (`SELECT certificate, expiration, domain FROM certificates;`, 'strong');
         const allCerts = allCertQueryResponse.results;
         log.debug (`Found ${allCerts.length} certificates in table in ${allCertQueryResponse.time}.`);
 
@@ -36,15 +36,15 @@ async function performMaintenance () {
             // if cert is expired
             if (cert.expiration < unixTime) {
                 // remove cert from db
-                const executionResponse = await rqlite.dbExecute (`DELETE FROM certificates WHERE id = ${cert.id};`);
-                log.debug (`Removed expired certificate with id ${cert.id} in ${executionResponse.time}.`);
+                const executionResponse = await rqlite.dbExecute (`DELETE FROM certificates WHERE certificate = '${cert.certificate}';`);
+                log.debug (`Removed expired certificate for domain ${cert.domain} in ${executionResponse.time}.`);
             }
         }
 
-        // get only the latest certs
+        // get only the latest certs for domains in service
         const potentialRenewals = [];
         for (let domain of serviceDomains) {
-            const latestCertQueryResponse = await rqlite.dbQuery (`SELECT id, expiration, domain FROM certificates
+            const latestCertQueryResponse = await rqlite.dbQuery (`SELECT expiration, domain FROM certificates
             WHERE domain = '${domain}' ORDER BY expiration DESC LIMIT 1;`, 'strong');
             if (latestCertQueryResponse.results.length > 0) {
                 potentialRenewals.push (latestCertQueryResponse.results[0]);
@@ -104,7 +104,7 @@ async function initiateChallenge (domain) {
 
         // add challenge and response to db table
         const challengeInsertion = await rqlite.dbExecute (`INSERT INTO challenges 
-            (token, response, challenge, order, timestamp)
+            (token, response, challenge, acme_order, timestamp)
             VALUES (
                 '${httpAuthorizationToken}', 
                 '${httpAuthorizationResponse}', 
@@ -123,7 +123,7 @@ async function initiateChallenge (domain) {
 }
 
 const ChallengeEvents = new EventEmitter ()
-.on ('completion', async function addNewCertToDB (httpChallenge, order, timestamp, domain, id) {
+.on ('completion', async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
 
     log.debug (`Fetching certificate for domain ${domain}...`);
 
@@ -140,8 +140,8 @@ const ChallengeEvents = new EventEmitter ()
         const certificate = await client.getCertificate (order);
 
         // remove challenge from table
-        const challengeRemoval = await rqlite.dbExecute (`DELETE FROM challenges WHERE id = '${id}';`);
-        log.debug (`Removed challenge ${id} in ${challengeRemoval.time}.`);
+        const challengeRemoval = await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${token}';`);
+        log.debug (`Removed challenge for domain ${domain} in ${challengeRemoval.time}.`);
 
         // calculate expiration date by adding 2160 hours (90 days)
         const jsTime = new Date (); // JS (ms)
