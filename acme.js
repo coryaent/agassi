@@ -140,7 +140,8 @@ const ChallengeEvents = new EventEmitter ()
         const certificate = await client.getCertificate (order);
 
         // remove challenge from table
-        await rqlite.dbExecute (`DELETE FROM challenges WHERE id = '${id}';`);
+        const challengeRemoval = await rqlite.dbExecute (`DELETE FROM challenges WHERE id = '${id}';`);
+        log.debug (`Removed challenge ${id} in ${challengeRemoval.time}.`);
 
         // calculate expiration date by adding 2160 hours (90 days)
         const jsTime = new Date (); // JS (ms)
