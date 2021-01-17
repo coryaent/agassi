@@ -86,7 +86,7 @@ async function hasCert (domain) {
 
 async function initiateChallenge (domain) {
     const start = Date.now ();
-    log.debug (`Adding new certifiate for domain ${domain}...`);
+    log.debug (`Adding new challenge for domain ${domain}...`);
     
     try {
         const order = await client.createOrder ({
@@ -125,6 +125,8 @@ async function initiateChallenge (domain) {
 const ChallengeEvents = new EventEmitter ()
 .on ('completion', async function addNewCertToDB (httpChallenge, order, timestamp, domain, id) {
 
+    log.debug (`Fetching certificate for domain ${domain}...`);
+
     try {
         await client.waitForValidStatus (httpChallenge);
 
@@ -153,7 +155,6 @@ const ChallengeEvents = new EventEmitter ()
     } catch (error) {
         log.error (error.name);
         log.error (error.message);
-        log.error (`Could not add certificate for domain ${domain} to database.`);
     }
 });
 
