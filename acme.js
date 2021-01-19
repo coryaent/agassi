@@ -142,10 +142,6 @@ const ChallengeEvents = new EventEmitter ()
             await client.finalizeOrder (order, csr);
             const certificate = await client.getCertificate (order);
 
-            // remove challenge from table
-            const challengeRemoval = await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${token}';`);
-            log.debug (`Removed challenge for domain ${domain} in ${challengeRemoval.time}.`);
-
             // calculate expiration date by adding 2160 hours (90 days)
             const jsTime = new Date (); // JS (ms)
             const expiration = Math.floor (jsTime.setUTCHours (jsTime.getUTCHours () + 2160) / 1000); // (UNIX (s))
@@ -155,6 +151,11 @@ const ChallengeEvents = new EventEmitter ()
             VALUES ('${domain}', '${certificate}', ${expiration});`);
 
             log.debug (`Added new certificate for domain ${domain} in ${(Date.now () - timestamp) / 1000}s.`);
+
+            // remove challenge from table
+            const challengeRemoval = await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${token}';`);
+            log.debug (`Removed challenge for domain ${domain} in ${challengeRemoval.time}.`);
+
 
         } catch (error) {
             log.error (error.name);
