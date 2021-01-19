@@ -3,18 +3,19 @@
 const http = require ('http');
 const log = require ('../logger.js');
 const rqlite = require ('../rqlite/rqlite.js');
+const rqlited = require ('../rqlite/rqlited.js');
 const ACME = require ('../acme.js');
 
 const Server = http.createServer (async (request, response) => {
     // check request path
     const requestURL = new URL (request.url, `http://${request.headers.host}`);
     // if request is for ACME challenge
-    if (requestURL.pathname && requestURL.pathname.startsWith ('/.well-known/acme-challenge/')) {
+    if (requestURL.pathname && requestURL.pathname.startsWith ('/.well-known/acme-challenge/') && rqlited.isLeader ()) {
 
         log.debug (`Received certificate challenge request for ${requestURL.hostname}.`);
         const token = requestURL.pathname.replace ('/.well-known/acme-challenge/', '');
         const challengeQuery = await rqlite.dbQuery (`SELECT response, challenge, acme_order, timestamp FROM challenges
-            WHERE token = '${token}';`);
+            WHERE token = '${token}';`, 'strong');
         if (challengeQuery.results.length > 0) {
             log.debug (`Got challenge response from database in ${challengeQuery.time}.`)
             // write challenge response to request
