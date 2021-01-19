@@ -125,37 +125,39 @@ async function initiateChallenge (domain) {
 const ChallengeEvents = new EventEmitter ()
 .on ('completion', async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
 
-    log.debug (`Fetching certificate for domain ${domain}...`);
+    if (rqlited.isLeader ()) {
+        log.debug (`Fetching certificate for domain ${domain}...`);
 
-    try {
-        await client.waitForValidStatus (httpChallenge);
+        try {
+            await client.waitForValidStatus (httpChallenge);
 
-        // challenge is complete and valid, send cert-signing request
-        const [key, csr] = await acme.forge.createCsr ({
-            commonName: domain
-        }, Config.defaultKey);
+            // challenge is complete and valid, send cert-signing request
+            const [key, csr] = await acme.forge.createCsr ({
+                commonName: domain
+            }, Config.defaultKey);
 
-        // finalize the order and pull the cert
-        await client.finalizeOrder (order, csr);
-        const certificate = await client.getCertificate (order);
+            // finalize the order and pull the cert
+            await client.finalizeOrder (order, csr);
+            const certificate = await client.getCertificate (order);
 
-        // remove challenge from table
-        const challengeRemoval = await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${token}';`);
-        log.debug (`Removed challenge for domain ${domain} in ${challengeRemoval.time}.`);
+            // remove challenge from table
+            const challengeRemoval = await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${token}';`);
+            log.debug (`Removed challenge for domain ${domain} in ${challengeRemoval.time}.`);
 
-        // calculate expiration date by adding 2160 hours (90 days)
-        const jsTime = new Date (); // JS (ms)
-        const expiration = Math.floor (jsTime.setUTCHours (jsTime.getUTCHours () + 2160) / 1000); // (UNIX (s))
+            // calculate expiration date by adding 2160 hours (90 days)
+            const jsTime = new Date (); // JS (ms)
+            const expiration = Math.floor (jsTime.setUTCHours (jsTime.getUTCHours () + 2160) / 1000); // (UNIX (s))
 
-        // add certificate to db table
-        await rqlite.dbExecute (`INSERT INTO certificates (domain, certificate, expiration)
-        VALUES ('${domain}', '${certificate}', ${expiration});`);
+            // add certificate to db table
+            await rqlite.dbExecute (`INSERT INTO certificates (domain, certificate, expiration)
+            VALUES ('${domain}', '${certificate}', ${expiration});`);
 
-        log.debug (`Added new certificate for domain ${domain} in ${(Date.now () - timestamp) / 1000}s.`);
+            log.debug (`Added new certificate for domain ${domain} in ${(Date.now () - timestamp) / 1000}s.`);
 
-    } catch (error) {
-        log.error (error.name);
-        log.error (error.message);
+        } catch (error) {
+            log.error (error.name);
+            log.error (error.message);
+        }
     }
 });
 
