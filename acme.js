@@ -85,42 +85,40 @@ async function hasCert (domain) {
 }
 
 async function initiateChallenge (domain) {
-    if (rqlited.isLeader ()) {
-        const start = Date.now ();
-        log.debug (`Adding new challenge for domain ${domain}...`);
-        
-        try {
-            const order = await client.createOrder ({
-                identifiers: [
-                    { type: 'dns', value: domain },
-                ]
-            });
+    const start = Date.now ();
+    log.debug (`Adding new challenge for domain ${domain}...`);
+    
+    try {
+        const order = await client.createOrder ({
+            identifiers: [
+                { type: 'dns', value: domain },
+            ]
+        });
 
-            // get http authorization token and response
-            const authorizations = await client.getAuthorizations (order);
-            const httpChallenge = authorizations[0]['challenges'].find (
-                (element) => element.type === 'http-01');
-            const httpAuthorizationToken = httpChallenge.token;
-            const httpAuthorizationResponse = await client.getChallengeKeyAuthorization (httpChallenge);
+        // get http authorization token and response
+        const authorizations = await client.getAuthorizations (order);
+        const httpChallenge = authorizations[0]['challenges'].find (
+            (element) => element.type === 'http-01');
+        const httpAuthorizationToken = httpChallenge.token;
+        const httpAuthorizationResponse = await client.getChallengeKeyAuthorization (httpChallenge);
 
-            // add challenge and response to db table
-            const challengeInsertion = await rqlite.dbExecute (`INSERT INTO challenges 
-                (token, response, challenge, acme_order, timestamp)
-                VALUES (
-                    '${httpAuthorizationToken}', 
-                    '${httpAuthorizationResponse}', 
-                    '${JSON.stringify (httpChallenge)}',
-                    '${JSON.stringify (order)}',
-                    '${start}');`);
-            log.debug (`Added challenge to database in ${challengeInsertion.time}.`);
+        // add challenge and response to db table
+        const challengeInsertion = await rqlite.dbExecute (`INSERT INTO challenges 
+            (token, response, challenge, acme_order, timestamp)
+            VALUES (
+                '${httpAuthorizationToken}', 
+                '${httpAuthorizationResponse}', 
+                '${JSON.stringify (httpChallenge)}',
+                '${JSON.stringify (order)}',
+                '${start}');`);
+        log.debug (`Added challenge to database in ${challengeInsertion.time}.`);
 
-            // db consensus means it's ready
-            await client.completeChallenge (httpChallenge);
+        // db consensus means it's ready
+        await client.completeChallenge (httpChallenge);
 
-        } catch (error) {
-            log.error (error.name);
-            log.error (error.message);
-        }
+    } catch (error) {
+        log.error (error.name);
+        log.error (error.message);
     }
 }
 
