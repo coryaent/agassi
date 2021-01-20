@@ -1,7 +1,7 @@
 "use strict";
 // rqlite client
 
-const axios = require ('axios');
+const phin = require ('phin');
 
 class RqliteError extends Error {
     constructor (message) {
@@ -60,22 +60,27 @@ function parseQueryResults (responseData) {
 
 var client = null;
 
+const defaults = {
+    "timeout": 10 * 1000,
+    "followRedirects": true,
+    "headers": { 'Content-Type' : 'application/json' },
+    "parse": 'json'
+};
+
 module.exports = {
 
     initialize: (address) => {
-        client = axios.create ({
-            baseURL: `http://${address}:4001`,
-            timeout: 10 * 1000,
-            headers: { 'Content-Type' : 'application/json' }
-        })
+        defaults.url = `http://${address}:4001`
     },
 
-    dbExecute: async function (_query, _consistency) {
-        const method = 'post';
-        const path = '/db/execute?timings' + '&' + parseConsistency (_consistency);
-        const query = Array.isArray (_query) ? _query : new Array (_query);
+    dbExecute: async function (query, consistency) {
+        const options = defaults;
+
+        options.method = 'POST';
+        options.url = defaults.url + '/db/execute?timings' + '&' + parseConsistency (consistency);
+        options.data = Array.isArray (query) ? query : new Array (query);
         
-        const response = (await client.request ({
+        const response = (await phin ({
             method: method,
             url: path,
             data: JSON.stringify (query)
@@ -89,7 +94,7 @@ module.exports = {
     },
 
     dbTransact: async function (_query, _consistency) {
-        const method = 'post';
+        const method = 'POST';
         const path = '/db/execute?timings&transaction' + '&' + parseConsistency (_consistency);
         const query = Array.isArray (_query) ? _query : new Array (_query);
 

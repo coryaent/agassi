@@ -41,6 +41,7 @@
     "is-url": "^1.2.4",
     "nano-memoize": "^1.2.1",
     "node-discover": "^1.2.0",
+    "phin": "^3.5.1",
     "sleepjs": "^4.0.2",
     "ssl-utils": "^1.0.0",
     "tsscmp": "^1.0.6",
