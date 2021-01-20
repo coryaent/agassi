@@ -45,13 +45,14 @@ async function pollStatus (listenAddress) {
         const response = await phin ({
             url: `http://${listenAddress}:4001/status`,
             method: 'GET',
-            timeout: 300
+            timeout: 300,
+            parse: 'json'
         });
         return [
             // check for connection
-            new Boolean (response.data.store.raft.state).valueOf (),
+            new Boolean (response.body.store.raft.state).valueOf (),
             // check for leadership
-            new Boolean (response.data.store.raft.state == 'Leader').valueOf ()
+            new Boolean (response.body.store.raft.state == 'Leader').valueOf ()
         ];
     } catch {
         return [false, false];
