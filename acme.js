@@ -129,14 +129,17 @@ const ChallengeEvents = new EventEmitter ()
         log.debug (`Fetching certificate for domain ${domain}...`);
 
         try {
+            log.debug (`Awaiting valid status for domain ${domain}...`);
             await client.waitForValidStatus (httpChallenge);
 
             // challenge is complete and valid, send cert-signing request
+            log.debug (`Creating CSR for domain ${domain}...`);
             const [key, csr] = await acme.forge.createCsr ({
                 commonName: domain
             }, Config.defaultKey);
 
             // finalize the order and pull the cert
+            log.debug (`Finalizing order for domain ${domain}...`);
             await client.finalizeOrder (order, csr);
             const certificate = await client.getCertificate (order);
 
