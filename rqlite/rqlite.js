@@ -80,11 +80,8 @@ module.exports = {
         options.url = defaults.url + '/db/execute?timings' + '&' + parseConsistency (consistency);
         options.data = Array.isArray (query) ? query : new Array (query);
         
-        const response = (await phin ({
-            method: method,
-            url: path,
-            data: JSON.stringify (query)
-        })).data;
+        const response = (await phin (options)).body;
+
         response.results.forEach ((result) => {
             if (result.error) {
                 throw new RqliteError (result.error);
@@ -94,15 +91,14 @@ module.exports = {
     },
 
     dbTransact: async function (_query, _consistency) {
-        const method = 'POST';
-        const path = '/db/execute?timings&transaction' + '&' + parseConsistency (_consistency);
-        const query = Array.isArray (_query) ? _query : new Array (_query);
+        const options = defaults;
 
-        const response = (await client.request ({
-            method: method,
-            url: path,
-            data: JSON.stringify (query)
-        })).data;
+        options.method = 'POST';
+        options.url = defaults.url + '/db/execute?timings&transaction' + '&' + parseConsistency (_consistency);
+        options.data = Array.isArray (_query) ? _query : new Array (_query);
+
+        const response = (await phin (options)).body;
+
         response.results.forEach ((result) => {
             if (result.error) {
                 throw new RqliteError (result.error);
@@ -112,36 +108,34 @@ module.exports = {
     },
 
     dbQuery: async function (_query, _consistency) {
-        const method = 'post';
-        const path = '/db/query?timings' + '&' + parseConsistency (_consistency);
-        const query = Array.isArray (_query) ? _query : new Array (_query);
-        
-        const responseData = (await client.request ({
-            method: method,
-            url: path,
-            data: JSON.stringify (query)
-        })).data;
+        const options = defaults;
 
-        return parseQueryResults (responseData);
+        options.method = 'POST';
+        options.url = defaults.url + '/db/query?timings' + '&' + parseConsistency (_consistency);
+        options.data = Array.isArray (_query) ? _query : new Array (_query);
+        
+        const response = (await phin (options)).body;
+
+        return parseQueryResults (response);
     },
 
     removeNode: async function (node) {
-        const method = 'delete';
-        const path = '/remove';
-        return (await client.request ({
-            method: method, 
-            url: path, 
-            data: {"id": node}
-        })).data;
+        const options = defaults;
+
+        options.method = 'DELETE';
+        options.url = defaults.url + '/remove';
+        options.parse = 'none';
+        options.data = { "id": node }
+        
+        return (await phin (options)).body;
     },
 
     checkStatus: async function () {
-        const method = 'get';
-        const path = '/status';
+        const options = defaults;
 
-        return (await client.request ({
-            method: method,
-            url: path,
-        })).data;
+        options.method = 'GET';
+        options.url = defaults.url + '/status';
+
+        return (await phin (options)).body;
     }
 };

@@ -3,7 +3,7 @@
 const log = require ('../logger.js');
 const { spawn, execFileSync } = require ('child_process');
 const EventEmitter = require ('events');
-const axios = require ('axios');
+const phin = require ('phin');
 const fs = require ('fs');
 const { v4: uuidv4 } = require ('uuid');
 
@@ -42,9 +42,9 @@ var isLeader = undefined;
 
 async function pollStatus (listenAddress) {
     try {
-        const response = await axios.request ({
+        const response = await phin ({
             url: `http://${listenAddress}:4001/status`,
-            method: 'get',
+            method: 'GET',
             timeout: 300
         });
         return [
