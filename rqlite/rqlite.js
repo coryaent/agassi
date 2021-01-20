@@ -78,7 +78,7 @@ module.exports = {
         const response = (await client.request ({
             method: method,
             url: path,
-            data: query
+            data: JSON.stringify (query)
         })).data;
         response.results.forEach ((result) => {
             if (result.error) {
@@ -96,7 +96,7 @@ module.exports = {
         const response = (await client.request ({
             method: method,
             url: path,
-            data: query
+            data: JSON.stringify (query)
         })).data;
         response.results.forEach ((result) => {
             if (result.error) {
@@ -114,7 +114,7 @@ module.exports = {
         const responseData = (await client.request ({
             method: method,
             url: path,
-            data: query
+            data: JSON.stringify (query)
         })).data;
 
         return parseQueryResults (responseData);
