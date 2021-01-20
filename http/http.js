@@ -11,7 +11,7 @@ const Server = http.createServer (async (request, response) => {
     // if request is for ACME challenge
     if (requestURL.pathname && requestURL.pathname.startsWith ('/.well-known/acme-challenge/')) {
 
-        log.debug (`Received certificate challenge request for ${requestURL.hostname}.`);
+        log.debug (`Received certificate challenge request for ${requestURL.hostname}${requestURL.pathname}.`);
         const token = requestURL.pathname.replace ('/.well-known/acme-challenge/', '');
         const challengeQuery = await rqlite.dbQuery (`SELECT response, challenge, acme_order, timestamp FROM challenges
         WHERE token = '${token}';`, 'strong');
