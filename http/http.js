@@ -44,7 +44,7 @@ const Server = http.createServer (async (request, response) => {
                 token
             );
         } else {
-            log.warn (`Could not find challenge response for ${requestURL.hostname}, ignoring request.`);
+            log.warn (`Could not find challenge response for ${requestURL.hostname}.`);
             return;
         }
 
