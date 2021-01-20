@@ -133,6 +133,7 @@ const ChallengeEvents = new EventEmitter ()
 
         try {
             log.debug (`Awaiting valid status for domain ${domain}...`);
+            await sleep (5 * 1000);
             await client.waitForValidStatus (httpChallenge);
 
             // challenge is complete and valid, send cert-signing request
