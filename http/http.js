@@ -14,7 +14,7 @@ const Server = http.createServer (async (request, response) => {
         log.debug (`Received certificate challenge request for ${requestURL.hostname}.`);
         const token = requestURL.pathname.replace ('/.well-known/acme-challenge/', '');
         const challengeQuery = await rqlite.dbQuery (`SELECT response, challenge, acme_order, timestamp FROM challenges
-            WHERE token = '${token}';`);
+            WHERE token = '${token}';`, 'strong');
         
         if (challengeQuery.results.length > 0) {
             log.debug (`Got challenge response from database in ${challengeQuery.time}.`)

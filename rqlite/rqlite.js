@@ -90,12 +90,12 @@ module.exports = {
         return response;
     },
 
-    dbTransact: async function (_query, _consistency) {
+    dbTransact: async function (query, consistency) {
         const options = defaults;
 
         options.method = 'POST';
-        options.url = defaults.url + '/db/execute?timings&transaction' + '&' + parseConsistency (_consistency);
-        options.data = Array.isArray (_query) ? _query : new Array (_query);
+        options.url = defaults.url + '/db/execute?timings&transaction' + '&' + parseConsistency (consistency);
+        options.data = Array.isArray (query) ? query : new Array (query);
 
         const response = (await phin (options)).body;
 
@@ -107,12 +107,12 @@ module.exports = {
         return response;
     },
 
-    dbQuery: async function (_query, _consistency) {
+    dbQuery: async function (query, consistency) {
         const options = defaults;
 
         options.method = 'POST';
-        options.url = defaults.url + '/db/query?timings' + '&' + parseConsistency (_consistency);
-        options.data = Array.isArray (_query) ? _query : new Array (_query);
+        options.url = defaults.url + '/db/query?timings' + '&' + parseConsistency (consistency);
+        options.data = Array.isArray (query) ? query : new Array (query);
         
         const response = (await phin (options)).body;
 
