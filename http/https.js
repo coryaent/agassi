@@ -105,12 +105,6 @@ const Server = https.createServer ({
         // basic auth not required
         Proxy.web (request, response, proxyOptions);
     }
-
-}).once ('listening', () => {
-    log.debug ('Initializing HTTPS rate limiter...');
-    process.nextTick (() => {
-        rateLimit.init ()
-    });
 }).on ('listening', () => {
     log.info ('HTTPS server started.');
 }).on ('close', () => {
@@ -121,18 +115,20 @@ module.exports = {
     Server,
 
     start: () => {
-        if (!Server.listening) {
+        if (Server && !Server.listening) {
             log.info ('Starting HTTPS server...');
             Server.listen (443, null, (error) => {
                 if (error) {
                     throw error;
                 }
+                log.debug ('Initializing HTTPS rate limiter...');
+                rateLimit.init (1, true); // 1 minute, using reverse proxy
             })
         }
     },
 
     stop: () => {
-        if (Server.listening) {
+        if (Server && Server.listening) {
             log.info ('Stopping HTTPS server...');
             Server.stop ();
         }
