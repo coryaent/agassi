@@ -86,6 +86,8 @@ async function hasCert (domain) {
 
 const ChallengeEvents = new EventEmitter ();
 
+var challengeCompletion = null;
+
 async function initiateChallenge (domain) {
     const start = Date.now ();
     log.debug (`Adding new challenge for domain ${domain}...`);
@@ -117,7 +119,8 @@ async function initiateChallenge (domain) {
 
         // let the challenge settle
         log.debug ('Indication challenge completion...');
-        await client.completeChallenge (httpChallenge);
+        // await client.completeChallenge (httpChallenge);
+        challengeCompletion = setInterval (client.completeChallenge, 5 * 1000, httpChallenge);
 
     } catch (error) {
         log.error (error.name);
@@ -128,6 +131,10 @@ async function initiateChallenge (domain) {
 }
 
 async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
+
+    if (challengeCompletion) {
+        clearInterval (challengeCompletion);
+    }
 
     if (rqlited.isLeader ()) {
         log.debug (`Fetching certificate for domain ${domain}...`);
