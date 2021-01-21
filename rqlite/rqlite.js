@@ -2,6 +2,7 @@
 // rqlite client
 
 const phin = require ('phin');
+const querystring = require('querystring');
 
 class RqliteError extends Error {
     constructor (message) {
@@ -112,7 +113,7 @@ module.exports = {
 
         options.method = 'GET';
         options.url = defaults.url + '/db/query?timings' + '&' + parseConsistency (consistency) +
-            '&' + 'q=' + query;
+            '&' + querystring.stringify ({ q: query })
         
         const response = (await phin (options)).body;
 
