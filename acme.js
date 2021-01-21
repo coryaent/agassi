@@ -84,7 +84,6 @@ async function hasCert (domain) {
     return hasCurrent;
 }
 
-
 const ChallengeEvents = new EventEmitter ();
 
 async function initiateChallenge (domain) {
