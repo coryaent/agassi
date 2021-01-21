@@ -120,7 +120,7 @@ async function initiateChallenge (domain) {
         // let the challenge settle
         log.debug ('Indication challenge completion...');
         // await client.completeChallenge (httpChallenge);
-        challengeCompletion = setInterval (client.completeChallenge, 5 * 1000, httpChallenge);
+        challengeCompletion = setInterval (indicateCompletion, 5 * 1000, httpChallenge);
 
     } catch (error) {
         log.error (error.name);
@@ -128,6 +128,10 @@ async function initiateChallenge (domain) {
     }
 
     ChallengeEvents.once ('completion', addNewCertToDB);
+}
+
+async function indicateCompletion (httpChallenge) {
+    await client.completeChallenge (httpChallenge);
 }
 
 async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
