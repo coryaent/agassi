@@ -110,9 +110,9 @@ module.exports = {
     dbQuery: async function (query, consistency) {
         const options = defaults;
 
-        options.method = 'POST';
-        options.url = defaults.url + '/db/query?timings' + '&' + parseConsistency (consistency);
-        options.data = Array.isArray (query) ? query : new Array (query);
+        options.method = 'GET';
+        options.url = defaults.url + '/db/query?timings' + '&' + parseConsistency (consistency) +
+            '&' + 'q=' + query;
         
         const response = (await phin (options)).body;
 
