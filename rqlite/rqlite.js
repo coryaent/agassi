@@ -75,7 +75,7 @@ module.exports = {
     },
 
     dbExecute: async function (query, consistency) {
-        const options = defaults;
+        const options = Object.create (defaults);
 
         options.method = 'POST';
         options.url = defaults.url + '/db/execute?timings' + '&' + parseConsistency (consistency);
@@ -92,7 +92,7 @@ module.exports = {
     },
 
     dbTransact: async function (query, consistency) {
-        const options = defaults;
+        const options = Object.create (defaults);
 
         options.method = 'POST';
         options.url = defaults.url + '/db/execute?timings&transaction' + '&' + parseConsistency (consistency);
@@ -109,7 +109,7 @@ module.exports = {
     },
 
     dbQuery: async function (query, consistency) {
-        const options = defaults;
+        const options = Object.create (defaults);
 
         options.method = 'GET';
         options.url = defaults.url + '/db/query?timings' + '&' + parseConsistency (consistency) +
@@ -121,7 +121,7 @@ module.exports = {
     },
 
     removeNode: async function (node) {
-        const options = defaults;
+        const options = Object.create (defaults);
 
         options.method = 'DELETE';
         options.url = defaults.url + '/remove';
@@ -132,7 +132,7 @@ module.exports = {
     },
 
     checkStatus: async function () {
-        const options = defaults;
+        const options = Object.create (defaults);
 
         options.method = 'GET';
         options.url = defaults.url + '/status';
