@@ -6,6 +6,7 @@ const Config = require ('./config.js');
 const EventEmitter = require ('events');
 const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
+const { sleep } = require ('sleepjs');
 
 const secondsInDay = 86400;
 const msInHour = 3600000;
@@ -112,6 +113,8 @@ async function initiateChallenge (domain) {
                 '${JSON.stringify (order)}',
                 '${start}');`);
         log.debug (`Added challenge to database in ${challengeInsertion.time}.`);
+
+        await sleep (1500);
 
         // let the challenge settle
         log.debug ('Indication challenge completion...');
