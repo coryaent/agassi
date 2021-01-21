@@ -59,8 +59,6 @@ function parseQueryResults (responseData) {
     return organizedResults;
 }
 
-var client = null;
-
 const defaults = {
     "timeout": 10 * 1000,
     "followRedirects": true,

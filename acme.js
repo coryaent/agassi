@@ -6,7 +6,6 @@ const Config = require ('./config.js');
 const EventEmitter = require ('events');
 const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
-const { sleep } = require ('sleepjs');
 
 const secondsInDay = 86400;
 const msInHour = 3600000;
@@ -85,6 +84,9 @@ async function hasCert (domain) {
     return hasCurrent;
 }
 
+
+const ChallengeEvents = new EventEmitter ();
+
 async function initiateChallenge (domain) {
     const start = Date.now ();
     log.debug (`Adding new challenge for domain ${domain}...`);
@@ -114,8 +116,6 @@ async function initiateChallenge (domain) {
                 '${start}');`);
         log.debug (`Added challenge to database in ${challengeInsertion.time}.`);
 
-        await sleep (1500);
-
         // let the challenge settle
         log.debug ('Indication challenge completion...');
         await client.completeChallenge (httpChallenge);
@@ -124,10 +124,11 @@ async function initiateChallenge (domain) {
         log.error (error.name);
         log.error (error.message);
     }
+
+    ChallengeEvents.once ('completion', addNewCertToDB);
 }
 
-const ChallengeEvents = new EventEmitter ()
-.on ('completion', async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
+async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
 
     if (rqlited.isLeader ()) {
         log.debug (`Fetching certificate for domain ${domain}...`);
@@ -167,8 +168,7 @@ const ChallengeEvents = new EventEmitter ()
             log.error (error.message);
         }
     }
-});
-
+}
 
 module.exports = {
 
