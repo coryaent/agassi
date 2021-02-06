@@ -14,7 +14,8 @@ const rqlited = require ('./rqlite/rqlited.js');
 const options = {
     hostname: rqlited.uuid,
     port: 4002,
-    nodeTimeout: 10 * 1000
+    nodeTimeout: 10 * 1000,
+    ignoreInstance: false
 };
 
 // maintain a list of Peers external to node-discover nodes
@@ -69,6 +70,8 @@ async function removeNode (nodeID) {
     }
 }
 
+const ChallengeResponses = new EventEmitter ();
+
 var discover = null;
 
 module.exports = {
@@ -114,6 +117,20 @@ module.exports = {
             // set pending removal
             RemovalTimeouts.set (node.hostName, setTimeout (removeNode, 60 * 1000, node.hostName));
         });
+        
+        discover.join ('message', (token) => {
+            ChallengeResponses.emit (token);
+        });
+    },
+
+    ChallengeResponses,
+
+    send: (message) => {
+        if (discover && discover instanceof Discover) {
+            log.warn ('Cluster discovery has not been initialized.');
+        } else {
+            discover.send ('message', message);
+        }
     },
 
     advertise: (advertisement) => {
