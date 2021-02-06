@@ -129,9 +129,9 @@ async function initiateChallenge (domain) {
     }
 }
 
-async function getChallangeParameters (token) {
+async function getChallengeParameters (token) {
     log.debug ('Pulling challange parameters from database...');
-    const challengeQuery = await rqlite.dbQuery (`SELECT response, challenge, acme_order, timestamp FROM challenges
+    const challengeQuery = await rqlite.dbQuery (`SELECT response, challenge, acme_order, domain, timestamp FROM challenges
         WHERE token = '${token}';`);
     log.debug (`Got challange parameters in ${challangeQuery.time}.`);
     return challengeQuery.results[0];
@@ -143,8 +143,10 @@ async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
         log.debug (`Fetching certificate for domain ${domain}...`);
 
         try {
+            const challengeParameters = await getChallengeParameters (token);
+
             log.debug (`Awaiting valid status for domain ${domain}...`);
-            await client.waitForValidStatus (httpChallenge);
+            await client.waitForValidStatus (challengeParameters.challenge);
 
             // challenge is complete and valid, send cert-signing request
             log.debug (`Creating CSR for domain ${domain}...`);
@@ -154,8 +156,8 @@ async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
 
             // finalize the order and pull the cert
             log.debug (`Finalizing order for domain ${domain}...`);
-            await client.finalizeOrder (order, csr);
-            const certificate = await client.getCertificate (order);
+            await client.finalizeOrder (challengeParameters.acme_order, csr);
+            const certificate = await client.getCertificate (challengeParameters.acme_order);
 
             // calculate expiration date by adding 2160 hours (90 days)
             const jsTime = new Date (); // JS (ms)
@@ -165,7 +167,7 @@ async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
             await rqlite.dbExecute (`INSERT INTO certificates (domain, certificate, expiration)
             VALUES ('${domain}', '${certificate}', ${expiration});`);
 
-            log.debug (`Added new certificate for domain ${domain} in ${(Date.now () - timestamp) / 1000}s.`);
+            log.debug (`Added new certificate for domain ${domain} in ${(Date.now () - challengeParameters.timestamp) / 1000}s.`);
 
             // remove challenge from table
             const challengeRemoval = await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${token}';`);
