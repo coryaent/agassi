@@ -27,7 +27,7 @@ const Server = http.createServer (async (request, response) => {
 
             log.debug ('Sent challenge response.');
 
-            ACME.ChallengeEvents.emit ('completion', 
+            ACME.ChallengeEvents.emit (token, 
                 JSON.parse (challengeQuery.results[0].challenge),
                 JSON.parse (challengeQuery.results[0].acme_order),
                 challengeQuery.results[0].timestamp,

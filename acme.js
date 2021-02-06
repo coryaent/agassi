@@ -86,8 +86,6 @@ async function hasCert (domain) {
 
 const ChallengeEvents = new EventEmitter ();
 
-var challengeCompletion = null;
-
 async function initiateChallenge (domain) {
     const start = Date.now ();
     log.debug (`Adding new challenge for domain ${domain}...`);
@@ -106,6 +104,9 @@ async function initiateChallenge (domain) {
         const httpAuthorizationToken = httpChallenge.token;
         const httpAuthorizationResponse = await client.getChallengeKeyAuthorization (httpChallenge);
 
+        // respond to this token in particular
+        ChallengeEvents.once (httpAuthorizationToken, addNewCertToDB);
+
         // add challenge and response to db table
         const challengeInsertion = await rqlite.dbExecute (`INSERT INTO challenges 
             (token, response, challenge, acme_order, timestamp)
@@ -119,26 +120,15 @@ async function initiateChallenge (domain) {
 
         // let the challenge settle
         log.debug ('Indicating challenge completion...');
-        // await client.completeChallenge (httpChallenge);
-        challengeCompletion = setInterval (indicateCompletion, 5 * 1000, httpChallenge);
+        await client.completeChallenge (httpChallenge);
 
     } catch (error) {
         log.error (error.name);
         log.error (error.message);
     }
-
-    ChallengeEvents.once ('completion', addNewCertToDB);
-}
-
-async function indicateCompletion (httpChallenge) {
-    await client.completeChallenge (httpChallenge);
 }
 
 async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
-
-    if (challengeCompletion) {
-        clearInterval (challengeCompletion);
-    }
 
     if (rqlited.isLeader ()) {
         log.debug (`Fetching certificate for domain ${domain}...`);
