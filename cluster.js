@@ -118,18 +118,18 @@ module.exports = {
             RemovalTimeouts.set (node.hostName, setTimeout (removeNode, 60 * 1000, node.hostName));
         });
         
-        discover.join ('message', (token) => {
-            ChallengeResponses.emit (token);
+        discover.join ('challenge.responses', (token) => {
+            ChallengeResponses.emit (token, token);
         });
     },
 
     ChallengeResponses,
 
-    send: (message) => {
+    indicateChallengeResponse: (token) => {
         if (discover && discover instanceof Discover) {
             log.warn ('Cluster discovery has not been initialized.');
         } else {
-            discover.send ('message', message);
+            discover.send ('challenge.responses', token);
         }
     },
 

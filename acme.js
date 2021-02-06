@@ -6,6 +6,7 @@ const Config = require ('./config.js');
 const EventEmitter = require ('events');
 const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
+const Cluster = require ('./cluster.js');
 
 const secondsInDay = 86400;
 const msInHour = 3600000;
@@ -126,6 +127,14 @@ async function initiateChallenge (domain) {
         log.error (error.name);
         log.error (error.message);
     }
+}
+
+async function getChallangeParameters (token) {
+    log.debug ('Pulling challange parameters from database...');
+    const challengeQuery = await rqlite.dbQuery (`SELECT response, challenge, acme_order, timestamp FROM challenges
+        WHERE token = '${token}';`);
+    log.debug (`Got challange parameters in ${challangeQuery.time}.`);
+    return challengeQuery.results[0];
 }
 
 async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {

@@ -4,6 +4,7 @@ const http = require ('http');
 const log = require ('../logger.js');
 const rqlite = require ('../rqlite/rqlite.js');
 const ACME = require ('../acme.js');
+const Cluster = require ('../cluster.js');
 
 const Server = http.createServer (async (request, response) => {
     // check request path
@@ -13,7 +14,7 @@ const Server = http.createServer (async (request, response) => {
 
         log.debug (`Received certificate challenge request for ${requestURL.hostname}.`);
         const token = requestURL.pathname.replace ('/.well-known/acme-challenge/', '');
-        const challengeQuery = await rqlite.dbQuery (`SELECT response, challenge, acme_order, timestamp FROM challenges
+        const challengeQuery = await rqlite.dbQuery (`SELECT response FROM challenges
             WHERE token = '${token}';`);
         
         if (challengeQuery.results.length > 0) {
@@ -27,13 +28,15 @@ const Server = http.createServer (async (request, response) => {
 
             log.debug ('Sent challenge response.');
 
-            ACME.ChallengeEvents.emit (token, 
-                JSON.parse (challengeQuery.results[0].challenge),
-                JSON.parse (challengeQuery.results[0].acme_order),
-                challengeQuery.results[0].timestamp,
-                requestURL.hostname,
-                token
-            );
+            // ACME.ChallengeEvents.emit (token, 
+            //     JSON.parse (challengeQuery.results[0].challenge),
+            //     JSON.parse (challengeQuery.results[0].acme_order),
+            //     challengeQuery.results[0].timestamp,
+            //     requestURL.hostname,
+            //     token
+            // );
+            
+            Cluster.indicateChallengeResponse (token);
         } else {
             log.warn (`Could not find challenge response for ${requestURL.hostname}.`);
             return;
