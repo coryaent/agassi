@@ -118,7 +118,7 @@ async function initiateChallenge (domain) {
         log.debug (`Added challenge to database in ${challengeInsertion.time}.`);
 
         // let the challenge settle
-        log.debug ('Indication challenge completion...');
+        log.debug ('Indicating challenge completion...');
         // await client.completeChallenge (httpChallenge);
         challengeCompletion = setInterval (indicateCompletion, 5 * 1000, httpChallenge);
 
