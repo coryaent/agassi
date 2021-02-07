@@ -85,8 +85,6 @@ async function hasCert (domain) {
     return hasCurrent;
 }
 
-const ChallengeEvents = new EventEmitter ();
-
 async function initiateChallenge (domain) {
     const start = Date.now ();
     log.debug (`Adding new challenge for domain ${domain}...`);
@@ -106,7 +104,7 @@ async function initiateChallenge (domain) {
         const httpAuthorizationResponse = await client.getChallengeKeyAuthorization (httpChallenge);
 
         // respond to this token in particular
-        ChallengeEvents.once (httpAuthorizationToken, addNewCertToDB);
+        Cluster.ChallengeResponses.once (httpAuthorizationToken, addNewCertToDB);
 
         // add challenge and response to db table
         const challengeInsertion = await rqlite.dbExecute (`INSERT INTO challenges 
@@ -129,21 +127,17 @@ async function initiateChallenge (domain) {
     }
 }
 
-async function getChallengeParameters (token) {
-    log.debug ('Pulling challange parameters from database...');
-    const challengeQuery = await rqlite.dbQuery (`SELECT response, challenge, acme_order, domain, timestamp FROM challenges
-        WHERE token = '${token}';`);
-    log.debug (`Got challange parameters in ${challangeQuery.time}.`);
-    return challengeQuery.results[0];
-}
-
 async function addNewCertToDB (httpChallenge, order, timestamp, domain, token) {
 
     if (rqlited.isLeader ()) {
         log.debug (`Fetching certificate for domain ${domain}...`);
 
         try {
-            const challengeParameters = await getChallengeParameters (token);
+            log.debug ('Pulling challange parameters from database...');
+            const challengeQuery = await rqlite.dbQuery (`SELECT response, challenge, acme_order, timestamp FROM challenges
+                WHERE token = '${token}';`);
+            log.debug (`Got challange parameters in ${challangeQuery.time}.`);
+            const challengeParameters = challengeQuery.results[0];
 
             log.debug (`Awaiting valid status for domain ${domain}...`);
             await client.waitForValidStatus (challengeParameters.challenge);
@@ -191,8 +185,6 @@ module.exports = {
         });
         log.debug (`ACME account created with email ${Config.acmeEmail.replace ('mailto:', '')}.`);
     },
-
-    ChallengeEvents,
 
     certify: async (domain) => {
         if (!(await hasCert (domain))) {

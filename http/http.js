@@ -3,7 +3,6 @@
 const http = require ('http');
 const log = require ('../logger.js');
 const rqlite = require ('../rqlite/rqlite.js');
-const ACME = require ('../acme.js');
 const Cluster = require ('../cluster.js');
 
 const Server = http.createServer (async (request, response) => {
@@ -26,17 +25,9 @@ const Server = http.createServer (async (request, response) => {
             response.write (challengeQuery.results[0].response, 'ascii');
             response.end ();
 
-            log.debug ('Sent challenge response.');
-
-            // ACME.ChallengeEvents.emit (token, 
-            //     JSON.parse (challengeQuery.results[0].challenge),
-            //     JSON.parse (challengeQuery.results[0].acme_order),
-            //     challengeQuery.results[0].timestamp,
-            //     requestURL.hostname,
-            //     token
-            // );
+            log.debug ('Indicating challenge response...');
             
-            Cluster.indicateChallengeResponse (token);
+            Cluster.indicateChallengeResponse (requestURL.hostname, token);
         } else {
             log.warn (`Could not find challenge response for ${requestURL.hostname}.`);
             return;

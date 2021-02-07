@@ -9,6 +9,7 @@ const iprange = require ('iprange');
 
 const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
+const Config = require('./config.js');
 
 // default options
 const options = {
@@ -118,18 +119,22 @@ module.exports = {
             RemovalTimeouts.set (node.hostName, setTimeout (removeNode, 60 * 1000, node.hostName));
         });
         
-        discover.join ('challenge.responses', (token) => {
-            ChallengeResponses.emit (token, token);
+        discover.join ('challenge.responses', (response) => {
+            ChallengeResponses.emit (response.token, response.domain, response.token);
         });
     },
 
     ChallengeResponses,
 
-    indicateChallengeResponse: (token) => {
-        if (discover && discover instanceof Discover) {
-            log.warn ('Cluster discovery has not been initialized.');
+    indicateChallengeResponse: (domain, token) => {
+        if (!Config.standalone) {
+            if (discover && discover instanceof Discover) {
+                log.warn ('Cluster discovery has not been initialized.');
+            } else {
+                discover.send ('challenge.responses', {domain, token});
+            }
         } else {
-            discover.send ('challenge.responses', token);
+            ChallengeResponses.emit (token, domain, token);
         }
     },
 
