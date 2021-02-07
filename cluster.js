@@ -57,7 +57,7 @@ async function initialize (error) {
 
 const discovery = new EventEmitter ()
 .once ('complete', async function spawnRqlited (listenAddress, joinAddress) {
-    rqlited.spawn (listenAddress, joinAddress);
+    rqlited.spawn (listenAddress, joinAddress, false);
 });
 
 const RemovalTimeouts = new Map ();
@@ -109,7 +109,7 @@ module.exports = {
             // maybe join an existing cluster
             if (node.advertisement == 'ready' || node.advertisement == 'reconnected') {
                 // initialize new node in existing cluster
-                discovery.emit ('complete', address, node.address);
+                discovery.emit ('complete', options.address, node.address);
             }
         })
         .on ('removed', (node) => {

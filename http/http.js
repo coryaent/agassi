@@ -25,7 +25,7 @@ const Server = http.createServer (async (request, response) => {
             response.write (challengeQuery.results[0].response, 'ascii');
             response.end ();
 
-            log.debug ('Indicating challenge response...');
+            // log.debug ('Indicating challenge response...');
             
             Cluster.indicateChallengeResponse (requestURL.hostname, token);
         } else {
