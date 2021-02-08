@@ -92,8 +92,6 @@ async function hasCert (domain) {
 // 4. Pull cert. for valid order
 async function getCert (domain) {
     if (rqlited.isLeader ()) {
-        log.debug (`Adding new challenge for domain ${domain}...`);
-        
         try {
             const order = await client.createOrder ({
                 identifiers: [
@@ -119,6 +117,9 @@ async function getCert (domain) {
 async function fulfillChallenge (order) {
     if (rqlited.isLeader ()) {
         try {
+            const domain = order.identifiers[0].value;
+            log.debug (`Adding new challenge for domain ${domain}...`);
+            
             // get http authorization token and response
             const authorizations = await client.getAuthorizations (order);
             const httpChallenge = authorizations[0]['challenges'].find (

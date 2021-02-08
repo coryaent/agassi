@@ -86,7 +86,7 @@ const Server = https.createServer ({
 
         // parse vHost auth parameter
         const vHostAuth = base64RegEx.test (virtualHost.auth) ? // test if the provided agassi.auth is base64 encoded
-            (Buffer.from (virtualHash.auth, 'base64')).toString ('utf-8') : virtualHost.auth;
+            (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8') : virtualHost.auth;
 
         const [virtualUser, virtualHash] = vHostAuth.split (':');
 
