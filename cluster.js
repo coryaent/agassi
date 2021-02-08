@@ -120,21 +120,21 @@ module.exports = {
         });
         
         discover.join ('challenge.responses', (response) => {
-            ChallengeResponses.emit (response.token, response.domain, response.token);
+            ChallengeResponses.emit (response.token, response.order);
         });
     },
 
     ChallengeResponses,
 
-    indicateChallengeResponse: (domain, token) => {
+    indicateChallengeResponse: (token, order) => {
         if (!Config.standalone) {
             if (discover && discover instanceof Discover) {
                 log.warn ('Cluster discovery has not been initialized.');
             } else {
-                discover.send ('challenge.responses', {domain, token});
+                discover.send ('challenge.responses', {token, order});
             }
         } else {
-            ChallengeResponses.emit (token, domain, token);
+            ChallengeResponses.emit (token, order);
         }
     },
 

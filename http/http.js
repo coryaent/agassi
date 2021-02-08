@@ -13,7 +13,7 @@ const Server = http.createServer (async (request, response) => {
 
         log.debug (`Received certificate challenge request for ${requestURL.hostname}.`);
         const token = requestURL.pathname.replace ('/.well-known/acme-challenge/', '');
-        const challengeQuery = await rqlite.dbQuery (`SELECT response FROM challenges
+        const challengeQuery = await rqlite.dbQuery (`SELECT response, acme_order FROM challenges
             WHERE token = '${token}';`);
         
         if (challengeQuery.results.length > 0) {
@@ -27,7 +27,7 @@ const Server = http.createServer (async (request, response) => {
 
             // log.debug ('Indicating challenge response...');
             
-            Cluster.indicateChallengeResponse (requestURL.hostname, token);
+            Cluster.indicateChallengeResponse (token, challengeQuery.results[0].acme_order);
         } else {
             log.warn (`Could not find challenge response for ${requestURL.hostname}.`);
             return;
