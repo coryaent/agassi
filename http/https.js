@@ -62,7 +62,7 @@ const Server = https.createServer ({
     }
 
     // basic auth protected host
-    if (virtualHost.auth) {
+    if (virtualHost.auth && virtualHost.auth != 'null') {
         // auth required but not provided
         if (!request.headers.authorization) {
             // prompt for password in browser

@@ -156,7 +156,7 @@ async function addCertToDB (order) {
         try {
             const domain = order.identifiers[0].value;
 
-            log.debug (`Fetching certificate for domain ${domain}...`);
+            log.debug (`Adding certificate for domain ${domain}...`);
 
             if (order.status === 'pending') {
                 const authorizations = await client.getAuthorizations (order);
@@ -185,6 +185,7 @@ async function addCertToDB (order) {
                 await client.finalizeOrder (order, csr);
             }
 
+            log.debug (`Downloading certificate for domain ${domain}...`);
             const certificate = await client.getCertificate (order);
 
             // calculate expiration date by adding 2160 hours (90 days)
@@ -194,6 +195,8 @@ async function addCertToDB (order) {
             // add certificate to db table
             await rqlite.dbExecute (`INSERT INTO certificates (domain, certificate, expiration)
             VALUES ('${domain}', '${certificate}', ${expiration});`);
+
+            log.info (`Certificate for domain ${domain} added to database.`);
 
         } catch (error) {
             log.error (error.name);
