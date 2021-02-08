@@ -15,7 +15,7 @@ const Config = require('./config.js');
 const options = {
     hostname: rqlited.uuid,
     port: 4002,
-    nodeTimeout: 10 * 1000,
+    nodeTimeout: 4 * 1000,
     ignoreInstance: false
 };
 
