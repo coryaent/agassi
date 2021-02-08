@@ -191,7 +191,7 @@ module.exports = {
             if (diffKeys.length > 0) {
                 log.debug (`Updating service ${service.ID} in database...`);
                 // services do not match, update differing keys
-                const updateQuery = 'UPDATE services SET ';
+                let updateQuery = 'UPDATE services SET ';
                 diffKeys.forEach (key => {
                     updateQuery += `${key} = '${swarmService[key]}' `;
                 });
