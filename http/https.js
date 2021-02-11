@@ -111,6 +111,8 @@ const Server = https.createServer ({
     log.info ('HTTPS server stopped.');
 });
 
+var limiter = null;
+
 module.exports = {
     Server,
 
@@ -121,9 +123,11 @@ module.exports = {
                 if (error) {
                     throw error;
                 }
-                log.debug ('Initializing HTTPS rate limiter...');
-                rateLimit.init (1, true); // 1 minute, using reverse proxy
-            })
+                if (!limiter) {
+                    log.debug ('Initializing HTTPS rate limiter...');
+                    limiter = rateLimit.init (1, true); // 1 minute, using reverse proxy
+                }
+            });
         }
     },
 

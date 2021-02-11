@@ -94,10 +94,12 @@ HTTPS.Server.once ('listening', () => {
 });
 
 rqlited.status.on ('disconnected', () => {
+    HTTPS.stop ();
     Cluster.advertise ('disconnected');
 });
 
 rqlited.status.on ('reconnected', () => {
+    HTTPS.start ();
     Cluster.advertise ('reconnected');
 });
 
