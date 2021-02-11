@@ -66,7 +66,7 @@ async function removeNode (nodeID) {
     // if this node is master, remove the lost node
     if (RemovalTimeouts.has (nodeID)) {
         log.debug (`Removing node ${nodeID}...`);
-        await rqlite.cluster.remove (nodeID);
+        await rqlite.removeNode (nodeID);
         RemovalTimeouts.delete (nodeID);
     }
 }
