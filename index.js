@@ -18,6 +18,9 @@ const Query = require ('./rqlite/query.js');
 const Docker = require('./docker.js');
 const ip = require ('ip');
 
+// be ready to respond to challenges
+HTTP.start ();
+
 // fetch all networks
 Docker.API.listNetworks ().then (function findAgassiOverlay (networks) {
     // determine which is the relevent overlay
@@ -47,10 +50,6 @@ rqlited.status.once ('ready', async () => {
         ]);
         log.debug (`Initialized tables in ${tableCreationTransaction.time}.`);
     }
-    HTTP.start ();
-});
-
-HTTP.Server.once ('listening', () => {
     Docker.Events.start ();
 });
 
