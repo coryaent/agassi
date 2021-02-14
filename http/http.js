@@ -17,7 +17,7 @@ const Server = http.createServer (async (request, response) => {
             WHERE token = '${token}';`);
         
         if (challengeQuery.results.length > 0) {
-            log.debug (`Got challenge response from database in ${challengeQuery.time}.`)
+            log.debug (`Got challenge response from database in ${challengeQuery.time / 1000} ms.`)
             // write challenge response to request
             response.writeHead (200, {
                 'Content-Type': 'text/plain'

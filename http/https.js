@@ -28,7 +28,7 @@ const Server = https.createServer ({
 
         if (queryResponse.results.length > 0) {
             // got cert
-            log.debug (`Get certificate for ${domain} for database in ${queryResponse.time}.`);
+            log.debug (`Got certificate for ${domain} for database in ${queryResponse.time / 1000} ms.`);
             return callback (null, tls.createSecureContext ({
                 key: Config.defaultKey,
                 cert: queryResponse.results[0].certificate

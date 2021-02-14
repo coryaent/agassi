@@ -25,11 +25,11 @@ async function performMaintenance () {
         log.debug ('Performing maintenance on certificate and service tables...');
         const serviceQueryResponse = await rqlite.dbQuery ('SELECT domain FROM services;');
         const serviceDomains = serviceQueryResponse.results.map (result => result.domain);
-        log.debug (`Found ${serviceDomains.length} services in table in ${serviceQueryResponse.time}.`);
+        log.debug (`Found ${serviceDomains.length} services in table in ${serviceQueryResponse.time / 1000} ms.`);
 
         const allCertQueryResponse = await rqlite.dbQuery (`SELECT certificate, expiration, domain FROM certificates;`, 'strong');
         const allCerts = allCertQueryResponse.results;
-        log.debug (`Found ${allCerts.length} certificates in table in ${allCertQueryResponse.time}.`);
+        log.debug (`Found ${allCerts.length} certificates in table in ${allCertQueryResponse.time / 1000} ms.`);
 
         // cleanup expired certs
         for (let cert of allCerts) {
@@ -38,7 +38,7 @@ async function performMaintenance () {
             if (cert.expiration < unixTime) {
                 // remove cert from db
                 const executionResponse = await rqlite.dbExecute (`DELETE FROM certificates WHERE certificate = '${cert.certificate}';`);
-                log.debug (`Removed expired certificate for domain ${cert.domain} in ${executionResponse.time}.`);
+                log.debug (`Removed expired certificate for domain ${cert.domain} in ${executionResponse.time / 1000} ms.`);
             }
         }
 
@@ -138,7 +138,7 @@ async function fulfillChallenge (order) {
                     '${httpAuthorizationToken}', 
                     '${httpAuthorizationResponse}', 
                     '${JSON.stringify (order)}');`);
-            log.debug (`Added challenge to database in ${challengeInsertion.time}.`);
+            log.debug (`Added challenge to database in ${challengeInsertion.time / 1000} ms.`);
 
             // let the challenge settle
             log.debug ('Indicating challenge completion...');
@@ -170,7 +170,7 @@ async function addCertToDB (order) {
 
                 // remove challenge from table
                 const challengeRemoval = await rqlite.dbExecute (`DELETE FROM challenges WHERE token = '${token}';`);
-                log.debug (`Removed challenge for domain ${domain} in ${challengeRemoval.time}.`);
+                log.debug (`Removed challenge for domain ${domain} in ${challengeRemoval.time / 1000} ms.`);
             }
 
             if (order.status === 'ready') {
