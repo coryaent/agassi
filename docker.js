@@ -179,7 +179,7 @@ module.exports = {
                     '${swarmService.auth}',
                     '${swarmService.options}');`);
 
-            log.debug (`Added service ${service.ID} in ${executionResult.time / 1000} ms.`);
+            log.debug (`Added service ${service.ID} in ${executionResult.time * 1000} ms.`);
         } else {
             // service exists, may need to be updated
             const dbService = queryResult.results[0];
