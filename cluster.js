@@ -129,9 +129,9 @@ module.exports = {
     indicateChallengeResponse: (token, order) => {
         if (!Config.standalone) {
             if (discover && discover instanceof Discover) {
-                log.warn ('Cluster discovery has not been initialized.');
-            } else {
                 discover.send ('challenge.responses', {token, order});
+            } else {
+                log.warn ('Cluster discovery has not been initialized.');
             }
         } else {
             ChallengeResponses.emit (token, order);
@@ -151,7 +151,7 @@ module.exports = {
 
     stop: () => {
         if (discover && discover instanceof Discover) {
-            log.debug ('Stopping cluster auto-discovery...');
+            log.info ('Stopping cluster auto-discovery...');
             discover.stop ();
         }
         rqlited.kill ();
