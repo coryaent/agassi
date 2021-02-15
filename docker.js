@@ -8,29 +8,6 @@ const DockerEvents = require ('docker-events');
 
 const rqlite = require ('./rqlite/rqlite.js');
 
-// parse docker socket host, dropping protocol per
-// https://github.com/apocas/docker-modem/issues/31#issuecomment-68103138
-var docker = null;
-var dockerEvents = null;
-
-function initialize (dockerURL) {
-    // create docker client from local or remote socket
-    if (dockerURL.protocol.startsWith ('unix')) {
-        docker = new Docker ({
-            socketPath: dockerURL.pathname
-        });
-    } else {
-        docker = new Docker ({
-            host: dockerURL.hostname,
-            port: dockerURL.port
-        });
-    }
-
-    dockerEvents = new DockerEvents ({
-        docker: docker
-    });
-}
-
 const requisiteLabels = ['protocol', 'domain', 'port'];
 
 const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
@@ -132,12 +109,31 @@ function isAgassiService (service) {
     return false;
 }
 
+// parse docker socket host, dropping protocol per
+// https://github.com/apocas/docker-modem/issues/31#issuecomment-68103138
+var docker = null;
+var dockerEvents = null;
+
 module.exports = {
-    initialize,
-
-    API: docker,
-
-    Events: dockerEvents,
+    initialize: (dockerURL) => {
+        // create docker client from local or remote socket
+        if (dockerURL.protocol.startsWith ('unix')) {
+            docker = new Docker ({
+                socketPath: dockerURL.pathname
+            });
+        } else {
+            docker = new Docker ({
+                host: dockerURL.hostname,
+                port: dockerURL.port
+            });
+        }
+        this.API = docker;
+    
+        dockerEvents = new DockerEvents ({
+            docker: docker
+        });
+        this.Events = dockerEvents;
+    },
 
     isAgassiService,
 
