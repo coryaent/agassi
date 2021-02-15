@@ -28,7 +28,8 @@ if (dockerURL.protocol.startsWith ('unix')) {
         host: dockerURL.hostname,
         port: parseInt (dockerURL.port),
         output: 'silent',
-        timeout: Config.dockerSocketTimeout * 1000
+        timeout: Config.dockerSocketTimeout * 1000,
+        waitForDns: true
     }).then ((open) => {
         if (open) {
             main ();
