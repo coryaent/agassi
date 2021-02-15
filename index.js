@@ -35,7 +35,7 @@ if (dockerURL.protocol.startsWith ('unix')) {
         } else {
             throw new Error (`Could not find docker socket at ${Config.dockerSocket}.`);
         }
-    })
+    });
 }
 
 function main () {
