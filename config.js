@@ -103,5 +103,6 @@ Config.certRenewalThreshold = process.env.CERT_RENEWAL_THRESHOLD ? parseInt (pro
 Config.certExpirationSafeguard = process.env.CERT_EXPIRATION_SAFEGUARD ? parseInt (process.env.CERT_EXPIRATION_SAFEGUARD) : 7; //days
 Config.certMaintenanceInterval = process.env.CERT_MAINTENANCE_INTERVAL ? parseInt (process.env.CERT_MAINTENANCE_INTERVAL) : 6; // hours
 Config.logLevel = process.env.LOG_LEVEL ? process.env.LOG_LEVEL : 'info';
+Config.dockerSocketTimeout = process.env.DOCKER_SOCKET_TIMEOUT ? parseInt (process.env.DOCKER_SOCKET_TIMEOUT) : 60; // seconds
 
 module.exports = Config;

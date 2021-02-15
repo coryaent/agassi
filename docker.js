@@ -10,16 +10,26 @@ const rqlite = require ('./rqlite/rqlite.js');
 
 // parse docker socket host, dropping protocol per
 // https://github.com/apocas/docker-modem/issues/31#issuecomment-68103138
-const dockerURL = new URL (Config.dockerSocket);
+var docker = null;
+var dockerEvents = null;
 
-const docker = new Docker ({
-    host: dockerURL.hostname,
-    port: dockerURL.port
-});
+function initialize (dockerURL) {
+    // create docker client from local or remote socket
+    if (dockerURL.protocol.startsWith ('unix')) {
+        docker = new Docker ({
+            socketPath: dockerURL.pathname
+        });
+    } else {
+        docker = new Docker ({
+            host: dockerURL.hostname,
+            port: dockerURL.port
+        });
+    }
 
-const dockerEvents = new DockerEvents ({
-    docker: docker
-});
+    dockerEvents = new DockerEvents ({
+        docker: docker
+    });
+}
 
 const requisiteLabels = ['protocol', 'domain', 'port'];
 
@@ -123,6 +133,8 @@ function isAgassiService (service) {
 }
 
 module.exports = {
+    initialize,
+
     API: docker,
 
     Events: dockerEvents,

@@ -15,32 +15,56 @@ const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
 const Query = require ('./rqlite/query.js');
 
+const waitPort = require ('wait-port');
 const Docker = require('./docker.js');
 const ip = require ('ip');
 
-// be ready to respond to challenges
-HTTP.start ();
+// wait for remote socket if necessary
+const dockerURL = new URL (Config.dockerSocket);
+if (dockerURL.protocol.startsWith ('unix')) {
+    main ();
+} else {
+    waitPort ({
+        host: dockerURL.hostname,
+        port: dockerURL.port,
+        output: 'silent',
+        timeout: Config.dockerSocketTimeout * 1000
+    }).then ((open) => {
+        if (open) {
+            main ();
+        } else {
+            throw new Error (`Could not find docker socket at ${Config.dockerSocket}.`);
+        }
+    })
+}
 
-// fetch all networks
-Docker.API.listNetworks ().then (function findAgassiOverlay (networks) {
-    // determine which is the relevent overlay
-    const overlayNetwork = networks.find ((network) => {
-        return network.Labels && network.Labels[Config.networkLabelKey] == Config.networkLabelValue;
+function main () {
+    // be ready to respond to challenges
+    HTTP.start ();
+    // initialize docker client
+    Docker.initialize (dockerURL);
+    // fetch all networks
+    Docker.API.listNetworks ().then (function findAgassiOverlay (networks) {
+        // determine which is the relevent overlay
+        const overlayNetwork = networks.find ((network) => {
+            return network.Labels && network.Labels[Config.networkLabelKey] == Config.networkLabelValue;
+        });
+        // get the subnet and address parameters for the cluster
+        const subnet = overlayNetwork.IPAM.Config[0].Subnet;
+        const address = require ('@emmsdan/network-address').v4.find ((address) => {
+            return ip.cidrSubnet (subnet).contains (address);
+        });
+        // start/join the cluster/standalone process and set client address
+        rqlite.initialize (address);
+        Cluster.start (address, subnet, Config.standalone);
     });
-    // get the subnet and address parameters for the cluster
-    const subnet = overlayNetwork.IPAM.Config[0].Subnet;
-    const address = require ('@emmsdan/network-address').v4.find ((address) => {
-        return ip.cidrSubnet (subnet).contains (address);
-    });
-    // start/join the cluster/standalone process and set client address
-    rqlite.initialize (address);
-    Cluster.start (address, subnet, Config.standalone);
-});
+}
 
-// start listening to Docker socket
+// wait for rqlited to start
 rqlited.status.once ('ready', async () => {
     Cluster.advertise ('ready');
     if (rqlited.isLeader ()) {
+        // initialize ACME accont and database tables
         await ACME.createAccount ();
         log.debug ('Initializing rqlite tables...');
         const tableCreationTransaction = await rqlite.dbTransact ([
@@ -48,8 +72,9 @@ rqlited.status.once ('ready', async () => {
             Query.challenges.createTable,
             Query.certificates.createTable
         ]);
-        log.debug (`Initialized tables in ${tableCreationTransaction.time}.`);
+        log.debug (`Initialized tables in ${tableCreationTransaction.time * 1000} ms.`);
     }
+    // start listening to Docker socket
     Docker.Events.start ();
 });
 
