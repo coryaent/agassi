@@ -26,7 +26,7 @@ if (dockerURL.protocol.startsWith ('unix')) {
 } else {
     waitPort ({
         host: dockerURL.hostname,
-        port: dockerURL.port,
+        port: parseInt (dockerURL.port),
         output: 'silent',
         timeout: Config.dockerSocketTimeout * 1000
     }).then ((open) => {
