@@ -19,8 +19,11 @@ const waitPort = require ('wait-port');
 const Docker = require('./docker.js');
 const ip = require ('ip');
 
-// wait for remote socket if necessary
+// initialize docker client
 const dockerURL = new URL (Config.dockerSocket);
+Docker.initialize (dockerURL);
+
+// wait for remote socket if necessary
 if (dockerURL.protocol.startsWith ('unix')) {
     main ();
 } else {
@@ -42,8 +45,6 @@ if (dockerURL.protocol.startsWith ('unix')) {
 function main () {
     // be ready to respond to challenges
     HTTP.start ();
-    // initialize docker client
-    Docker.initialize (dockerURL);
     // fetch all networks
     Docker.API.listNetworks ().then (function findAgassiOverlay (networks) {
         // determine which is the relevent overlay
