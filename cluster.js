@@ -81,11 +81,11 @@ module.exports = {
         // start rqlited in standalone mode
         if (standalone === true) {
             log.debug ('Starting rqlited in standalone mode...');
-            rqlited.spawn (andress, null, standalone);
+            rqlited.spawn (address, null, standalone);
             return;
         }
         // start automatic discovery
-        log.debug ('Starting automatic discovery...');
+        log.debug (`Starting automatic discovery with address ${address}...`);
         options.address = address;
         options.unicast = iprange (subnet);
 
