@@ -43,13 +43,17 @@ COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
 # copy nsswitch.conf
 COPY nsswitch.conf /etc/nsswitch.conf
 
-# allow system ports as non-root
+# install dependencies, allow system ports as non-root
 RUN apt-get update && apt-get install -y \
     curl=7.64.0-4+deb10u1 \
     openssl=1.1.1d-0+deb10u4 \
     libcap2-bin=1:2.25-2 \
+    netcat-openbsd=1.195-2 \
     && apt-get clean && \
-    setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi
+    setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi && \
+    curl https://raw.githubusercontent.com/stevecorya/wait-for-linked-services/master/wait-for-docker-socket \
+    -o /usr/local/bin/wait-for-docker-socket && \
+    chmod +x /usr/local/bin/wait-for-docker-socket
 
 STOPSIGNAL SIGTERM
 
@@ -57,4 +61,6 @@ USER 150:150
 
 VOLUME ["/data"]
 
-ENTRYPOINT ["agassi"]
+ENV DOCKER_SOCKET_URL="unix:///var/run/docker.sock"
+
+ENTRYPOINT wait-for-docker-socket $DOCKER_SOCKET_URL && agassi

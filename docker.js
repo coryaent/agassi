@@ -12,6 +12,26 @@ const requisiteLabels = ['protocol', 'domain', 'port'];
 
 const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
 
+const docker = new Docker (parseSocket (process.env.DOCKER_SOCKET_URL));
+const dockerEvents = new DockerEvents ({docker: docker});
+
+// parse docker socket host, dropping protocol per
+// https://github.com/apocas/docker-modem/issues/31#issuecomment-68103138
+function parseSocket (_dockerSocketURL) {
+    const dockerSocketURL = new URL (_dockerSocketURL);
+    if (dockerSocketURL.protocol.startsWith ('unix') || 
+        dockerSocketURL.protocol.startsWith ('file')) {
+        return {
+            socketPath: dockerSocketURL.pathname
+        };
+    } else {
+        return {
+            host: dockerSocketURL.hostname,
+            port: dockerSocketURL.port
+        };
+    }
+}
+
 function parseServiceLabels (service) {
     // merge service labels, prefering container labels to service labels
     const labels = {};
@@ -109,31 +129,10 @@ function isAgassiService (service) {
     return false;
 }
 
-// parse docker socket host, dropping protocol per
-// https://github.com/apocas/docker-modem/issues/31#issuecomment-68103138
-var docker = null;
-var dockerEvents = null;
-
 module.exports = {
-    initialize: (dockerURL) => {
-        // create docker client from local or remote socket
-        if (dockerURL.protocol.startsWith ('unix')) {
-            docker = new Docker ({
-                socketPath: dockerURL.pathname
-            });
-        } else {
-            docker = new Docker ({
-                host: dockerURL.hostname,
-                port: dockerURL.port
-            });
-        }
-        this.API = docker;
-    
-        dockerEvents = new DockerEvents ({
-            docker: docker
-        });
-        this.Events = dockerEvents;
-    },
+    API: docker,
+
+    Events: dockerEvents,
 
     isAgassiService,
 
