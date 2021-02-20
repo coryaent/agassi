@@ -93,6 +93,7 @@ async function hasCert (domain) {
 async function getCert (domain) {
     if (rqlited.isLeader ()) {
         try {
+            log.debug (`Creating order for domain ${domain}...`);
             const order = await client.createOrder ({
                 identifiers: [
                     { type: 'dns', value: domain },
@@ -130,6 +131,7 @@ async function fulfillChallenge (order) {
 
             // respond to this token in particular
             Cluster.ChallengeResponses.once (httpAuthorizationToken, addCertToDB);
+            log.debug (`Awaiting response for token ${httpAuthorizationToken} for domain ${domain}...`);
 
             // add challenge and response to db table
             const challengeInsertion = await rqlite.dbExecute (`INSERT INTO challenges 
@@ -159,6 +161,7 @@ async function addCertToDB (order) {
             log.debug (`Adding certificate for domain ${domain}...`);
 
             if (order.status === 'pending') {
+                log.debug (`Order for domain ${domain} is pending.`);
                 const authorizations = await client.getAuthorizations (order);
 
                 const httpChallenge = authorizations[0]['challenges'].find (
@@ -174,6 +177,7 @@ async function addCertToDB (order) {
             }
 
             if (order.status === 'ready') {
+                log.debug (`Order for domain ${domain} is ready.`);
                 // challenge is complete and valid, send cert-signing request
                 log.debug (`Creating CSR for domain ${domain}...`);
                 const [key, csr] = await acme.forge.createCsr ({
