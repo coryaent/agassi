@@ -3,6 +3,7 @@
 
 const phin = require ('phin');
 const retry = require ('p-retry');
+const log = require ('../logger.js');
 const querystring = require ('querystring');
 
 class RqliteError extends Error {
