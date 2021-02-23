@@ -15,7 +15,7 @@ const msInHour = 3600000;
 // configurations
 const RetryOptions = {
     onFailedAttempt: error => {
-        log.warn (`Failed to connect with ACME server. Retrying (${error.attemptNumber}/${error.retriesLeft})...`);
+        log.warn (`Failed to connect with ACME server. Retrying (${error.attemptNumber}/${Config.acmeRetries})...`);
     },
     retries: Config.acmeRetries,
 };
@@ -141,7 +141,7 @@ async function challengeAndRespond (order) {
             const httpAuthorizationResponse = await retry (() => client.getChallengeKeyAuthorization (httpChallenge), RetryOptions);
 
             // respond to this token in particular
-            Cluster.ChallengeResponses.once (httpAuthorizationToken, addCertToDB);
+            Cluster.ChallengeResponses.once (httpAuthorizationToken, () => addCertToDB (order));
             log.debug (`Awaiting response for token ${httpAuthorizationToken} for domain ${domain}...`);
 
             // add challenge and response to db table

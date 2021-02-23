@@ -2,6 +2,7 @@
 // rqlite client
 
 const phin = require ('phin');
+const retry = require ('p-retry');
 const querystring = require ('querystring');
 
 class RqliteError extends Error {
@@ -59,27 +60,38 @@ function parseQueryResults (responseData) {
     return organizedResults;
 }
 
-const defaults = {
+const Retries = 9;
+
+const ClientDefaults = {
     "timeout": 10 * 1000,
     "followRedirects": true,
     "headers": { 'Content-Type' : 'application/json' },
     "parse": 'json'
 };
 
+const RetryOptions = {
+    retries: Retries,
+    onFailedAttempt: error => {
+        log.warn (`Failed to connect with rqlited database. Retrying (${error.attemptNumber}/${Retries})...`);
+    },
+    minTimeout: 10 * 1000,
+    factor: 1
+};
+
 module.exports = {
 
     initialize: (address) => {
-        defaults.url = `http://${address}:4001`
+        ClientDefaults.url = `http://${address}:4001`
     },
 
     dbExecute: async function (query, consistency) {
-        const options = Object.create (defaults);
+        const ClientOptions = Object.create (ClientDefaults);
 
-        options.method = 'POST';
-        options.url = defaults.url + '/db/execute?timings' + '&' + parseConsistency (consistency);
-        options.data = Array.isArray (query) ? query : new Array (query);
+        ClientOptions.method = 'POST';
+        ClientOptions.url = ClientDefaults.url + '/db/execute?timings' + '&' + parseConsistency (consistency);
+        ClientOptions.data = Array.isArray (query) ? query : new Array (query);
         
-        const response = (await phin (options)).body;
+        const response = (await retry (() => phin (ClientOptions), RetryOptions)).body;
 
         response.results.forEach ((result) => {
             if (result.error) {
@@ -90,13 +102,13 @@ module.exports = {
     },
 
     dbTransact: async function (query, consistency) {
-        const options = Object.create (defaults);
+        const ClientOptions = Object.create (ClientDefaults);
 
-        options.method = 'POST';
-        options.url = defaults.url + '/db/execute?timings&transaction' + '&' + parseConsistency (consistency);
-        options.data = Array.isArray (query) ? query : new Array (query);
+        ClientOptions.method = 'POST';
+        ClientOptions.url = ClientDefaults.url + '/db/execute?timings&transaction' + '&' + parseConsistency (consistency);
+        ClientOptions.data = Array.isArray (query) ? query : new Array (query);
 
-        const response = (await phin (options)).body;
+        const response = (await retry (() => phin (ClientOptions), RetryOptions)).body;
 
         response.results.forEach ((result) => {
             if (result.error) {
@@ -107,34 +119,38 @@ module.exports = {
     },
 
     dbQuery: async function (query, consistency) {
-        const options = Object.create (defaults);
+        const ClientOptions = Object.create (ClientDefaults);
 
-        options.method = 'GET';
-        options.url = defaults.url + '/db/query?timings' + '&' + parseConsistency (consistency) +
+        ClientOptions.method = 'GET';
+        ClientOptions.url = ClientDefaults.url + '/db/query?timings' + '&' + parseConsistency (consistency) +
             '&' + querystring.stringify ({ q: query })
-        
-        const response = (await phin (options)).body;
+
+        // retry unless consistency is none
+        let response = null;
+        parseConsistency (consistency) == 'level=none' ?
+            response = (await phin (ClientOptions)).body :
+            response = (await retry (() => phin (ClientOptions), RetryOptions)).body;
 
         return parseQueryResults (response);
     },
 
     removeNode: async function (node) {
-        const options = Object.create (defaults);
+        const ClientOptions = Object.create (ClientDefaults);
 
-        options.method = 'DELETE';
-        options.url = defaults.url + '/remove';
-        options.parse = 'none';
-        options.data = { "id": node }
+        ClientOptions.method = 'DELETE';
+        ClientOptions.url = ClientDefaults.url + '/remove';
+        ClientOptions.parse = 'none';
+        ClientOptions.data = { "id": node }
         
-        return (await phin (options)).body;
+        return (await retry (() => phin (ClientOptions), RetryOptions)).body;
     },
 
     checkStatus: async function () {
-        const options = Object.create (defaults);
+        const ClientOptions = Object.create (ClientDefaults);
 
-        options.method = 'GET';
-        options.url = defaults.url + '/status';
+        ClientOptions.method = 'GET';
+        ClientOptions.url = ClientDefaults.url + '/status';
 
-        return (await phin (options)).body;
+        return (await phin (ClientOptions)).body;
     }
 };

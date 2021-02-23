@@ -124,6 +124,7 @@ module.exports = {
         // concat the arguments with defaults
         const dArgs = [
             '-raft-open-timeout', '30s',
+            '-join-attempts', '12',
             '-on-disk',
             '-node-id', id,
             '-http-addr', `${listenAddress}:4001`,
