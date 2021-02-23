@@ -40,7 +40,7 @@
     "node-discover": "^1.2.0",
     "p-retry": "^4.4.0",
     "phin": "^3.5.1",
-    "sleepjs": "^4.0.2",
+    "sleepjs": "^4.0.3",
     "ssl-utils": "^1.0.0",
     "tsscmp": "^1.0.6",
     "uuid": "^8.3.2"
