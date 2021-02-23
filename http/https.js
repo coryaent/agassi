@@ -28,7 +28,7 @@ const Server = https.createServer ({
 
         if (queryResponse.results.length > 0) {
             // got cert
-            log.debug (`Got certificate for ${domain} for database in ${queryResponse.time * 1000} ms.`);
+            log.debug (`Got certificate for ${domain} from database in ${queryResponse.time * 1000} ms.`);
             return callback (null, tls.createSecureContext ({
                 key: Config.defaultKey,
                 cert: queryResponse.results[0].certificate
@@ -52,7 +52,7 @@ const Server = https.createServer ({
         return;
     }
 
-    log.debug (`Got virtual host for domain ${requestURL.hostname} in ${queryResponse.time}.`);
+    log.debug (`Got virtual host for domain ${requestURL.hostname} in ${queryResponse.time * 1000} ms.`);
 
     // parse proxy options
     const virtualHost = queryResponse.results[0];
