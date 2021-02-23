@@ -2,7 +2,7 @@
 // rqlite client
 
 const phin = require ('phin');
-const querystring = require('querystring');
+const querystring = require ('querystring');
 
 class RqliteError extends Error {
     constructor (message) {

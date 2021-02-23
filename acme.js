@@ -2,14 +2,23 @@
 
 const log = require ('./logger.js');
 const acme = require ('acme-client');
+const retry = require ('p-retry');
 const Config = require ('./config.js');
-const EventEmitter = require ('events');
 const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
 const Cluster = require ('./cluster.js');
 
+// timing conversions
 const secondsInDay = 86400;
 const msInHour = 3600000;
+
+// configurations
+const RetryOptions = {
+    onFailedAttempt: error => {
+        log.warn (`Failed to connect with ACME server. Retrying (${error.attemptNumber}/${error.retriesLeft})...`);
+    },
+    retries: Config.acmeRetries,
+};
 
 const client = new acme.Client ({
     directoryUrl: Config.acmeDirectory,
@@ -101,7 +110,7 @@ async function getCert (domain) {
             });
             
             if (order.status === 'pending') {
-                await fulfillChallenge (order);
+                await challengeAndRespond (order);
             }
 
             if (order.status === 'ready' || order.status === 'valid') {
@@ -115,19 +124,21 @@ async function getCert (domain) {
     }
 }
 
-async function fulfillChallenge (order) {
+async function challengeAndRespond (order) {
+    // only the leader initiates challenges
     if (rqlited.isLeader ()) {
+        const domain = order.identifiers[0].value;
+        log.debug (`Adding new challenge for domain ${domain}...`);
+
+        // do not crash on failure
         try {
-            const domain = order.identifiers[0].value;
-            log.debug (`Adding new challenge for domain ${domain}...`);
-            
             // get http authorization token and response
-            const authorizations = await client.getAuthorizations (order);
+            const authorizations = await retry (() => client.getAuthorizations (order), RetryOptions);
             const httpChallenge = authorizations[0]['challenges'].find (
                 (element) => element.type === 'http-01');
 
             const httpAuthorizationToken = httpChallenge.token;
-            const httpAuthorizationResponse = await client.getChallengeKeyAuthorization (httpChallenge);
+            const httpAuthorizationResponse = await retry (() => client.getChallengeKeyAuthorization (httpChallenge), RetryOptions);
 
             // respond to this token in particular
             Cluster.ChallengeResponses.once (httpAuthorizationToken, addCertToDB);
@@ -144,7 +155,7 @@ async function fulfillChallenge (order) {
 
             // let the challenge settle
             log.debug ('Indicating challenge completion...');
-            await client.completeChallenge (httpChallenge);
+            await retry (() => client.completeChallenge (httpChallenge), RetryOptions);
 
         } catch (error) {
             log.error (error.name);
@@ -154,15 +165,18 @@ async function fulfillChallenge (order) {
 }
 
 async function addCertToDB (order) {
+    // only the leader can add certificates
     if (rqlited.isLeader ()) {
+        const domain = order.identifiers[0].value;
+        log.debug (`Adding certificate for domain ${domain}...`);
+
+        // avoid crashing if anything fails
         try {
-            const domain = order.identifiers[0].value;
-
-            log.debug (`Adding certificate for domain ${domain}...`);
-
+            // handle different order statuses
             if (order.status === 'pending') {
+
                 log.debug (`Order for domain ${domain} is pending.`);
-                const authorizations = await client.getAuthorizations (order);
+                const authorizations = await retry (() => client.getAuthorizations (order), RetryOptions);
 
                 const httpChallenge = authorizations[0]['challenges'].find (
                     (element) => element.type === 'http-01');
@@ -186,11 +200,11 @@ async function addCertToDB (order) {
             
                 // finalize the order and pull the cert
                 log.debug (`Finalizing order for domain ${domain}...`);
-                await client.finalizeOrder (order, csr);
+                await retry (() => client.finalizeOrder (order, csr), RetryOptions);
             }
 
             log.debug (`Downloading certificate for domain ${domain}...`);
-            const certificate = await client.getCertificate (order);
+            const certificate = await retry (() => client.getCertificate (order), RetryOptions);
 
             // calculate expiration date by adding 2160 hours (90 days)
             const jsTime = new Date (); // JS (ms)
