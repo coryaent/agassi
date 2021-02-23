@@ -190,7 +190,7 @@ async function addCertToDB (order) {
                 log.debug (`Removed challenge for domain ${domain} in ${challengeRemoval.time * 1000} ms.`);
             }
 
-            if (order.status === 'ready') {
+            if (order.status === 'pending' || order.status === 'ready') {
                 log.debug (`Order for domain ${domain} is ready.`);
                 // challenge is complete and valid, send cert-signing request
                 log.debug (`Creating CSR for domain ${domain}...`);
