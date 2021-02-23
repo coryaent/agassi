@@ -2,14 +2,17 @@
 FROM golang:1.15 AS rqlited-builder
 WORKDIR /opt
 COPY rqmkown.c ./rqmkown.c
-RUN gcc rqmkown.c -o ./rqmkown && chmod ug+s ./rqmkown && \
-    wget https://github.com/rqlite/rqlite/archive/v5.6.0.tar.gz && \
-    tar xvf v5.6.0.tar.gz && \
-    cd rqlite-5.6.0/cmd/rqlited && \
-    go build -o /opt/rqlited
+RUN export RQLITE_VERSION=5.8.0 && \
+    gcc rqmkown.c -o ./rqmkown && chmod ug+s ./rqmkown && \
+    wget https://github.com/rqlite/rqlite/archive/v${RQLITE_VERSION}.tar.gz && \
+    tar xvf v${RQLITE_VERSION}.tar.gz && \
+    cd /opt/rqlite-${RQLITE_VERSION}/cmd/rqlited && \
+    go build -o /opt/rqlited && \
+    cd /opt/rqlite-${RQLITE_VERSION}/cmd/rqlite && \
+    go build -o /opt/rqlite
 
 # bundle agassi
-FROM node:12 AS agassi-bundler
+FROM node:14 AS agassi-bundler
 WORKDIR /opt
 COPY package*.json ./
 COPY . .
@@ -26,20 +29,38 @@ FROM debian:buster-slim
 EXPOSE 80
 EXPOSE 443
 
-EXPOSE 4000/udp
 EXPOSE 4001
 EXPOSE 4002
+EXPOSE 4002/udp
 
 # copy requisite binaries
 COPY --from=rqlited-builder /opt/rqmkown /usr/local/bin/rqmkown
 COPY --from=rqlited-builder /opt/rqlited /usr/local/bin/rqlited
+COPY --from=rqlited-builder /opt/rqlite /usr/local/bin/rqlite
 
 COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
 
-# allow system ports as non-root
-RUN apt-get update && apt-get install -y libcap2-bin && apt-get clean && \
-    setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi
+# copy nsswitch.conf
+COPY nsswitch.conf /etc/nsswitch.conf
+
+# install dependencies, allow system ports as non-root
+RUN apt-get update && apt-get install -y \
+    curl=7.64.0-4+deb10u1 \
+    openssl=1.1.1d-0+deb10u4 \
+    libcap2-bin=1:2.25-2 \
+    netcat-openbsd=1.195-2 \
+    && apt-get clean && \
+    setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi && \
+    curl https://raw.githubusercontent.com/stevecorya/wait-for-linked-services/master/wait-for-docker-socket \
+    -o /usr/local/bin/wait-for-docker-socket && \
+    chmod +x /usr/local/bin/wait-for-docker-socket
+
+STOPSIGNAL SIGTERM
 
 USER 150:150
 
-CMD [ "agassi" ]
+VOLUME ["/data"]
+
+ENV DOCKER_SOCKET_URL="unix:///var/run/docker.sock"
+
+ENTRYPOINT wait-for-docker-socket $DOCKER_SOCKET_URL && agassi

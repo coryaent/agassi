@@ -3,17 +3,18 @@
 const httpProxy = require ('http-proxy');
 
 // create proxy server
-module.exports.default = httpProxy.createProxyServer({
+module.exports = httpProxy.createProxyServer ({
+    // default options
     secure: false,
     followRedirects: true,
 })
 .on ('proxyReq', (proxyRequest, request) => {
+    // rewrite headers
     if (request.host != null) {
-        proxyRequest.setHeader ('host', request.host);
+        proxyRequest.setHeader ('Host', request.host);
     };
 })
 .on ('error', (error) => {
-    print (error.name);
-    print (error.message);
     process.exitCode = 1;
+    throw error;
 });
