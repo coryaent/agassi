@@ -203,12 +203,16 @@ async function addCertToDB (order) {
                 await retry (() => client.finalizeOrder (order, csr), RetryOptions);
             }
 
+            // get final order
+            const finalOrder = await retry (() => client.getOrder (order), RetryOptions);
+            const expires = finalOrder.expires;
+
             log.debug (`Downloading certificate for domain ${domain}...`);
             const certificate = await retry (() => client.getCertificate (order), RetryOptions);
 
             // calculate expiration date by adding 2160 hours (90 days)
             const jsTime = new Date (); // JS (ms)
-            const expiration = Math.floor (jsTime.setUTCHours (jsTime.getUTCHours () + 2160) * 1000); // (UNIX (s))
+            const expiration = Math.floor (jsTime.setUTCHours (jsTime.getUTCHours () + 2160) / 1000); // (UNIX (s))
 
             // add certificate to db table
             await rqlite.dbExecute (`INSERT INTO certificates (domain, certificate, expiration)
