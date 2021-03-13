@@ -20,10 +20,10 @@ const port = 1986;
     GET /certs/list -> get an array of all cert hashes
     GET /challenge?token=x -> get response to an acme challenge
 
-    PUT / -> validate then add certs in request body to cache
+    POST / -> validate then add certs in request body to cache
 */
 const Share = http.createServer (async (request, response) => {
-    // request will be either a GET or a PUT
+    // request will be either a GET or a POST
     switch (request.method) {
         case 'HEAD':
         case 'GET':
@@ -66,7 +66,7 @@ const Share = http.createServer (async (request, response) => {
                     response.end ();
                     return;
             }
-        case 'PUT':
+        case 'POST':
             // add new certificates to the cache
             let body = '';
             request.on ('data', chunk => {
@@ -97,7 +97,7 @@ const Share = http.createServer (async (request, response) => {
             });
             break;
         default:
-            // only HEAD, GET and PUT are implemented
+            // only HEAD, GET and POST are implemented
             response.writeHead (501);
             response.end ();
             return;

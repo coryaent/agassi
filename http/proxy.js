@@ -1,6 +1,7 @@
 "use strict";
 
 const httpProxy = require ('http-proxy');
+const log = require ('../logger.js');
 
 // create proxy server
 module.exports = httpProxy.createProxyServer ({
@@ -15,6 +16,7 @@ module.exports = httpProxy.createProxyServer ({
     };
 })
 .on ('error', (error) => {
+    log.warn (error.name);
+    log.warn (error.message);
     process.exitCode = 1;
-    throw error;
 });
