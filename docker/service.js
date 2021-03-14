@@ -3,11 +3,11 @@
 const log = require ('../logger.js');
 
 const isURL = require ('nice-is-url');
+const normalizeURL = require ('normalize-url');
 
 const Cache = require ('../cache.js');
 const Config = require ('../config.js');
 
-const requisiteLabels = ['virtualHosts', 'domain', 'port'];
 const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
 const vHostRegEx = /virtual(?:\-?hosts?)?/i;
 const protocolRegEx = /https?|wss?/i;
@@ -47,7 +47,7 @@ class Service {
         // chcek for valid virtual hosts
         const validVirtualHosts = this.labels[Config.serviceLabelPrefix + virtualHostsLabel]
         .split (',').map (vHost => vHost.trim ())
-        .every (vHost => isURL (vHost));
+        .every (vHost => isValidVHost (vHost));
 
         // check that protocol is valid
         const validProtocol = protocolRegEx.test (this.labels[Config.serviceLabelPrefix + 'protocol']);
@@ -74,7 +74,7 @@ class Service {
             this.labels[Config.serviceLabelPrefix + virtualHostsLabel]
             .split (',').map (vHost => vHost.trim ())
             .forEach (vHost => {
-                if (!isURL (vHost)) {
+                if (!isValidVHost (vHost)) {
                     log.warn (`Virtual host ${vHost} does not appear to be valid.`);
                 }
             });
@@ -112,9 +112,26 @@ class Service {
     }
 
     cache () {
-        this.virtualHosts = this.labels.virtualHosts.split (',').map (vHost => vHost.trim ());
-        this.proxyOptions = parseProxy
+        // find virtual-hosts label
+        const virtualHostsLabel = Object.keys (this.labels)
+        .map  (label => label.replace (Config.serviceLabelPrefix, ''))  // remove prefix
+        .find (label => vHostRegEx.test (label)); 
 
+        this.virtualHosts = this.labels[Config.serviceLabelPrefix + virtualHostsLabel].split (',')
+                            .map (vHost => vHost.trim ())
+                            .map (vHost => new URL (vHost).href)
+                            .sort ();
+
+        this.options = parseProxyOptions (this.labels);
+
+        Cache.services.set (this.id, {
+            virtualHosts: this.virtualHosts,
+            options: this.options
+        });
+
+        this.virtualHosts.forEach (url => {
+            Cache.virtualHosts.set (url, this.id);
+        }, this);
     }
 }
 
@@ -161,12 +178,43 @@ function parseProxyOptions (labels) {
             const agassiLabel = labelKey.replace (Config.serviceLabelPrefix, '');
             // filter labels that define a proxy option
             if (optRegEx.test (agassiLabel)) {
-                const optionKey = agassiLabel.substring (agassiLabel.lastIndexOf (Config.serviceLabelSeperator) + 1);
+                const optionKey = camelCase (agassiLabel.substring (agassiLabel.lastIndexOf (Config.serviceLabelSeperator) + 1));
                 // set the proxy options
-                options[optionKey] = labels[labelKey];
+                switch (optionKey) {
+                    case 'agent':
+                    case 'ssl':
+                    case 'ws':
+                    case 'prependPath':
+                    case 'ignorePath':
+                    case 'selfHandleResponse':
+                    case 'buffer':
+                        log.warn (`Label ${labelKey} ignored.`);
+                        break;
+                    default:
+                        options[optionKey] = labels[labelKey];
+                }
             }
         }
     });
 
     return options;
+}
+
+function isValidVHost (input) {
+    const url = new URL (normalizeURL (input, {
+        defaultProtocol: 'https:',
+        forceHttps: true
+    }));
+
+    if (url.protocol !== 'https:' ||
+        url.username !== '' ||
+        url.password !== '' ||
+        url.port     !== '' ||
+        url.search   !== '' ||
+        url.searchParams.toString () !== '' ||
+        url.hash !== '') {
+        return false;
+    } else {
+        return true;
+    }
 }
