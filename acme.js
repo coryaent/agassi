@@ -6,7 +6,7 @@ const retry = require ('p-retry');
 const Config = require ('./config.js');
 const rqlite = require ('./rqlite/rqlite.js');
 const rqlited = require ('./rqlite/rqlited.js');
-const Cluster = require ('./cluster.js');
+const Cluster = require ('./cluster/discovery.js');
 
 // timing conversions
 const secondsInDay = 86400;

@@ -14,32 +14,13 @@ class Certificate {
         return objectHash (this, {algorithm: 'md5'});
     }
 
-    cache () {
-        let hash = this.hash ();
-        if (Cache.certificates.set (hash, this, this.calcTTL ())) {
-            // successfully added to cache, check if this is the latest cert for this domain
-            if (Object.values (Cache.certificates.mget (Cache.certificates.keys ())).find ((certificate) => {
-                certificate.domain === this.domain && certificate.expiration > this.expiration; })) {
-                // this cert is not the latest
-                return hash;
-            } else {
-                // this cert is the latest for the domain, allow extra time for TTL to expire before certificate
-                if (Cache.latest.set (this.domain, this.body, this.calcTTL () - 600)) {
-                    // successfully update latest cert for this domain
-                    return hash;
-                } else {
-                    // could not cache latest
-                    return false;
-                }
-            }
-        } else {
-            // could not cache certificate
-            return false;
-        }
-    }
-
     calcTTL () {
         return Math.floor ((this.expiration - Date.now ()) / 1000);
+    }
+
+    cache () {
+        // set cert to expire in cache one hour before actual expiration
+        return Cache.certificates.set (this.hash (), this, this.calcTTL () - 3600);
     }
 }
 

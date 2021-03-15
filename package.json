@@ -44,8 +44,10 @@
     "object-hash": "^2.1.1",
     "p-retry": "^4.4.0",
     "phin": "^3.5.1",
+    "rr": "^0.1.0",
     "sleepjs": "^4.0.2",
     "ssl-utils": "^1.0.0",
+    "tiny-async-pool": "^1.2.0",
     "tsscmp": "^1.0.6",
     "uuid": "^8.3.2"
   }

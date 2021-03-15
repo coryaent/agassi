@@ -1,16 +1,17 @@
 "use strict";
 
-const log = require ('./logger.js');
+const log = require ('../logger.js');
 
 const Discover = require ('node-discover');
 const EventEmitter = require ('events');
 const http = require ('http');
 const iprange = require ('iprange');
 const querystring = require ('querystring');
+const rr = require ('rr');
 
-const Cache = require ('./cache.js');
-const Certificate = require ('./certificate.js');
-const Config = require('./config.js');
+const Cache = require ('../cache.js');
+const Certificate = require ('../certificate.js');
+const Config = require('../config.js');
 
 // default options (TCP/UDP)
 const port = 1986;
