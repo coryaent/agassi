@@ -29,9 +29,8 @@ FROM debian:buster-slim
 EXPOSE 80
 EXPOSE 443
 
-EXPOSE 4001
-EXPOSE 4002
-EXPOSE 4002/udp
+EXPOSE 1986
+EXPOSE 1986/udp
 
 # copy requisite binaries
 COPY --from=rqlited-builder /opt/rqmkown /usr/local/bin/rqmkown
@@ -62,5 +61,6 @@ USER 150:150
 VOLUME ["/data"]
 
 ENV DOCKER_SOCKET_URL="unix:///var/run/docker.sock"
+ENV PORT="1986"
 
 ENTRYPOINT wait-for-docker-socket $DOCKER_SOCKET_URL && agassi
