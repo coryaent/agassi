@@ -7,15 +7,19 @@ class Discovery extends EventEmitter {
     constructor (options) {
         super ();
         this._settings = {};
-        for (let key of Object.keys (options)) {
-            this._settings[key] = options[key];
+        if (options) {
+            for (let key of Object.keys (options)) {
+                this._settings[key] = options[key];
+            }
         }
         this._discover = Object.create (Discover.prototype);
     }
 
     start (options) {
-        for (let key of Object.keys (options)) {
-            this._settings[key] = options[key];
+        if (options) {
+            for (let key of Object.keys (options)) {
+                this._settings[key] = options[key];
+            }
         }
         this._settings.start = true;
 
