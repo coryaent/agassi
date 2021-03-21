@@ -7,7 +7,8 @@ const Cache = require ('../cache.js');
 const Certificate = require ('../certificate.js');
 
 /*
-    GET /certs?q=c4ca4238a0b923820dcc509a6f75849b&q=c81e728d9d4c2f636f067f89cc14862c... -> get certs
+    GET /certs?q=c4ca4238a0b923820dcc509a6f75849b&q=c81e728d9d4c2f636f067f89cc14862c... -> get specified certs
+    GET /certs/all -> get all certs
     GET /certs/list -> get an array of all cert hashes
     GET /challenge?token=x -> get response to an acme challenge
 
@@ -22,13 +23,39 @@ module.exports = http.createServer (async (request, response) => {
             switch (path) {
                 case '/certs':
                     // pull certificates from cache and return
-                    const keys = querystring.parse (request.url.substring (request.url.indexOf ('?') + 1)).q;
-                    const certs = Cache.certificates.mget (keys);
+                    const query = querystring.parse (request.url.substring (request.url.indexOf ('?') + 1)).q;
+                    // const certs = Cache.certificates.mget (keys);
+                    response.writeHead (200, {
+                        'Content-Type': 'application/json'
+                    });
+                    if (request.method !== 'HEAD') {
+                        for (let key of query) {
+                            let cert = Cache.certificates.get (key);
+                            if (cert) {
+                                response.write (JSON.stringify({
+                                    key: cert
+                                }));
+                            }
+                        }
+                    }
+                    response.end ();
+                    return;
+                case '/certs/all':
+                    const keys =  Cache.certificates.keys ();
                     response.writeHead (200, {
                         'Content-Type': 'application/json',
-                        'Content-Length': Buffer.byteLength (JSON.stringify (certs))
+                        'Conten-Length': Cache.certificates.getStats ().vsize
                     });
-                    if (request.method !== 'HEAD') { response.write (JSON.stringify (certs)); }
+                    if (request.method !== 'HEAD') {
+                        for (let key of keys) {
+                            let cert = Cache.certificates.get (key);
+                            if (cert) {
+                                response.write (JSON.stringify({
+                                    [key]: cert
+                                }));
+                            }
+                        }
+                    }
                     response.end ();
                     return;
                 case '/certs/list':
@@ -36,7 +63,7 @@ module.exports = http.createServer (async (request, response) => {
                     const hashes = Cache.certificates.keys ();
                     response.writeHead (200, {
                         'Content-Type': 'application/json',
-                        'Content-Length': Buffer.byteLength (JSON.stringify (hashes))
+                        'Content-Length': Cache.certificates.getStats ().ksize
                     });
                     if (request.method !== 'HEAD') { response.write (JSON.stringify (hashes)); }
                     response.end ();
@@ -60,8 +87,8 @@ module.exports = http.createServer (async (request, response) => {
         case 'POST':
             // add new certificates to the cache
             let body = '';
-            request.on ('data', datum => {
-                body += datum;
+            request.on ('data', chunk => {
+                body += chunk;
             });
             request.on ('end', () => {
                 // check that certs were added properly
