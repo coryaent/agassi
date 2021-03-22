@@ -19,35 +19,49 @@ module.exports = http.createServer (async (request, response) => {
     switch (request.method) {
         case 'HEAD':
         case 'GET':
-            const path = request.url.substring (0, request.url.indexOf ('?'));
+            const path = request.url.indexOf ('?') > 0 ?
+                         request.url.substring (0, request.url.indexOf ('?')) :
+                         request.url;
             switch (path) {
                 case '/certs':
                     // pull certificates from cache and return
-                    const query = querystring.parse (request.url.substring (request.url.indexOf ('?') + 1)).q;
-                    // const certs = Cache.certificates.mget (keys);
+                    const query = Array.isArray (querystring.parse (text.substring (text.indexOf ('?') + 1)).q) ? // already is an array
+                        querystring.parse (text.substring (text.indexOf ('?') + 1)).q :                           // set query as array
+                        querystring.parse (text.substring (text.indexOf ('?') + 1)).q ?                           // check if undefined
+                            Array.of (querystring.parse (text.substring (text.indexOf ('?') + 1)).q) :            // not undefined, make a new array of length 1
+                            null;                                                                                 // create a new array of length 0
+                    // bad query
+                    if (query === null) {
+                        response.writeHead (400, 'Invalid or undefined query parameter(s).');
+                        response.end ();
+                        return;
+                    }        
+                    // one or more queried certs not found
+                    if (!query.every (key => Cache.certificates.has (key))) {
+                        response.writeHead (404);
+                        response.end ();
+                        return;
+                    }
                     response.writeHead (200, {
                         'Content-Type': 'application/json'
                     });
                     if (request.method !== 'HEAD') {
                         for (let key of query) {
-                            let cert = Cache.certificates.get (key);
-                            if (cert) {
-                                response.write (JSON.stringify({
-                                    key: cert
-                                }));
-                            }
+                            response.write (JSON.stringify({
+                                [key]: Cache.certificates.get (key)
+                            }));
                         }
                     }
                     response.end ();
                     return;
                 case '/certs/all':
-                    const keys =  Cache.certificates.keys ();
                     response.writeHead (200, {
                         'Content-Type': 'application/json',
                         'Conten-Length': Cache.certificates.getStats ().vsize
                     });
                     if (request.method !== 'HEAD') {
-                        for (let key of keys) {
+                        for (let key of Cache.certificates.keys ()) {
+                            // ensure nothing has expired during this loop
                             let cert = Cache.certificates.get (key);
                             if (cert) {
                                 response.write (JSON.stringify({
@@ -60,23 +74,39 @@ module.exports = http.createServer (async (request, response) => {
                     return;
                 case '/certs/list':
                     // get list of all certificate hashes
-                    const hashes = Cache.certificates.keys ();
                     response.writeHead (200, {
                         'Content-Type': 'application/json',
                         'Content-Length': Cache.certificates.getStats ().ksize
                     });
-                    if (request.method !== 'HEAD') { response.write (JSON.stringify (hashes)); }
+                    if (request.method !== 'HEAD') {
+                        response.write (JSON.stringify (Cache.certificates.keys ()));
+                    }
                     response.end ();
                     return;
                 case '/challenge':
                     // get response to an ACME challenge
                     const token = querystring.parse (request.url.substring (request.url.indexOf ('?') + 1)).token;
+                    // if token is not a string then this is wrong
+                    if (typeof token !== 'string') {
+                        response.writeHead (400, 'Invalid or undefined token parameter.');
+                        response.end ();
+                        return;
+                    }
                     const challengeResponse = Cache.challenges.get (token);
+                    // check validity of response
+                    if (typeof challengeResponse !== 'string') {
+                        response.writeHead (404);
+                        response.end ();
+                        return;
+                    }
+                    // token and challengeResponse are both valid
                     response.writeHead (200, {
                         'Content-Type': 'text/plain',
                         'Content-Length': Buffer.byteLength (challengeResponse)
                     });
-                    if (request.method !== 'HEAD') { response.write (challengeResponse); }
+                    if (request.method !== 'HEAD') { 
+                        response.write (challengeResponse); 
+                    }
                     response.end ();
                     return;
                 default:

@@ -30,8 +30,7 @@ share.on ('close', function stopDiscovery () {
 
 // client agent for sharing certs (and challenges)
 const shareAgent = new http.Agent ({
-    keepAlive: true,
-    maxSockets: 1
+    keepAlive: true
 });
 
 /*
@@ -44,7 +43,42 @@ const shareAgent = new http.Agent ({
     4. pull remaining certs from each peer until the needed set is empty
 */
 async function sync () {
+    // preserve order
+    let peers = discovery.peers ();
+    // get an array of arrays of all the hashes on each peer
+    let hashes = await Promise.all (peers.map (peer => {
+        (phin ({
+            method: 'GET',
+            url: `http://${peer.address}:${peer.port}/certs/list`,
+            parse: 'json',
+            timeout: 2000,
+            core: {
+                agent: shareAgent
+            }
+        })).body;
+    }));
+}
 
+function createCertQuery (hashes) {
+    let query = '';
+    hashes.forEach (hash => query += `q=${hash}&`);
+    return query;
+}
+
+async function push (hash, certificate) {
+    return await Promise.all (discovery.peers ().map (peer => {
+        phin ({
+            method: 'POST',
+            url: `http://${peer.address}:${peer.port}/`,
+            timeout: 5000,
+            data: JSON.stringify ({
+                [hash]: certificate
+            }),
+            core: {
+                agent: shareAgent
+            }
+        })
+    }))
 }
 
 async function pullCerts (certHashes, chunkSize) {
