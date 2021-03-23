@@ -2,9 +2,12 @@
 
 const http = require ('http');
 const phin = require ('phin');
+const retry = require ('@lifeomic/attempt').retry;
 const rr = require ('rr');
 const os = require ('os');
 const ip = require ('ip');
+
+const Cache = require ('../cache.js');
 
 // share listening server and automatic discovery
 const discovery = require ('./discovery.js');
@@ -46,17 +49,31 @@ async function sync () {
     // preserve order
     let peers = discovery.peers ();
     // get an array of arrays of all the hashes on each peer
-    let hashes = await Promise.all (peers.map (peer => {
+    let hashLists = await Promise.all (peers.map (peer => {
         (phin ({
             method: 'GET',
             url: `http://${peer.address}:${peer.port}/certs/list`,
             parse: 'json',
-            timeout: 2000,
+            timeout: 5000,
             core: {
                 agent: shareAgent
             }
         })).body;
     }));
+    // map which peer address has which certs
+    const peerHashLists = new Map ();
+    peers.forEach ((peer, index) => {
+        peerHashLists.set (peer.address, hashLists[index]);
+    });
+    // create a set of needed certs
+    const needed = new Set ();
+    hashLists.forEach (list => {
+        list.forEach (certHash => {
+            if (!Cache.certificates.has (certHash)) {
+                needed.add (certHash);
+            }
+        });
+    });
 }
 
 function createCertQuery (hashes) {
@@ -67,18 +84,25 @@ function createCertQuery (hashes) {
 
 async function push (hash, certificate) {
     return await Promise.all (discovery.peers ().map (peer => {
-        phin ({
-            method: 'POST',
-            url: `http://${peer.address}:${peer.port}/`,
-            timeout: 5000,
-            data: JSON.stringify ({
-                [hash]: certificate
+        retry (
+            phin ({
+                method: 'POST',
+                url: `http://${peer.address}:${peer.port}/`,
+                data: JSON.stringify ({
+                    [hash]: certificate
+                }),
+                core: {
+                    agent: shareAgent
+                }
             }),
-            core: {
-                agent: shareAgent
-            }
-        })
-    }))
+        {
+            // retry options
+            timeout: 5000,
+            factor: 1,
+            delay: 1,
+            maxAttempts: 3
+        });
+    }));
 }
 
 async function pullCerts (certHashes, chunkSize) {
