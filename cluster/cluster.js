@@ -2,12 +2,15 @@
 
 const http = require ('http');
 const phin = require ('phin');
+const { randoSequence } = require ('@nastyox/rando.js');
 const retry = require ('@lifeomic/attempt').retry;
+const ndjson = require ('ndjson');
 const rr = require ('rr');
 const os = require ('os');
 const ip = require ('ip');
 
 const Cache = require ('../cache.js');
+const Certificate = require ('../certificate.js');
 
 // share listening server and automatic discovery
 const discovery = require ('./discovery.js');
@@ -46,8 +49,9 @@ const shareAgent = new http.Agent ({
     4. pull remaining certs from each peer until the needed set is empty
 */
 async function sync () {
-    // preserve order
+    // disregard any peers added during this function call
     let peers = discovery.peers ();
+
     // get an array of arrays of all the hashes on each peer
     let hashLists = await Promise.all (peers.map (peer => {
         (phin ({
@@ -63,8 +67,9 @@ async function sync () {
     // map which peer address has which certs
     const peerHashLists = new Map ();
     peers.forEach ((peer, index) => {
-        peerHashLists.set (peer.address, hashLists[index]);
+        peerHashLists.set (`${peer.address}:${peer.port}`, hashLists[index]);
     });
+
     // create a set of needed certs
     const needed = new Set ();
     hashLists.forEach (list => {
@@ -74,6 +79,56 @@ async function sync () {
             }
         });
     });
+    // if this node has all the certs that other nodes do, stop sync'ing
+    if (needed.size === 0) {
+        return;
+    }
+
+    // assume most peers have most certs and map which hashes
+    // will be fetched from which peers (load balance)
+    const certMap = new Map ();
+    peers.forEach (peer => certMap.set (`${peer.address}:${peer.port}`), new Array ());
+    // map each cert hash to a random-ish peer
+    needed.forEach (certHash => {
+        certMap.get (randoSequence (peers).find (peer => {
+            peerHashLists.get (`${peer.address}:${peer.port}`).has (certHash);
+        })).push (certHash);
+    });
+    
+    // pull the certs ("heavy lifting")
+    return Promise.all (Array.from (certMap.keys ()).map (peer => {
+        return new Promise ((resolve, reject) => {
+            phin ({
+                method: 'GET',
+                url: `http://${peer}/${createCertQuery (certMap.get (peer))}`,
+                stream: true,
+                core: {
+                    agent: shareAgent
+                }
+            }).then (stream => {
+                let added = 0;
+                stream.pipe (ndjson.parse ())
+                .on ('data', _cert => {
+                    let cert = new Certificate (_cert.body, _cert.domain, _cert.expiration);
+                    let _hash = Object.keys (_cert)[0];
+                    if (cert.hash () === _hash) {
+                        if (!Cache.certificates.has (_hash)) {
+                            cert.cache ();
+                            added++;
+                        }
+                    } else {
+                        stream.destroy ();
+                        throw new Error (`Cache or hash error on certificate ${_hash}.`);
+                    }
+                })
+                .on ('end', () => {
+                    resolve (added);
+                });
+            }).catch (error => {
+                reject (error);
+            });
+        });
+    }));
 }
 
 function createCertQuery (hashes) {
@@ -108,7 +163,7 @@ async function push (hash, certificate) {
 async function pullCerts (certHashes, chunkSize) {
     let query = '';
     for (let hash of certHashes) {
-        query += 'q=' + hash;
+        query += 'q=' + hash + '&';
     }
     try {
         return await phin ({

@@ -2,17 +2,34 @@
 
 const http = require ('http');
 const querystring = require ('querystring');
+const ndjson = require ('ndjson');
 
 const Cache = require ('../cache.js');
 const Certificate = require ('../certificate.js');
 
 /*
     GET /certs?q=c4ca4238a0b923820dcc509a6f75849b&q=c81e728d9d4c2f636f067f89cc14862c... -> get specified certs
+        RETURNS new-line seperated JSON representation of certs as
+        {[certHash]: body, expiration, domain}
+        ...
+        ...
     GET /certs/all -> get all certs
+        RETURNS new-line seperated JSON strings
     GET /certs/list -> get an array of all cert hashes
+        RETURNS array of strings
     GET /challenge?token=x -> get response to an acme challenge
+        RETURNS a single-line string
 
     POST / -> validate then add certs in request body to cache
+        BODY is array of certificates formatted as
+        [ 
+            {[certHash]: {
+                body,
+                expiration,
+                domain
+            }},
+            ...
+        ]
 */
 module.exports = http.createServer (async (request, response) => {
     // request will be either a GET or a POST
@@ -43,32 +60,36 @@ module.exports = http.createServer (async (request, response) => {
                         return;
                     }
                     response.writeHead (200, {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'text/plain'
                     });
                     if (request.method !== 'HEAD') {
+                        const qStream = ndjson.stringify ().pipe (response, { end: false });
                         for (let key of query) {
-                            response.write (JSON.stringify({
+                            qStream.write ({
                                 [key]: Cache.certificates.get (key)
-                            }));
+                            });
                         }
+                        qStream.end ();
                     }
                     response.end ();
                     return;
                 case '/certs/all':
                     response.writeHead (200, {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'text/plain',
                         'Conten-Length': Cache.certificates.getStats ().vsize
                     });
                     if (request.method !== 'HEAD') {
+                        const allStream = ndjson.stringify ().pipe (response, { end: false });
                         for (let key of Cache.certificates.keys ()) {
                             // ensure nothing has expired during this loop
                             let cert = Cache.certificates.get (key);
                             if (cert) {
-                                response.write (JSON.stringify({
+                                allStream.write (JSON.stringify({
                                     [key]: cert
                                 }));
                             }
                         }
+                        allStream.end ();
                     }
                     response.end ();
                     return;
@@ -135,6 +156,7 @@ module.exports = http.createServer (async (request, response) => {
                             // something went wrong adding this cert
                             response.writeHead (500, `Cache or hash error on certificate ${hash}.`);
                             response.end ();
+                            // TODO exit here
                             return;
                         }
                     }
