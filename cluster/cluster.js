@@ -138,7 +138,7 @@ function createCertQuery (hashes) {
 }
 
 async function push (hash, certificate) {
-    return await Promise.all (discovery.peers ().map (peer => {
+    return Promise.all (discovery.peers ().map (peer => {
         retry (
             phin ({
                 method: 'POST',

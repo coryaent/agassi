@@ -19,7 +19,7 @@ function camelCase (text) {
     }); 
 }
 
-class Service {
+module.exports = class Service {
     constructor (serviceDetail) {
         this.id = serviceDetail.ID;
         this.labels = parseServiceLabels (serviceDetail);
