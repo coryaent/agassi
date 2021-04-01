@@ -1,8 +1,12 @@
 "use strict";
 
 const NodeCache = require ('node-cache');
+const toTime = require ('to-time');
 
-const services = new NodeCache ()
+const services = new NodeCache ({
+    checkperiod: 0,
+    useClones: false
+})
 // on service 'set' update virtualHosts
 .on ('set', function updateVirtualHosts (serviceID, service) {
     service.virtualHosts.forEach (function checkAndUpdate (virtualHostURL) {
@@ -18,13 +22,18 @@ const services = new NodeCache ()
     });
 });
 
-const virtualHosts = new NodeCache ()
+const virtualHosts = new NodeCache ({
+    checkperiod: 0,
+    useClones: false
+})
 // on virtualHosts 'set' check if new certs are needed
 .on ('set', function ensureCertIsCurrent (virtualHostURL) {
 
 });
 
-const certificates = new NodeCache ()
+const certificates = new NodeCache ({
+    useClones: false
+})
 // on certificate 'set' check that the latest is up-to-date
 .on ('set', function updateLatestPointer (certHash, cert) {
     // check that the latest cert exists
@@ -40,12 +49,18 @@ const certificates = new NodeCache ()
     }
 });
 
-const latest = new NodeCache ();
+const latest = new NodeCache ({
+    useClones: false
+});
 
 module.exports = {
     services,
     virtualHosts,
     certificates,
     latest,
-    challenges: new NodeCache ()
+    challenges: new NodeCache ({
+        stdTTL: toTime ('7d').seconds (),
+        checkperiod: toTime ('1h').seconds (),
+        useClones: false
+    })
 };

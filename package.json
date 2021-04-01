@@ -52,6 +52,7 @@
     "sleepjs": "^4.0.2",
     "ssl-utils": "^1.0.0",
     "tiny-async-pool": "^1.2.0",
+    "to-time": "^1.0.2",
     "tsscmp": "^1.0.6",
     "uuid": "^8.3.2"
   }

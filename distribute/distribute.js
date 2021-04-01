@@ -4,7 +4,6 @@ const os = require ('os');
 const ip = require ('ip');
 
 const Cache = require ('../cache.js');
-const Certificate = require ('../certificate.js');
 
 // share listening server and automatic discovery
 const discovery = require ('./discovery.js');
@@ -25,6 +24,18 @@ share.on ('listening', function startDiscovery () {
 
 share.on ('close', function stopDiscovery () {
     discovery.stop ();
+});
+
+/* 
+    Challenge {
+        token: <String>,
+        response: <String>
+    }
+*/
+discovery.on ('challenge', function cacheChallengeResponse (challenge) {
+    Cache.challenges.set (
+        JSON.parse (challenge).token, 
+        JSON.parse (challenge).response);
 });
 
 module.exports = {

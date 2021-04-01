@@ -1,10 +1,26 @@
 "use strict";
 
+const log = require ('../logger.js');
+const HTTPS = require ('../http/https.js');
 const discovery = require ('./discovery.js');
 const phin = require ('phin');
 const { randoSequence } = require ('@nastyox/rando.js');
 const ndjson = require ('ndjson');
 const agent = require ('./agent.js');
+
+// 'master' fires when some other process is master
+discovery.on ('master', async function adoptNewMaster () {
+    // check that HTTPS has not already started
+    if (!HTTPS.listening) {
+        try {
+            await sync ();
+            HTTPS.listen ();
+        } catch (error) {
+            log.error (error.name);
+            log.error (error.message);
+        }
+    }
+});
 
 /*
     synchronization steps:

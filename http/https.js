@@ -41,7 +41,7 @@ function generateDefaultCert () {
 
 const defaultCert = generateDefaultCert ();
 
-const Server = https.createServer ({
+module.exports = https.createServer ({
     SNICallback: async (domain, callback) => {
         // get latest cert
         const queryResponse = await rqlite.dbQuery (`SELECT certificate FROM certificates
@@ -126,36 +126,10 @@ const Server = https.createServer ({
         // basic auth not required
         Proxy.web (request, response, proxyOptions);
     }
-}).on ('listening', () => {
+})
+.once ('listening', rateLimit.init)
+.on ('listening', () => {
     log.info ('HTTPS server started.');
 }).on ('close', () => {
     log.info ('HTTPS server stopped.');
 });
-
-var limiter = null;
-
-module.exports = {
-    Server,
-
-    start: () => {
-        if (Server && !Server.listening) {
-            log.info ('Starting HTTPS server...');
-            Server.listen (443, null, (error) => {
-                if (error) {
-                    throw error;
-                }
-                if (!limiter) {
-                    log.debug ('Initializing HTTPS rate limiter...');
-                    limiter = rateLimit.init (1); // 1 minute timeframe
-                }
-            });
-        }
-    },
-
-    stop: () => {
-        if (Server && Server.listening) {
-            log.info ('Stopping HTTPS server...');
-            Server.stop ();
-        }
-    }
-};

@@ -6,6 +6,9 @@ const phin = require ('phin');
 const retry = require ('@lifeomic/attempt').retry;
 const agent = require ('./agent.js');
 
+// push cert to all hosts
+Cache.certificates.on ('set', push);
+
 async function push (hash, certificate) {
     return Promise.all (discovery.peers ().map (peer => {
         retry (
@@ -28,5 +31,3 @@ async function push (hash, certificate) {
         });
     }));
 }
-
-Cache.certificates.on ('set', push);
