@@ -1,12 +1,13 @@
 "use strict";
 
-
 const Config = require ('../config.js');
 const log = require ('../logger.js');
 const rqlite = require ('../rqlite/rqlite.js');
 
 const https = require ('https');
 const tls = require ('tls');
+const forge = require ('node-forge');
+const os = require ('os');
 const rateLimit = require ('http-ratelimit');
 const memoize = require ('nano-memoize');
 const bcrypt = require ('bcryptjs');
@@ -19,6 +20,26 @@ const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locall
 
 const base64RegEx = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 // const bcryptRegEx = /\$2[xy]\$/;
+
+function generateDefaultCert () {
+    const privateKey = forge.pki.privateKeyFromPem (Config.defaultKey);
+    const publicKey = forge.pki.setRsaPublicKey (privateKey.n, privateKey.e);
+
+    const cert = forge.pki.createCertificate ();
+    cert.publicKey = publicKey;
+    cert.validity.notBefore = new Date ();
+    cert.validity.notAfter = new Date ();
+    cert.validity.notAfter.setFullYear (cert.validity.notBefore.getFullYear() + 128);
+    cert.setSubject ([{
+        name: 'commonName',
+        value: `${os.hostname ()}.invalid`
+    }]);
+    cert.sign (privateKey);
+
+    return Buffer.from (forge.pki.certificateToPem (cert));
+}
+
+const defaultCert = generateDefaultCert ();
 
 const Server = https.createServer ({
     SNICallback: async (domain, callback) => {
@@ -40,7 +61,7 @@ const Server = https.createServer ({
         }
     },
     key: Config.defaultKey,
-    cert: Config.defaultCert
+    cert: defaultCert
 }, async (request, response) => {
     const requestURL = new URL (request.url, `https://${request.headers.host}`);
     const queryResponse = await rqlite.dbQuery (`SELECT protocol, hostname, port, auth, options FROM services
@@ -125,7 +146,7 @@ module.exports = {
                 }
                 if (!limiter) {
                     log.debug ('Initializing HTTPS rate limiter...');
-                    limiter = rateLimit.init (1, true); // 1 minute, using reverse proxy
+                    limiter = rateLimit.init (1); // 1 minute timeframe
                 }
             });
         }

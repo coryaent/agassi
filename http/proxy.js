@@ -1,5 +1,6 @@
 "use strict";
 
+const http = require ('http');
 const httpProxy = require ('http-proxy');
 const log = require ('../logger.js');
 
@@ -7,7 +8,7 @@ const log = require ('../logger.js');
 module.exports = httpProxy.createProxyServer ({
     // default options
     secure: false,
-    followRedirects: true,
+    followRedirects: true
 })
 .on ('proxyReq', (proxyRequest, request) => {
     // rewrite headers

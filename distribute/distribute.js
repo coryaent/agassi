@@ -5,7 +5,6 @@ const phin = require ('phin');
 const { randoSequence } = require ('@nastyox/rando.js');
 const retry = require ('@lifeomic/attempt').retry;
 const ndjson = require ('ndjson');
-const rr = require ('rr');
 const os = require ('os');
 const ip = require ('ip');
 
@@ -160,29 +159,8 @@ async function push (hash, certificate) {
     }));
 }
 
-async function pullCerts (certHashes, chunkSize) {
-    let query = '';
-    for (let hash of certHashes) {
-        query += 'q=' + hash + '&';
-    }
-    try {
-        return await phin ({
-            url: `http://${rr (discover.peers ()).address}:${process.env.PORT}/certs?${query}`,
-            parse: 'json',
-            timeout: 1000
-        });
-    } catch {
-        return Promise.any (discovery.peers ().map (peer => {
-            phin ({
-                url: `http://${peer.address}:${process.env.PORT}/certs?${query}`,
-                parse: 'json',
-                timeout: 2000
-            });
-        }));
-    }
-}
-
 module.exports = {
     discovery,
+    push,
     share
 };

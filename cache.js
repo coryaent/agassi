@@ -1,6 +1,7 @@
 "use strict";
 
 const NodeCache = require ('node-cache');
+const Distribute = require ('./distribute/distribute.js');
 
 const services = new NodeCache ()
 // on service 'set' update virtualHosts
@@ -38,7 +39,8 @@ const certificates = new NodeCache ()
             latest.set (cert.domain, cert.body, Math.floor (cert.expiration / 1000));
         }
     }
-});
+})
+.on ('set', Distribute.push);
 
 const latest = new NodeCache ();
 
