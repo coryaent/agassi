@@ -22,12 +22,9 @@ module.exports = http.createServer (async (request, response) => {
             response.writeHead (200, {
                 'Content-Type': 'text/plain'
             });
-            response.write (challengeQuery.results[0].response, 'ascii');
+            response.write (challengeQuery.results[0].response);
             response.end ();
 
-            // log.debug ('Indicating challenge response...');
-            
-            Distribute.indicateChallengeResponse (token, challengeQuery.results[0].acme_order);
         } else {
             log.warn (`Could not find challenge response for ${requestURL.hostname}.`);
             return;

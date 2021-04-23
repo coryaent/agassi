@@ -2,6 +2,7 @@
 
 const objectHash = require ('object-hash');
 const Cache = require ('./cache.js');
+const toTime = require ('to-time');
 
 class Certificate {
     constructor (body, domain, expiration) {
@@ -19,8 +20,10 @@ class Certificate {
     }
 
     cache () {
-        // set cert to expire in cache one hour before actual expiration
-        return Cache.certificates.set (this.hash (), this, this.calcTTL () - 3600);
+        // set cert to expire in cache one day before actual expiration
+        // this will stop clients from downloading certs that are about
+        // to expire
+        return Cache.certificates.set (this.hash (), this, this.calcTTL () - toTime ('1d').seconds ());
     }
 }
 

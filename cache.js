@@ -32,6 +32,7 @@ const virtualHosts = new NodeCache ({
 });
 
 const certificates = new NodeCache ({
+    checkperiod: toTime ('1h').seconds (),
     useClones: false
 })
 // on certificate 'set' check that the latest is up-to-date

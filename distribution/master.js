@@ -4,6 +4,7 @@ const os = require ('os');
 const ip = require ('ip');
 
 const Cache = require ('../cache.js');
+const client = require ('../acme/client.js');
 
 // share listening server and automatic discovery
 const discovery = require ('./discovery.js');
@@ -36,6 +37,15 @@ discovery.on ('challenge', function cacheChallengeResponse (challenge) {
     Cache.challenges.set (
         JSON.parse (challenge).token, 
         JSON.parse (challenge).response);
+});
+
+discovery.once ('promotion', async () => {
+    log.debug (`Creating ACME account with email ${Config.acmeEmail.replace ('mailto:', '')}...`);
+    await client.createAccount ({
+        termsOfServiceAgreed: true,
+        contact: [Config.acmeEmail]
+    });
+    log.debug (`ACME account created with email ${Config.acmeEmail.replace ('mailto:', '')}.`);
 });
 
 module.exports = {

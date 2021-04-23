@@ -19,6 +19,8 @@ const Certificate = require ('../certificate.js');
         RETURNS array of strings
     GET /challenge?token=x -> get response to an acme challenge
         RETURNS a single-line string
+    GET /certs/has?q=c4ca4238a0b923820dcc509a6f75849b&q=c81e728d9d4c2f636f067f89cc14862c... -> check for certs
+        RETURNS 'true' or 'false' (all or nothing)
 
     POST / -> validate then add certs in request body to cache
         BODY is array of certificates formatted as
@@ -39,22 +41,18 @@ module.exports = http.createServer (async (request, response) => {
             const path = request.url.indexOf ('?') > 0 ?
                          request.url.substring (0, request.url.indexOf ('?')) :
                          request.url;
+            const query = parseQuery (request.url);
             switch (path) {
                 case '/certs':
                     // pull certificates from cache and return
-                    const query = Array.isArray (querystring.parse (text.substring (text.indexOf ('?') + 1)).q) ? // already is an array
-                        querystring.parse (text.substring (text.indexOf ('?') + 1)).q :                           // set query as array
-                        querystring.parse (text.substring (text.indexOf ('?') + 1)).q ?                           // check if undefined
-                            Array.of (querystring.parse (text.substring (text.indexOf ('?') + 1)).q) :            // not undefined, make a new array of length 1
-                            null;                                                                                 // create a new array of length 0
-                    // bad query
                     if (query === null) {
+                        // bad query
                         response.writeHead (400, 'Invalid or undefined query parameter(s).');
                         response.end ();
                         return;
-                    }        
-                    // one or more queried certs not found
+                    }
                     if (!query.every (key => Cache.certificates.has (key))) {
+                        // one or more queried certs not found
                         response.writeHead (404);
                         response.end ();
                         return;
@@ -73,6 +71,7 @@ module.exports = http.createServer (async (request, response) => {
                     }
                     response.end ();
                     return;
+
                 case '/certs/all':
                     response.writeHead (200, {
                         'Content-Type': 'text/plain',
@@ -93,6 +92,7 @@ module.exports = http.createServer (async (request, response) => {
                     }
                     response.end ();
                     return;
+
                 case '/certs/list':
                     // get list of all certificate hashes
                     response.writeHead (200, {
@@ -104,6 +104,35 @@ module.exports = http.createServer (async (request, response) => {
                     }
                     response.end ();
                     return;
+
+                case '/certs/has':
+                    // check that the host has one or more certs (all or nothing)
+                    if (query === null) {
+                        // bad query
+                        response.writeHead (400, 'Invalid or undefined query parameter(s).');
+                        response.end ();
+                        return;
+                    }
+                    if (query.every (key => Cache.certificates.has (key))) {
+                        // all certs found, write 'true'
+                        response.writeHead (200, {
+                            'Content-Type': 'text/plain',
+                            'Content-Length': 4
+                        });
+                        response.write ('true');
+                        response.end ();
+                        return;
+                    } else {
+                        // not certs found, write 'false'
+                        response.writeHead (200, {
+                            'Content-Type': 'text/plain',
+                            'Content-Length': 5
+                        });
+                        response.write ('false');
+                        response.end ();
+                        return;
+                    }
+
                 case '/challenge':
                     // get response to an ACME challenge
                     const token = querystring.parse (request.url.substring (request.url.indexOf ('?') + 1)).token;
@@ -130,6 +159,7 @@ module.exports = http.createServer (async (request, response) => {
                     }
                     response.end ();
                     return;
+
                 default:
                     response.writeHead (404);
                     response.end ();
@@ -141,7 +171,7 @@ module.exports = http.createServer (async (request, response) => {
             request.on ('data', chunk => {
                 body += chunk;
             });
-            request.on ('end', () => {
+            request.on ('end', function cachePushedCerts () {
                 // check that certs were added properly
                 let newlyAdded = false;
                 let received = JSON.parse (body);
@@ -164,8 +194,8 @@ module.exports = http.createServer (async (request, response) => {
                 response.writeHead (newlyAdded ? 201 : 200);
                 response.end ();
                 return;
-            });
-            break;
+            }); break; // this break statement probably is not needed
+
         default:
             // only HEAD, GET and POST are implemented
             response.writeHead (501);
@@ -173,3 +203,11 @@ module.exports = http.createServer (async (request, response) => {
             return;
     }
 });
+
+function parseQuery (requestURL) {
+    return  Array.isArray (querystring.parse (requestURL.substring (requestURL.indexOf ('?') + 1)).q) ? // already is an array
+            querystring.parse (requestURL.substring (requestURL.indexOf ('?') + 1)).q :                 // set query as array
+            querystring.parse (requestURL.substring (requestURL.indexOf ('?') + 1)).q ?                 // check if undefined
+                Array.of (querystring.parse (requestURL.substring (requestURL.indexOf ('?') + 1)).q) :  // not undefined, make a new array of length 1
+                null;                                                                                     // create a new array of length 0
+}
