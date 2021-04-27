@@ -28,7 +28,7 @@
     "bcryptjs": "^2.4.3",
     "console-log-level": "^1.4.1",
     "docker-events": "0.0.2",
-    "dockerode": "^3.2.1",
+    "dockerode": "^3.3.0",
     "fast-date-format": "^2.2.4",
     "http-proxy": "^1.18.1",
     "http-ratelimit": "^0.2.3",
