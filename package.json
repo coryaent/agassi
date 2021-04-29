@@ -42,7 +42,6 @@
     "is-email": "^1.0.0",
     "is-url": "^1.2.4",
     "lokijs": "^1.5.11",
-    "moize": "^6.0.2",
     "nano-memoize": "^1.2.1",
     "ndjson": "^2.0.0",
     "nice-is-url": "^1.0.2",

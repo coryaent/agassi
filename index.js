@@ -5,16 +5,14 @@ const log = require ('./logger.js');
 const Docker = require('./docker.js');
 const ip = require ('ip');
 
-// const { spawn } = require ('child_process');
-const moize = require ('moize');
-const spawn = require ('child_process').spawn 
+const { spawn } = require ('child_process');
 
 const Discovery = require ('./discovery.js');
 const Redis = require ('ioredis');
 const KeyDB = new Redis ();
 
 // process instances
-const ActiveChildren = new Set ();
+const ActiveChildren = new Map ();
 
 // fetch all networks
 Docker.API.listNetworks ().then (function main (networks) {
@@ -29,13 +27,19 @@ Docker.API.listNetworks ().then (function main (networks) {
     });
 
     // start the local redis/keydb server
-    KeyDBServer ? 
-        KeyDBServer = spawn ('keydb-server', [
+    ActiveChildren.set ('keydb-server', spawn ('keydb-server', [
         '--bind', '127.0.0.1', address, 
         '--active-replica', 'yes',
         '--databases', '1'
-    ], { stdio: ['ignore', 'inherit', 'inherit'] }) :
-        KeyDBServer = null;
+    ], { stdio: ['ignore', 'inherit', 'inherit'] }));
+
+    
+    ActiveChildren.set ('caddy-server', spawn ('caddy', [
+        'docker-proxy',
+        '-caddyfile-path', string,
+        '-controller-network', subnet,
+        '-mode', 'server'
+    ], { stdio: ['ignore', 'inherit', 'inherit'] }));
 
     // start discovery
     Discovery.start ({
@@ -46,22 +50,25 @@ Docker.API.listNetworks ().then (function main (networks) {
     // sync keydb on discovery.add and run caddy server
     .on ('added', async (peer) => {
         await KeyDB.replicaof (peer.address, peer.port);
-        spawn ('caddy', [
-            'docker-proxy',
-            '-caddyfile-path', string,
-            '-controller-network', subnet,
-            '-mode', 'server'
-        ], { stdio: ['ignore', 'inherit', 'inherit'] });
     })
     // run controller and server on discovery.master
     .on ('promotion', async () => {
         await KeyDB.replicaof ('NO', 'ONE');
-        spawn ('caddy', [
+        ActiveChildren.set ('caddy-controller', spawn ('caddy', [
             'docker-proxy',
             '-caddyfile-path', string,
             '-controller-network', subnet,
             '-mode', 'controller'
-        ], { stdio: ['ignore', 'inherit', 'inherit'] });
+        ], { stdio: ['ignore', 'inherit', 'inherit'] })
+        .on ('exit', function exitCaddyController () {
+            ActiveChildren.delete ('caddy-controller');
+        }));
+    })
+    // stop controller on non-master instances
+    .on ('demotion', () => {
+        if (ActiveChildren.has ('caddy-controller')) {
+            ActiveChildren.get ('caddy-controller').kill ();
+        }
     });
 });
 
@@ -71,9 +78,8 @@ process.on ('SIGINT', () => {
 
 process.on ('SIGTERM', () => {
     log.info ('SIGTERM received, exiting...');
-    ACME.Maintenance.stop ();
-    Docker.Events.stop ();
-    HTTPS.stop ();
-    HTTP.stop ();
-    Cluster.stop ();
+    Discovery.stop ();
+    for (let p of ActiveChildren.values ()) {
+        p.kill ();
+    }
 });
