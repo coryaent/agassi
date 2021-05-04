@@ -41,7 +41,9 @@ Docker.listNetworks ().then (function main (networks) {
         return network.Labels && network.Labels[Input.labelPrefix + '.network'] == 'controller';
     });
     // get the subnet and address parameters from the controller network
-    const controllerSubnet = controllerNetwork.IPAM.Config[0].Subnet;
+    const controllerSubnet = controllerNetwork ? 
+        controllerNetwork.IPAM.Config[0].Subnet : 
+        Input.controllerNetwork;
     const controllerAddress = require ('@emmsdan/network-address').v4.find ((address) => {
         return ip.cidrSubnet (controllerSubnet).contains (address);
     });
@@ -51,6 +53,9 @@ Docker.listNetworks ().then (function main (networks) {
         return network.Labels && network.Labels[Input.labelPrefix + '.network'] == 'ingress';
     });
     const ingressSubnets = ingressNetworks.map (network => network.IPAM.Config[0].Subnet);
+    if (Input.ingressNetworks) {
+        ingressSubnets.push (String (Input.ingressNetworks).split (','))
+    }
     // adjust caddy options based on subnet discovery
     const caddyOpts = [
         'docker-proxy',

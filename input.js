@@ -25,11 +25,11 @@ const getInput_ = require ('get-input');
 */
 function getInput (param) {
     let i = getInput_ (param);
-    if (i) return i
+    if (i) return i;
     else if (param.required)
         throw new InputError (param.required);
         else 
-        throw new InputError ('Could not read required input parameter.');
+        return undefined;
 }
 
 class InputError extends Error {
@@ -39,8 +39,10 @@ class InputError extends Error {
     }
 }
 
-// main
-module.exports = {
+module.exports = {    
+    /*
+        Caddy
+    */
     get caddyfilePath () {
         return getInput ({
             envKey: ['CADDY_DOCKER_CADDYFILE_PATH'],
@@ -51,12 +53,21 @@ module.exports = {
         })
     },
 
-    get dockerHost () {
+    get controllerNetwork () {
         return getInput ({
-            envKey: ['DOCKER_HOST'],
-            argvKey: ['-h', '--docker-host'],
+            envKey: ['CADDY_CONTROLLER_NETWORK'],
+            argvKey: ['-controller-network', '--controller-network'],
             endMark: '--',
             priority: 'argv',
+        })
+    },
+
+    get ingressNetworks () {
+        return getInput ({
+            envKey: ['CADDY_INGRESS_NETWORKS'],
+            argvKey: ['-ingress-networks', '--ingress-networks'],
+            endMark: '--',
+            priority: 'argv'
         })
     },
 
@@ -70,6 +81,20 @@ module.exports = {
         })
     },
 
+    get dockerHost () {
+        return getInput ({
+            envKey: ['DOCKER_HOST'],
+            argvKey: ['-h', '--docker-host'],
+            endMark: '--',
+            priority: 'argv',
+            required: 'DOCKER_HOST must be set.'
+        })
+    },
+
+
+    /*
+        Agassi
+    */
     get logLevel () {
         return getInput ({
             envKey: ['LOG_LEVEL'],
