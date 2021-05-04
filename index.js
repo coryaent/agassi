@@ -1,8 +1,23 @@
 "use strict";
 
 const log = require ('./logger.js');
+const Input = require ('./input.js');
 
-const Docker = require('./docker.js');
+const Dockerode = require ('dockerode');
+const Docker = new Dockerode (() => {
+    const dockerSocketURL = new URL (Input.dockerHost);
+    if (dockerSocketURL.protocol.startsWith ('unix') || 
+        dockerSocketURL.protocol.startsWith ('file')) {
+        return {
+            socketPath: dockerSocketURL.pathname
+        };
+    } else {
+        return {
+            host: dockerSocketURL.hostname,
+            port: dockerSocketURL.port
+        };
+    }
+});
 const ip = require ('ip');
 
 const { spawn } = require ('child_process');
@@ -15,7 +30,7 @@ const KeyDB = new Redis ();
 const ActiveChildren = new Map ();
 
 // fetch all networks
-Docker.API.listNetworks ().then (function main (networks) {
+Docker.listNetworks ().then (function main (networks) {
     // determine which is the relevent overlay
     const overlayNetwork = networks.find ((network) => {
         return network.Labels && network.Labels[Config.networkLabelKey] == Config.networkLabelValue;
@@ -36,7 +51,7 @@ Docker.API.listNetworks ().then (function main (networks) {
     
     ActiveChildren.set ('caddy-server', spawn ('caddy', [
         'docker-proxy',
-        '-caddyfile-path', string,
+        '-caddyfile-path', '/Caddyfile',
         '-controller-network', subnet,
         '-mode', 'server'
     ], { stdio: ['ignore', 'inherit', 'inherit'] }));
@@ -56,7 +71,7 @@ Docker.API.listNetworks ().then (function main (networks) {
         await KeyDB.replicaof ('NO', 'ONE');
         ActiveChildren.set ('caddy-controller', spawn ('caddy', [
             'docker-proxy',
-            '-caddyfile-path', string,
+            '-caddyfile-path', 'Caddyfile',
             '-controller-network', subnet,
             '-mode', 'controller'
         ], { stdio: ['ignore', 'inherit', 'inherit'] })

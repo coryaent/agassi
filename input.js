@@ -41,23 +41,34 @@ class InputError extends Error {
 
 // main
 module.exports = {
-    get foo () {
+    get caddyfilePath () {
         return getInput ({
-            envKey: ['FOO', 'foo'],
-            argvKey: ['-f', '--foo'],
+            envKey: ['CADDY_DOCKER_CADDYFILE_PATH'],
+            argvKey: ['-caddyfile-path', '--caddyfile-path'],
             endMark: '--',
             priority: 'argv',
-            required: 'foo error'
+            defaultValue: '/Caddyfile'
         })
     },
 
-    get bar () {
+    get dockerHost () {
         return getInput ({
-            envKey: ['BAR', 'bar'],
-            argvKey: ['-b', '--bar'],
-            defaultValue: 'I\'m here',
+            envKey: ['DOCKER_HOST'],
+            argvKey: ['-h', '--docker-host'],
             endMark: '--',
             priority: 'argv',
         })
     },
+
+    get labelPrefix () {
+        return getInput ({
+            envKey: ['CADDY_DOCKER_LABEL_PREFIX'],
+            argvKey: ['-label-prefix', '--label-prefix'],
+            endMark: '--',
+            priority: 'argv',
+            defaultValue: 'caddy'
+        })
+    }
 }
+
+console.log (module.exports.dockerHost);

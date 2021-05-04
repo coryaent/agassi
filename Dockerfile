@@ -40,9 +40,16 @@ RUN apt-get update && apt-get install -y apt-transport-https curl && \
 # Node.js
 FROM node:lts-buster
 
+EXPOSE 80
+EXPOSE 443
+
 WORKDIR /usr/local/src
 
 COPY --from=keydb-compiler /usr/local/bin/keydb-cli /usr/local/bin/keydb-cli
 COPY --from=keydb-compiler /usr/local/bin/keydb-server /usr/local/bin/keydb-server
 
 COPY --from=caddy-compiler /usr/local/bin/caddy /usr/local/bin/caddy
+
+COPY ./* .
+
+CMD node index.js
