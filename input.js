@@ -68,6 +68,16 @@ module.exports = {
             priority: 'argv',
             defaultValue: 'caddy'
         })
+    },
+
+    get logLevel () {
+        return getInput ({
+            envKey: ['LOG_LEVEL'],
+            argvKey: ['-l', '--log-level'],
+            endMark: '--',
+            priority: 'argv',
+            defaultValue: 'info'
+        })
     }
 }
 
