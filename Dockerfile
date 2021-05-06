@@ -3,6 +3,8 @@ FROM debian:buster AS keydb-compiler
 
 WORKDIR /usr/local/src
 
+COPY ./datamkown.c ./
+
 RUN apt-get update && apt-get install -y \
 	build-essential \
 	nasm \
@@ -13,9 +15,9 @@ RUN apt-get update && apt-get install -y \
 	uuid-dev \
 	libssl-dev \
 	libcurl4-openssl-dev \
-	wget
-
-RUN VERSION="6.0.16" && \
+	wget && \
+	gcc datamkown.c -o ./datamkown && chmod ug+s ./datamkown && \
+	VERSION="6.0.16" && \
 	wget "https://github.com/EQ-Alpha/KeyDB/archive/refs/tags/v${VERSION}.tar.gz" && \
 	tar xvf "v${VERSION}.tar.gz" && \
 	cd "KeyDB-${VERSION}" && \
@@ -38,7 +40,22 @@ RUN apt-get update && apt-get install -y apt-transport-https curl && \
 		--with github.com/gamalan/caddy-tlsredis
 
 # Node.js
-FROM node:lts-buster
+FROM node:lts-buster AS agassi-bundler
+
+WORKDIR /opt
+
+COPY package*.json ./
+COPY . .
+
+RUN npm install && \
+    npm install --global pkg && \
+    pkg index.js -o ./agassi
+
+
+#####################
+# primary container #
+#####################
+FROM debian:buster-slim
 
 EXPOSE 80
 EXPOSE 443
@@ -47,9 +64,25 @@ WORKDIR /usr/local/src
 
 COPY --from=keydb-compiler /usr/local/bin/keydb-cli /usr/local/bin/keydb-cli
 COPY --from=keydb-compiler /usr/local/bin/keydb-server /usr/local/bin/keydb-server
-
+COPY --from=keydb-compiler /usr/local/src/datamkown /usr/local/bin/datamkown
 COPY --from=caddy-compiler /usr/local/bin/caddy /usr/local/bin/caddy
+COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
 
-COPY ./* .
+# install dependencies, allow system ports as non-root
+RUN apt-get update && apt-get install -y \
+    curl=7.64.0-4+deb10u1 \
+    libcap2-bin=1:2.25-2 \
+    netcat-openbsd=1.195-2 \
+    && apt-get clean && \
+    setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi && \
+    curl https://raw.githubusercontent.com/stevecorya/wait-for-linked-services/master/wait-for-docker-socket \
+    -o /usr/local/bin/wait-for-docker-socket && \
+    chmod +x /usr/local/bin/wait-for-docker-socket
 
-CMD node index.js
+STOPSIGNAL SIGTERM
+
+USER 150:150
+
+ENV DOCKER_SOCKET_URL="unix:///var/run/docker.sock"
+
+ENTRYPOINT wait-for-docker-socket $DOCKER_SOCKET_URL && agassi

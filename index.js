@@ -78,7 +78,11 @@ Docker.listNetworks ().then (function main (networks) {
     log.info ('Starting Caddy proxy...');
     ActiveChildren.set ('caddy-server', spawn ('caddy', 
         Array.from (caddyOpts).push ('-mode', 'server'),
-        { stdio: ['ignore', 'inherit', 'inherit'] }));
+        { 
+            stdio: ['ignore', 'inherit', 'inherit'],
+            uid: 0,
+            gid: 0 
+        }));
 
     // start discovery
     log.info ('Starting automatic discovery...');
@@ -102,7 +106,11 @@ Docker.listNetworks ().then (function main (networks) {
         log.info ('Starting Caddy controller...');
         ActiveChildren.set ('caddy-controller', spawn ('caddy',
             Array.from (caddyOpts).push ('-mode', 'controller'),
-            { stdio: ['ignore', 'inherit', 'inherit'] })
+            { 
+                stdio: ['ignore', 'inherit', 'inherit'],
+                uid: 0,
+                gid: 0 
+            })
         .on ('exit', function exitCaddyController () {
             ActiveChildren.delete ('caddy-controller');
         }));
