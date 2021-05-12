@@ -70,7 +70,7 @@ COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
 
 # install dependencies, allow system ports as non-root
 RUN apt-get update && apt-get install -y \
-    curl=7.64.0-4+deb10u1 \
+    curl=7.64.0-4+deb10u2 \
     libcap2-bin=1:2.25-2 \
     netcat-openbsd=1.195-2 \
     && apt-get clean && \
