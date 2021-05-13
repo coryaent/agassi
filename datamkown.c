@@ -12,6 +12,4 @@ int main() {
     mkdir ("/data", 0755);
     chown ("/data", getuid(), getgid());
 
-    exit (EXIT_SUCCESS);
-
 }

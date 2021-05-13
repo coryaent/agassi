@@ -1,7 +1,6 @@
 "use strict";
 
 const getInput_ = require ('get-input');
-
 /*
     add custom functionality and new error class
     for setting parameter values, e.g.
@@ -105,5 +104,3 @@ module.exports = {
         })
     }
 }
-
-console.log (module.exports.dockerHost);

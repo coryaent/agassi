@@ -20,7 +20,7 @@ const Docker = new Dockerode (() => {
 });
 const ip = require ('ip');
 
-const { spawn } = require ('child_process');
+const { spawn, execFileSync } = require ('child_process');
 
 const Discovery = require ('./discovery.js');
 const Redis = require ('ioredis');
@@ -28,6 +28,8 @@ const KeyDB = new Redis ();
 
 // process instances
 const ActiveChildren = new Map ();
+
+execFileSync ('datamkown');
 
 /*
     From all the networks, get one with label
