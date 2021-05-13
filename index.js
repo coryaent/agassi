@@ -24,7 +24,9 @@ const { spawn, execFileSync } = require ('child_process');
 
 const Discovery = require ('./discovery.js');
 const Redis = require ('ioredis');
-const KeyDB = new Redis ();
+const KeyDB = new Redis ({
+    lazyConnect: true
+});
 
 // process instances
 const ActiveChildren = new Map ();
