@@ -31,15 +31,43 @@ const KeyDB = new Redis ({
 // process instances
 const ActiveChildren = new Map ();
 
+// create and take data directory as-needed
 execFileSync ('datamkown');
 
+main ();
+
+process.on ('SIGINT', () => {
+    log.info ('SIGINT ignored, use SIGTERM to exit.');
+});
+
+process.on ('SIGTERM', () => {
+    log.info ('SIGTERM received, exiting...');
+    Discovery.stop ();
+    for (let p of ActiveChildren.values ()) {
+        p.kill ();
+    }
+});
+
 /*
+    First, check for manually-set, caddy-style
+        options eg. CADDY_CONTROLLER_NETWORK
+
     From all the networks, get one with label
         'caddy.network==controller'
     and one or more with label
         'caddy.network==ingress'
+
+    Note that CADDY_CONTROLLER_NETWORK is a single
+        CIDR string and 
+    CADDY_INGRESS_NETWORKS is a comma-seperated
+        string of network *names*
+        (and is optional)
 */
-Docker.listNetworks ().then (function main (networks) {
+async function main () {
+
+}
+
+Docker.listNetworks ().then (function handleNetworks (networks) {
     // find the single controller network
     const controllerNetwork = networks.find ((network) => {
         return network.Labels && network.Labels[Input.labelPrefix + '.network'] == 'controller';
@@ -126,16 +154,4 @@ Docker.listNetworks ().then (function main (networks) {
             ActiveChildren.get ('caddy-controller').kill ();
         }
     });
-});
-
-process.on ('SIGINT', () => {
-    log.info ('SIGINT ignored, use SIGTERM to exit.');
-});
-
-process.on ('SIGTERM', () => {
-    log.info ('SIGTERM received, exiting...');
-    Discovery.stop ();
-    for (let p of ActiveChildren.values ()) {
-        p.kill ();
-    }
 });

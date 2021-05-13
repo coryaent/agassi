@@ -58,6 +58,7 @@ module.exports = {
             argvKey: ['-controller-network', '--controller-network'],
             endMark: '--',
             priority: 'argv',
+            // controller network is required, but may be infered
         })
     },
 
