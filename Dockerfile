@@ -82,6 +82,6 @@ STOPSIGNAL SIGTERM
 
 USER 150:150
 
-ENV DOCKER_SOCKET_URL="unix:///var/run/docker.sock"
+ENV DOCKER_HOST="unix:///var/run/docker.sock"
 
-ENTRYPOINT wait-for-docker-socket $DOCKER_SOCKET_URL && agassi
+ENTRYPOINT wait-for-docker-socket $DOCKER_HOST && agassi
