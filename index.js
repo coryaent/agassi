@@ -55,10 +55,10 @@ if (Input.ingressNetworks) {
 // start the caddy server http(s) proxy
 log.info ('Starting Caddy proxy...');
 ActiveChildren.set ('caddy-server', spawn ('caddy', 
-    Array.from (caddyOpts).contcat ('-mode', 'server'), { 
+    caddyOpts.contcat (['-mode', 'server']), { 
     stdio: ['ignore', 'inherit', 'inherit'],
-    // uid: 0,
-    // gid: 0 
+    uid: 0,
+    gid: 0 
 }));
 
 // start discovery
@@ -82,10 +82,10 @@ Discovery.start ({
 
     log.info ('Starting Caddy controller...');
     ActiveChildren.set ('caddy-controller', spawn ('caddy',
-    Array.from (caddyOpts).concat ('-mode', 'controller'), { 
+    caddyOpts.concat (['-mode', 'controller']), { 
         stdio: ['ignore', 'inherit', 'inherit'],
-        // uid: 0,
-        // gid: 0 
+        uid: 0,
+        gid: 0 
     })
     .on ('exit', function exitCaddyController () {
         ActiveChildren.delete ('caddy-controller');
