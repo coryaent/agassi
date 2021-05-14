@@ -57,8 +57,8 @@ log.info ('Starting Caddy proxy...');
 ActiveChildren.set ('caddy-server', spawn ('caddy', 
     Array.from (caddyOpts).contcat ('-mode', 'server'), { 
     stdio: ['ignore', 'inherit', 'inherit'],
-    uid: 0,
-    gid: 0 
+    // uid: 0,
+    // gid: 0 
 }));
 
 // start discovery
@@ -84,8 +84,8 @@ Discovery.start ({
     ActiveChildren.set ('caddy-controller', spawn ('caddy',
     Array.from (caddyOpts).concat ('-mode', 'controller'), { 
         stdio: ['ignore', 'inherit', 'inherit'],
-        uid: 0,
-        gid: 0 
+        // uid: 0,
+        // gid: 0 
     })
     .on ('exit', function exitCaddyController () {
         ActiveChildren.delete ('caddy-controller');
