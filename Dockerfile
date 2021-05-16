@@ -81,7 +81,8 @@ RUN apt-get update && apt-get install -y \
     chmod ug+s /usr/local/bin/node && \
     curl https://raw.githubusercontent.com/stevecorya/wait-for-linked-services/master/wait-for-docker-socket \
     -o /usr/local/bin/wait-for-docker-socket && \
-    chmod +x /usr/local/bin/wait-for-docker-socket
+    chmod +x /usr/local/bin/wait-for-docker-socket && \
+	npm i
 
 STOPSIGNAL SIGTERM
 
