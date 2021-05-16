@@ -40,33 +40,37 @@ RUN apt-get update && apt-get install -y apt-transport-https curl && \
 		--with github.com/gamalan/caddy-tlsredis
 
 # Node.js
-FROM node:lts-buster AS agassi-bundler
+# FROM node:lts-buster AS agassi-bundler
 
-WORKDIR /opt
+# WORKDIR /opt
 
-COPY package*.json ./
-COPY . .
+# COPY package*.json ./
+# COPY . .
 
-RUN npm install && \
-    npm install --global pkg && \
-    pkg index.js -o ./agassi
+# RUN npm install && \
+#     npm install --global pkg && \
+#     pkg index.js -o ./agassi
 
 
 #####################
 # primary container #
 #####################
-FROM debian:buster-slim
+FROM node:buster-slim
 
 EXPOSE 80
 EXPOSE 443
 
 WORKDIR /usr/local/src
 
+COPY . .
+
 COPY --from=keydb-compiler /usr/local/bin/keydb-cli /usr/local/bin/keydb-cli
 COPY --from=keydb-compiler /usr/local/bin/keydb-server /usr/local/bin/keydb-server
 COPY --from=keydb-compiler /usr/local/src/datamkown /usr/local/bin/datamkown
 COPY --from=caddy-compiler /usr/local/bin/caddy /usr/local/bin/caddy
-COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
+
+# DEBUG
+# COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
 
 # install dependencies, allow system ports as non-root
 RUN apt-get update && apt-get install -y \
@@ -74,7 +78,7 @@ RUN apt-get update && apt-get install -y \
     curl=7.64.0-4+deb10u2 \
     netcat-openbsd=1.195-2 \
     && apt-get clean && \
-    chmod ug+s /usr/local/bin/agassi && \
+    chmod ug+s /usr/local/bin/node && \
     curl https://raw.githubusercontent.com/stevecorya/wait-for-linked-services/master/wait-for-docker-socket \
     -o /usr/local/bin/wait-for-docker-socket && \
     chmod +x /usr/local/bin/wait-for-docker-socket
@@ -83,4 +87,4 @@ STOPSIGNAL SIGTERM
 
 ENV DOCKER_HOST="unix:///var/run/docker.sock"
 
-ENTRYPOINT wait-for-docker-socket $DOCKER_HOST && agassi
+ENTRYPOINT wait-for-docker-socket $DOCKER_HOST && node ./agassi.js
