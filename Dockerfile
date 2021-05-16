@@ -55,7 +55,7 @@ RUN apt-get update && apt-get install -y apt-transport-https curl && \
 #####################
 # primary container #
 #####################
-FROM node:buster-slim
+FROM node:lts-buster-slim
 
 EXPOSE 80
 EXPOSE 443
