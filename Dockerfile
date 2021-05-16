@@ -88,4 +88,4 @@ STOPSIGNAL SIGTERM
 
 ENV DOCKER_HOST="unix:///var/run/docker.sock"
 
-ENTRYPOINT wait-for-docker-socket $DOCKER_HOST && node ./agassi.js
+ENTRYPOINT wait-for-docker-socket $DOCKER_HOST && node ./index.js
