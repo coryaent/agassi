@@ -55,7 +55,7 @@ if (Input.ingressNetworks) {
 // start the caddy server http(s) proxy
 log.info ('Starting Caddy proxy...');
 ActiveChildren.set ('caddy-server', spawn ('caddy', 
-    caddyOpts.contcat (['-mode', 'server']), { 
+    caddyOpts.concat (['-mode', 'server']), { 
     stdio: ['ignore', 'inherit', 'inherit'],
     uid: 0,
     gid: 0 
