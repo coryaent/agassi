@@ -59,10 +59,13 @@ FROM node:buster-slim
 
 EXPOSE 80
 EXPOSE 443
+EXPOSE 2019
 
 WORKDIR /usr/local/src
 
 COPY . .
+
+COPY ./Caddyile /Caddyfile
 
 COPY --from=keydb-compiler /usr/local/bin/keydb-cli /usr/local/bin/keydb-cli
 COPY --from=keydb-compiler /usr/local/bin/keydb-server /usr/local/bin/keydb-server
