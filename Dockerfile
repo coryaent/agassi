@@ -65,8 +65,6 @@ WORKDIR /usr/local/src
 
 COPY . .
 
-COPY ./Caddyile /Caddyfile
-
 COPY --from=keydb-compiler /usr/local/bin/keydb-cli /usr/local/bin/keydb-cli
 COPY --from=keydb-compiler /usr/local/bin/keydb-server /usr/local/bin/keydb-server
 COPY --from=keydb-compiler /usr/local/src/datamkown /usr/local/bin/datamkown

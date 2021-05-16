@@ -44,7 +44,7 @@ ActiveChildren.set ('keydb-server', spawn ('keydb-server', [
 
 const caddyOpts = [
     'docker-proxy',
-    '-caddyfile-path', '/Caddyfile',
+    '-caddyfile-path', '/usr/local/src/Caddyfile',
     '-controller-network', Input.controllerNetwork,
     '-proxy-service-tasks', 'false'
 ];
