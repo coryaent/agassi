@@ -55,7 +55,7 @@ if (Input.ingressNetworks) {
 // start the caddy server http(s) proxy
 log.info ('Starting Caddy proxy...');
 ActiveChildren.set ('caddy-server', spawn ('caddy', 
-    caddyOpts.concat (['-mode', 'server']), { 
+    caddyOpts.concat (['-mode', 'standalone']), { 
     stdio: ['ignore', 'inherit', 'inherit'],
     uid: 0,
     gid: 0 
@@ -75,29 +75,29 @@ Discovery.start ({
     log.info ('Replication set.');
 })
 // run controller and server on discovery.master
-.on ('promotion', async () => {
-    log.info ('Node promoted, setting KeyDB to master...');
-    await KeyDB.replicaof ('NO', 'ONE');
-    log.info ('Master set.');
+// .on ('promotion', async () => {
+//     log.info ('Node promoted, setting KeyDB to master...');
+//     await KeyDB.replicaof ('NO', 'ONE');
+//     log.info ('Master set.');
 
-    log.info ('Starting Caddy controller...');
-    ActiveChildren.set ('caddy-controller', spawn ('caddy',
-    caddyOpts.concat (['-mode', 'controller']), { 
-        stdio: ['ignore', 'inherit', 'inherit'],
-        uid: 0,
-        gid: 0 
-    })
-    .on ('exit', function exitCaddyController () {
-        ActiveChildren.delete ('caddy-controller');
-    }));
-})
+//     log.info ('Starting Caddy controller...');
+//     ActiveChildren.set ('caddy-controller', spawn ('caddy',
+//     caddyOpts.concat (['-mode', 'controller']), { 
+//         stdio: ['ignore', 'inherit', 'inherit'],
+//         uid: 0,
+//         gid: 0 
+//     })
+//     .on ('exit', function exitCaddyController () {
+//         ActiveChildren.delete ('caddy-controller');
+//     }));
+// })
 // stop controller on non-master instances
-.on ('demotion', () => {
-    log.info ('Node demoted.');
-    if (ActiveChildren.has ('caddy-controller')) {
-        ActiveChildren.get ('caddy-controller').kill ();
-    }
-});
+// .on ('demotion', () => {
+//     log.info ('Node demoted.');
+//     if (ActiveChildren.has ('caddy-controller')) {
+//         ActiveChildren.get ('caddy-controller').kill ();
+//     }
+// });
 
 function getControlNetAddress () {
     return require ('@emmsdan/network-address').v4.find ((address) => {
