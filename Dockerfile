@@ -83,7 +83,6 @@ RUN apt-get update && apt-get install -y \
     curl https://raw.githubusercontent.com/stevecorya/wait-for-linked-services/master/wait-for-docker-socket \
     -o /usr/local/bin/wait-for-docker-socket && \
     chmod +x /usr/local/bin/wait-for-docker-socket && \
-	echo never > /sys/kernel/mm/transparent_hugepage/enabled && \
 	npm i
 
 STOPSIGNAL SIGTERM
