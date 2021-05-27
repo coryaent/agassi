@@ -39,7 +39,7 @@
     "nano-memoize": "^1.2.1",
     "node-discover": "^1.2.0",
     "p-retry": "^4.4.0",
-    "phin": "^3.5.1",
+    "phin": "^3.6.0",
     "sleepjs": "^4.0.3",
     "ssl-utils": "^1.0.0",
     "tsscmp": "^1.0.6",
