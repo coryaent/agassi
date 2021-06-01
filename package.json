@@ -29,6 +29,6 @@
     "get-input": "^0.1.3",
     "ioredis": "^4.26.0",
     "ip": "^1.1.5",
-    "node-discover": "^1.2.0"
+    "node-discover": "^1.2.1"
   }
 }
