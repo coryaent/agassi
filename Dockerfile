@@ -1,66 +1,101 @@
-# compile rqlited
-FROM golang:1.15 AS rqlited-builder
-WORKDIR /opt
-COPY rqmkown.c ./rqmkown.c
-RUN export RQLITE_VERSION=5.8.0 && \
-    gcc rqmkown.c -o ./rqmkown && chmod ug+s ./rqmkown && \
-    wget https://github.com/rqlite/rqlite/archive/v${RQLITE_VERSION}.tar.gz && \
-    tar xvf v${RQLITE_VERSION}.tar.gz && \
-    cd /opt/rqlite-${RQLITE_VERSION}/cmd/rqlited && \
-    go build -o /opt/rqlited && \
-    cd /opt/rqlite-${RQLITE_VERSION}/cmd/rqlite && \
-    go build -o /opt/rqlite
+# KeyDB
+# FROM debian:buster AS keydb-compiler
 
-# bundle agassi
-FROM node:14 AS agassi-bundler
-WORKDIR /opt
-COPY package*.json ./
-COPY . .
-RUN npm install && \
-    npm install --global pkg && \
-    pkg index.js -o ./agassi
+# WORKDIR /usr/local/src
+
+# COPY ./datamkown.c ./
+
+# RUN apt-get update && apt-get install -y \
+# 	build-essential \
+# 	nasm \
+# 	autotools-dev \
+# 	autoconf \
+# 	libjemalloc-dev \
+# 	tcl tcl-dev \
+# 	uuid-dev \
+# 	libssl-dev \
+# 	libcurl4-openssl-dev \
+# 	wget && \
+# 	gcc datamkown.c -o ./datamkown && chmod ug+s ./datamkown && \
+# 	VERSION="6.0.16" && \
+# 	wget "https://github.com/EQ-Alpha/KeyDB/archive/refs/tags/v${VERSION}.tar.gz" && \
+# 	tar xvf "v${VERSION}.tar.gz" && \
+# 	cd "KeyDB-${VERSION}" && \
+# 	make BUILD_TLS=yes && \
+# 	cp src/keydb-* /usr/local/bin/
+
+# Caddy
+FROM golang:buster AS caddy-compiler
+
+WORKDIR /usr/local/src
+
+RUN apt-get update && apt-get install -y apt-transport-https curl && \
+	curl -1sLf 'https://dl.cloudsmith.io/public/caddy/xcaddy/gpg.key' | apt-key add - && \
+	curl -1sLf 'https://dl.cloudsmith.io/public/caddy/xcaddy/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-xcaddy.list && \
+	apt-get update && \
+	apt-get install -y xcaddy && \
+	xcaddy build \
+		--output /usr/local/bin/caddy \
+		--with github.com/lucaslorentz/caddy-docker-proxy/plugin/v2 \
+		--with github.com/gamalan/caddy-tlsredis
+
+# Node.js
+# FROM node:lts-buster AS agassi-bundler
+
+# WORKDIR /opt
+
+# COPY package*.json ./
+# COPY . .
+
+# RUN npm install && \
+#     npm install --global pkg && \
+#     pkg index.js -o ./agassi
+
+ 
+FROM alpine:3.11 as alpine
+RUN apk add -U --no-cache ca-certificates
 
 #####################
 # primary container #
 #####################
 FROM debian:buster-slim
 
-# expose ports for web, discovery, and rqlited
 EXPOSE 80
 EXPOSE 443
+EXPOSE 2019
 
-EXPOSE 4001
-EXPOSE 4002
-EXPOSE 4002/udp
+WORKDIR /usr/local/src
 
-# copy requisite binaries
-COPY --from=rqlited-builder /opt/rqmkown /usr/local/bin/rqmkown
-COPY --from=rqlited-builder /opt/rqlited /usr/local/bin/rqlited
-COPY --from=rqlited-builder /opt/rqlite /usr/local/bin/rqlite
+COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
+COPY ./Caddyfile ./Caddyfile
 
-# copy nsswitch.conf
-COPY nsswitch.conf /etc/nsswitch.conf
+# COPY --from=keydb-compiler /usr/local/bin/keydb-cli /usr/local/bin/keydb-cli
+# COPY --from=keydb-compiler /usr/local/bin/keydb-server /usr/local/bin/keydb-server
+# COPY --from=keydb-compiler /usr/local/src/datamkown /usr/local/bin/datamkown
+COPY --from=caddy-compiler /usr/local/bin/caddy /usr/local/bin/caddy
+
+# DEBUG
+# COPY --from=agassi-bundler /opt/agassi /usr/local/bin/agassi
 
 # install dependencies, allow system ports as non-root
-RUN apt-get update && apt-get install -y \
-    curl=7.64.0-4+deb10u1 \
-    openssl=1.1.1d-0+deb10u4 \
-    libcap2-bin=1:2.25-2 \
-    netcat-openbsd=1.195-2 \
-    && apt-get clean && \
-    setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/agassi && \
-    curl https://raw.githubusercontent.com/stevecorya/wait-for-linked-services/master/wait-for-docker-socket \
-    -o /usr/local/bin/wait-for-docker-socket && \
-    chmod +x /usr/local/bin/wait-for-docker-socket
+# RUN apt-get update && apt-get install -y \
+# 	libatomic1=8.3.0-6 \
+#     curl=7.64.0-4+deb10u2 \
+#     netcat-openbsd=1.195-2 \
+#     && apt-get clean && \
+#     chmod ug+s /usr/local/bin/node && \
+#     curl https://raw.githubusercontent.com/stevecorya/wait-for-linked-services/master/wait-for-docker-socket \
+#     -o /usr/local/bin/wait-for-docker-socket && \
+#     chmod +x /usr/local/bin/wait-for-docker-socket && \
+# 	npm i
 
-STOPSIGNAL SIGTERM
+# STOPSIGNAL SIGTERM
 
-USER 150:150
+# ENV DOCKER_HOST="unix:///var/run/docker.sock"
 
-VOLUME ["/data"]
+# ENTRYPOINT wait-for-docker-socket $DOCKER_HOST && node ./index.js
 
-ENV DOCKER_SOCKET_URL="unix:///var/run/docker.sock"
+ENTRYPOINT ["/usr/local/bin/caddy"]
 
-ENTRYPOINT wait-for-docker-socket $DOCKER_SOCKET_URL && agassi
+CMD ["docker-proxy"]
