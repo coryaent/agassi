@@ -58,7 +58,7 @@ RUN apk add -U --no-cache ca-certificates
 #####################
 # primary container #
 #####################
-FROM debian:buster-slim
+FROM debian:10.12-slim
 
 EXPOSE 80
 EXPOSE 443
