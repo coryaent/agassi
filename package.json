@@ -29,6 +29,7 @@
     "get-input": "^0.1.3",
     "ioredis": "^4.27.3",
     "ip": "^1.1.5",
-    "node-discover": "^1.2.1"
+    "node-discover": "^1.2.1",
+    "safe-redis-leader": "^0.0.6"
   }
 }
