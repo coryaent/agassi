@@ -1,8 +1,4 @@
 # Agassi
-"They call me Andre Agassi, I dominate the server."</br>
-—[GoRemy](https://www.youtube.com/watch?v=B97P0e7ejYw)
-
-## Overview
 Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockerswarm.rocks/). When Traefik dropped support for distributed certificate storage, it created a situation all certificates were stored locally on a single machine. This removed redundency from the setup.
 
 By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates.
