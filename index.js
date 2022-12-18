@@ -9,9 +9,9 @@ async function main(){
 
     const myUuid = uuid.v4 ();
     console.log ('uuid: ' + myUuid);
-    console.log ('host: ' + process.env.AGASS_REDIS_HOST);
+    console.log ('host: ' + process.env.AGASSI_REDIS_HOST);
     const asyncRedis = new Redis({
-        host: process.env.AGASS_REDIS_HOST,
+        host: process.env.AGASSI_REDIS_HOST,
         port: 6379
     })
     const leaderElectionKey = 'the-election'
