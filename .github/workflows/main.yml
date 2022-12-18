@@ -19,7 +19,7 @@ jobs:
         uses: VaultVulp/gp-docker-action@1.5.0
         with:                                                                                                         
           github-token: ${{ secrets.GITHUB_TOKEN }} # Provide GITHUB_TOKEN to login into the GitHub Packages
-          image-name: agassi # Provide Docker image name
+#          image-name: agassi # Provide Docker image name
           image-tag: latest # Provide Docker image tag
 
         
