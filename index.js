@@ -7,9 +7,8 @@ const Redis = require('ioredis')
 async function main(){
 
     const asyncRedis = new Redis({
-        host: "locahost",
-        port: 6379,
-        password: "some-password"
+        host: "192.168.100.10",
+        port: 6379
     })
     const leaderElectionKey = 'the-election'
     const safeLeader = await createSafeRedisLeader({
