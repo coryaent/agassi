@@ -3,11 +3,15 @@
 
 const {createSafeRedisLeader} = require('safe-redis-leader')
 const Redis = require('ioredis')
+const uuid = require('uuid');
 
 async function main(){
 
+    const myUuid = uuid.v4 ();
+    console.log ('uuid: ' + myUuid);
+    console.log ('host: ' + process.env.AGASS_REDIS_HOST);
     const asyncRedis = new Redis({
-        host: "192.168.100.10",
+        host: process.env.AGASS_REDIS_HOST,
         port: 6379
     })
     const leaderElectionKey = 'the-election'
@@ -19,7 +23,7 @@ async function main(){
     })
 
     safeLeader.on("elected", ()=>{
-        console.log("I'm the leader - 1")
+        console.log("I'm the leader - " + myUuid)
     })
 
     await safeLeader.elect()
