@@ -30,6 +30,7 @@
     "ioredis": "^4.27.3",
     "ip": "^1.1.5",
     "node-discover": "^1.2.1",
-    "safe-redis-leader": "^0.0.6"
+    "safe-redis-leader": "^0.0.6",
+    "uuid": "^9.0.0"
   }
 }
