@@ -5,30 +5,22 @@ const {createSafeRedisLeader} = require('safe-redis-leader')
 const Redis = require('ioredis')
 const uuid = require('uuid');
 
-async function main(){
+const redis = new Redis({
+    host: process.env.AGASSI_REDIS_HOST,
+    port: 6379
+})
+redis.set("mykey", "value"); // Returns a promise which resolves to "OK" when the command succeeds.
 
-    const myUuid = uuid.v4 ();
-    console.log ('uuid: ' + myUuid);
-    console.log ('host: ' + process.env.AGASSI_REDIS_HOST);
-    const asyncRedis = new Redis({
-        host: process.env.AGASSI_REDIS_HOST,
-        port: 6379
-    })
-    const leaderElectionKey = 'the-election'
-    const safeLeader = await createSafeRedisLeader({
-        asyncRedis: asyncRedis,
-        ttl: 1500,
-        wait: 3000,
-        key: leaderElectionKey
-    })
+// ioredis supports the node.js callback style
+redis.get("mykey", (err, result) => {
+  if (err) {
+    console.error(err);
+  } else {
+    console.log(result); // Prints "value"
+  }
+});
 
-    safeLeader.on("elected", ()=>{
-        console.log("I'm the leader - " + myUuid)
-    })
-
-    await safeLeader.elect()
-}
-
- main().catch((e)=>{
-    console.error(e)
- })
+// Or ioredis returns a promise if the last argument isn't a function
+redis.get("mykey").then((result) => {
+  console.log(result); // Prints "value"
+});
