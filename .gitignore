@@ -5,3 +5,4 @@ node_modules
 tls.js
 playground*
 error-output.txt
+password.txt

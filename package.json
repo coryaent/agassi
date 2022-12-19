@@ -25,6 +25,7 @@
   "dependencies": {
     "@emmsdan/network-address": "0.0.2",
     "acme-client": "^5.0.0",
+    "axios": "^1.2.1",
     "console-log-level": "^1.4.1",
     "fast-date-format": "^2.2.4",
     "get-input": "^0.1.3",
