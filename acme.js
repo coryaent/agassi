@@ -90,13 +90,4 @@ const client = new acme.Client({
     const validation = await client.waitForValidStatus (dnsChallenge);
     console.log (validation);
 
-    console.log ('challenges: ');
-    console.log (authorizations[0]['challenges']);
-
-
-    console.log ('dnsChallenge1:');
-    const dnsChallenge1 = authorizations[0]['challenges'].find ((element) => element.type === 'dns-01');
-    console.log (dnsChallenge1);
-    console.log (dnsChallenge1.token);
-
 }) ();
