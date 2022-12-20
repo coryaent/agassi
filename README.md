@@ -16,14 +16,10 @@ AGASSI_REDIS_PORT
 AGASSI_TARGET_ALIAS
 AGASSI_TARGET_CNAME
 ```
-=======
-## Setup
-
-### Pre-requisites
-- Docker swarm
-- htpasswd
-- base64
-
+## Redis
+We need to get the cert from the domain for SNI, we need to get the options from the domain for proxy handling, we need to get the domain from the hash, and we need to get virtual hosts by hash.
+`SET domain:example.com [cert] EX [cert expiration]`
+`SET vhost:[service id] [vhost JSON with auth and options]`
 
 ## Authorization
 ```sh
