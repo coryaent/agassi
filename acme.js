@@ -41,7 +41,8 @@ const client = new acme.Client({
 
 
     const username = process.env.AGASSI_MAILINABOX_EMAIL;
-    const password = fs.readFileSync ('./password.txt').toString ().trim ();
+    const password = fs.readFileSync (process.env.AGASSI_MAILINABOX_PASSWORD_FILE).toString ().trim ();
+    console.log ('got username and password');
 //    const res = await axios.get ('https://corya.net/admin/dns/custom', {
 //        auth: {
 //            username: username,
