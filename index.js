@@ -17,6 +17,10 @@ const docker = new Docker ({
 
 (async () => {
     console.log ('Pinging docker...');
-    console.log (await docker.ping ());
+    const pong = (await docker.ping ()).toString ();
+    console.log (pong);
+    setInterval (async () => {
+        console.log ((await docker.ping ()).toString ());
+    }, 1000);
 
 }) ();
