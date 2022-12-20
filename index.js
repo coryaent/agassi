@@ -16,11 +16,16 @@ const docker = new Docker ({
 });
 
 (async () => {
+    // ping pong
     console.log ('Pinging docker...');
     const pong = (await docker.ping ()).toString ();
     console.log (pong);
     setInterval (async () => {
         console.log ((await docker.ping ()).toString ());
-    }, 1000);
+    }, 10000);
+
+    // watch services
+    const events = await docker.getEvents ({ filters: { type: ["service"]}});
+    events.on ('data', (data) => console.log (JSON.parse(data)));
 
 }) ();
