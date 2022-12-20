@@ -1,4 +1,4 @@
-"use strict";
+ "use strict";
 
 const acme = require ('acme-client');
 const axios = require ('axios');
@@ -38,7 +38,7 @@ const client = new acme.Client({
     console.log ('keyAuthorization');
     const keyAuthorization = await client.getChallengeKeyAuthorization(dnsChallenge);
     console.log (keyAuthorization);
-    
+
 
     const username = process.env.AGASSI_MAILINABOX_EMAIL;
     const password = fs.readFileSync ('./password.txt').toString ().trim ();
