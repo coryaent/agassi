@@ -5,10 +5,16 @@ By taking advantage of Docker Swarm's built-in state management, Agassi is able 
 
 ## Configuration
 ```
-ENV AGASSI_REDIS_HOST
-ENV AGASSI_REDIS_PORT
-ENV AGASSI_DOCKER_HOST
-ENV AGASSI_DOCKER_PORT
+AGASSI_DOCKER_API_VERSION defaults v1.37
+AGASSI_DOCKER_HOST
+AGASSI_DOCKER_PORT
+AGASSI_LETS_ENCRYPT_EMAIL
+AGASSI_MAILINABOX_EMAIL
+AGASSI_MAILINABOX_PASSWORD_FILE
+AGASSI_REDIS_HOST
+AGASSI_REDIS_PORT
+AGASSI_TARGET_ALIAS
+AGASSI_TARGET_CNAME
 ```
 =======
 ## Setup
@@ -17,3 +23,9 @@ ENV AGASSI_DOCKER_PORT
 - Docker swarm
 - htpasswd
 - base64
+
+
+## Authorization
+```sh
+htpasswd -n -B -C 12 user | base64 -w 0
+```
