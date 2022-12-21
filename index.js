@@ -26,8 +26,6 @@ const docker = new Docker ({
     version: 'v1.37'
 });
 
-const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
-
 // if client start monitoring docker socket
 if (process.argv.includes ('--client')) {
     docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
@@ -86,6 +84,7 @@ function parseServiceLabels (service) {
 }
 
 function parseProxyOptions (labels) {
+    const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
     // http-proxy options
     const options = {};
 
@@ -141,7 +140,7 @@ function parseProxyOptions (labels) {
                         options[optionKey] = labels[labelKey];
                         break;
                     case 'hostRewrite':
-                        options[optionKey] = labels[labelKey];
+                        options[optionKey] = strToBool (labels[labelKey]);
                         break;
                     case 'autoRewrite':
                         options[optionKey] = strToBool (labels[labelKey]);
