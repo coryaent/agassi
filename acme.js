@@ -13,6 +13,10 @@ const client = new acme.Client({
     accountKey: accountPrivateKey
 });
 
+const auth = {
+    username: process.env.AGASSI_MAILINABOX_EMAIL,
+    password: fs.readFileSync (process.env.AGASSI_MAILINABOX_PASSWORD_FILE).toString ().trim ()
+};
 
 (async () => {
     const account = await client.createAccount({
@@ -39,47 +43,12 @@ const client = new acme.Client({
     const keyAuthorization = await client.getChallengeKeyAuthorization(dnsChallenge);
     console.log (keyAuthorization);
 
-
-    const username = process.env.AGASSI_MAILINABOX_EMAIL;
-    const password = fs.readFileSync (process.env.AGASSI_MAILINABOX_PASSWORD_FILE).toString ().trim ();
-    console.log ('got username and password');
-//    const res = await axios.get ('https://corya.net/admin/dns/custom', {
-//        auth: {
-//            username: username,
-//            password: password
-//        },
-//    });
-//    console.log (res.data);
-
-    // set cname (not ACME)
-    console.log ('Setting CNAME...');
-    const cnameSet = await axios.put (`https://corya.net/admin/dns/custom/${process.env.AGASSI_DOMAIN}/cname`, 'ingress.corya.enterprises', {
-        auth: {
-            username: username,
-            password: password
-        }
-    });
-    console.log (cnameSet.data);
-
-
     // set txt (ACME)
     console.log ('Setting TXT...');
     const txtSet = await axios.put (`https://corya.net/admin/dns/custom/_acme-challenge.${process.env.AGASSI_DOMAIN}/txt`, keyAuthorization, {
-        auth: {
-            username: username, 
-            password: password
-        }
+        auth
     });
-
     console.log (txtSet.data);
-    // print records
-    const res = await axios.get ('https://corya.net/admin/dns/custom', {
-        auth: {
-            username: username,
-            password: password
-        },
-    });
-    console.log (res.data);
 
     // complete challenge
     console.log ('Completing challenge...');
@@ -90,5 +59,12 @@ const client = new acme.Client({
     console.log ('Awaiting validation...');
     const validation = await client.waitForValidStatus (dnsChallenge);
     console.log (validation);
+
+    // remove challenge
+    console.log ('Removing challenge key...');
+    const txtDelete = await axios.delete (`https://corya.net/admin/dns/custom/_acme-challenge.${process.env.AGASSI_DOMAIN}/txt`, {
+        auth
+    });
+    console.log (txtDelete.data);
 
 }) ();
