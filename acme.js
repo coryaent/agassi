@@ -5,8 +5,8 @@ const axios = require ('axios');
 const forge = require ('node-forge');
 const fs = require ('fs');
 
-var keys = forge.pki.rsa.generateKeyPair (4096);
-var accountPrivateKey = forge.pki.privateKeyToPem(keys.privateKey);
+const accountKeys = forge.pki.rsa.generateKeyPair (4096);
+const accountPrivateKey = forge.pki.privateKeyToPem (accountKeys.privateKey);
 
 const client = new acme.Client({
     directoryUrl: acme.directory.letsencrypt.staging,
@@ -59,6 +59,18 @@ const auth = {
     console.log ('Awaiting validation...');
     const validation = await client.waitForValidStatus (dnsChallenge);
     console.log (validation);
+
+    console.log ('Creating CSR...');
+    const [key, csr] = await acme.crypto.createCsr({
+        commonName: process.env.AGASSI_DOMAIN
+    });
+    console.log ('Finalizing order...');
+    const finalized = await client.finalizeOrder (order, csr);
+    console.log (finalized);
+
+    console.log ('Fetching cert...');
+    const cert = await client.getCertificate (finalized);
+    console.log (cert);
 
     // remove challenge
     console.log ('Removing challenge key...');

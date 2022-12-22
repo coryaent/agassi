@@ -1,7 +1,30 @@
 "use strict";
 
+const isValidDomain = require ('is-valid-domain');
 
+module.exports = {
+    isAgassiService: function (service) {
 
+        // /v(?:irtual\-?)?host/
+        // check that site.agassi.virtual-host is defined
+        // check that site.agassi.virtual-host is a valid domain
+        const vHostRegEx = /v(?:irtual\-?)?host/;
+        const labels = parseServiceLabels (service);
+
+        // no labels at all, not an agassi service
+        if (!Object.keys (labels).length > 0) {
+            return false;
+        }
+        const virtualHostsLabel = Object.keys (labels)
+            .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
+            .find (label => vHostRegEx.test (label));            // find the virtual hosts label
+        if (virtualHostsLabel == undefined) {
+            return false;
+        }
+        return true;
+    }
+}
+// pass service details
 function parseServiceLabels (service) {
     // merge service labels, prefering container labels to service labels
     const labels = {};
@@ -35,6 +58,7 @@ function parseServiceLabels (service) {
     return labels;
 }
 
+// pass return from parseServiceLabels
 function parseProxyOptions (labels) {
     const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
     // http-proxy options

@@ -4,6 +4,8 @@
 const Redis = require ('ioredis')
 const Docker = require ('dockerode');
 
+const { isAgassiService } = require ('./agassiService.js');
+
 // check argv
 if (!process.argv.includes ('--client') && !process.argv.includes ('--server')) {
     console.error ('must specify client or server mode');
@@ -23,7 +25,7 @@ const redis = new Redis({
 const docker = new Docker ({
     host: process.env.AGASSI_DOCKER_HOST,
     port: process.env.AGASSI_DOCKER_PORT,
-    version: 'v1.37'
+    version: process.env.AGASSI_DOCKER_API_VERSION
 });
 
 // if client start monitoring docker socket
@@ -38,8 +40,11 @@ if (process.argv.includes ('--client')) {
                 console.log (service);
                 console.log (parseServiceLabels (service));
                 console.log (parseProxyOptions (parseServiceLabels (service)));
+                // if we have an agassi service
+                    // update redis
             }
             if (event.Action == 'remove') {
+                // if this service exists in redis remove the
             }
         });
     });

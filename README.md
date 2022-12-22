@@ -30,6 +30,16 @@ AGASSI_TARGET_CNAME
 
 `SET opts:example.com [options]`
 
+## Flow
+Agassi requires the use of two seperate services, a client (ACME and Docker) and a server (HTTPS).
+### Client
+Client spins up.
+
+Client checks for existing services and makes sure certificates are current.
+
+Client subscribes to new service updates.
+
+Server spins up
 ## Authorization
 ```sh
 htpasswd -n -B -C 12 user | base64 -w 0
