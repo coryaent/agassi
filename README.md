@@ -9,6 +9,7 @@ AGASSI_DOCKER_API_VERSION defaults v1.37
 AGASSI_DOCKER_HOST
 AGASSI_DOCKER_PORT
 AGASSI_LETS_ENCRYPT_EMAIL
+AGASSI_LOG_LEVEL defaults info
 AGASSI_MAILINABOX_EMAIL
 AGASSI_MAILINABOX_PASSWORD_FILE
 AGASSI_REDIS_HOST
@@ -39,7 +40,11 @@ Client checks for existing services and makes sure certificates are current.
 
 Client subscribes to new service updates.
 
-Server spins up
+### Server
+Server spins up.
+
+Starts listening to HTTPS requests.
+
 ## Authorization
 ```sh
 htpasswd -n -B -C 12 user | base64 -w 0
