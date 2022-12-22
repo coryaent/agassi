@@ -21,7 +21,7 @@ AGASSI_TARGET_CNAME
 
 `SET cert:example.com [cert] EX [cert expiration]`
 
-`HSET service:[service id] [vhost]`
+`SET service:[service id] [vhost]`
 
 `HSET vhost:example.com [auth] [options]`
 
