@@ -61,7 +61,7 @@ const auth = {
     console.log (validation);
 
     console.log ('Creating CSR...');
-    const [key, csr] = await acme.crypto.createCsr({
+    const [key, csr] = await acme.crypto.createCsr ({
         commonName: process.env.AGASSI_DOMAIN
     });
     console.log ('Finalizing order...');

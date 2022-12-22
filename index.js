@@ -1,5 +1,6 @@
 "use strict";
 
+const log = require ('./logger.js');
 
 const Redis = require ('ioredis')
 const Docker = require ('dockerode');
@@ -8,11 +9,11 @@ const { isAgassiService } = require ('./agassiService.js');
 
 // check argv
 if (!process.argv.includes ('--client') && !process.argv.includes ('--server')) {
-    console.error ('must specify client or server mode');
+    log.fatal ('must specify client or server mode');
     process.exit (1);
 }
 if (process.argv.includes ('--client') && process.argv.includes ('--server')) {
-    console.error ('cannot run as client and server simultaneously');
+    log.fatal ('cannot run as client and server simultaneously');
     process.exit (1);
 }
 
@@ -37,11 +38,13 @@ if (process.argv.includes ('--client')) {
             if (event.Action == 'create' || event.Action == 'update') {
                 let service = await docker.getService (event.Actor.ID);
                 service = await service.inspect ();
-                console.log (service);
-                console.log (parseServiceLabels (service));
-                console.log (parseProxyOptions (parseServiceLabels (service)));
+                log.debug (service);
+                log.debug (parseServiceLabels (service));
+                log.debug (parseProxyOptions (parseServiceLabels (service)));
                 // if we have an agassi service
-                    // update redis
+                if (isAgassiService (service)) {
+                    log.debug ('found service, updating redis')
+                }
             }
             if (event.Action == 'remove') {
                 // if this service exists in redis remove the

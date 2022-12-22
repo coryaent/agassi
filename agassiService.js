@@ -1,13 +1,12 @@
 "use strict";
 
+const log = require ('./logger.js');
+
 const isValidDomain = require ('is-valid-domain');
 
 module.exports = {
     isAgassiService: function (service) {
 
-        // /v(?:irtual\-?)?host/
-        // check that site.agassi.virtual-host is defined
-        // check that site.agassi.virtual-host is a valid domain
         const vHostRegEx = /v(?:irtual\-?)?host/;
         const labels = parseServiceLabels (service);
 
@@ -23,6 +22,8 @@ module.exports = {
         }
         return true;
     }
+    // get vHost and auth
+    // get options
 }
 // pass service details
 function parseServiceLabels (service) {
@@ -80,10 +81,10 @@ function parseProxyOptions (labels) {
                         options[optionKey] = labels[labelKey];
                         break;
                     case 'agent':
-                        console.log (`option ${optionKey} from label ${labelKey} ignored`);
+                        log.warn (`option ${optionKey} from label ${labelKey} ignored`);
                         break;
                     case 'ssl':
-                        console.log (`option ${optionKey} from label ${labelKey} ignored`);
+                        log.warn (`option ${optionKey} from label ${labelKey} ignored`);
                         break;
                     case 'ws':
                         options[optionKey] = strToBool (labels[labelKey]);
@@ -125,13 +126,13 @@ function parseProxyOptions (labels) {
                         options[optionKey] = labels[labelKey];
                         break;
                     case 'cookieDomainRewrite':
-                        console.log (`option ${optionKey} from label ${labelKey} ignored`);
+                        log.warn (`option ${optionKey} from label ${labelKey} ignored`);
                         break;
                     case 'cookiePathRewrite':
-                        console.log (`option ${optionKey} from label ${labelKey} ignored`);
+                        log.warn (`option ${optionKey} from label ${labelKey} ignored`);
                         break;
                     case 'headers':
-                        console.log (`option ${optionKey} from label ${labelKey} ignored`);
+                        log.warn (`option ${optionKey} from label ${labelKey} ignored`);
                         break;
                     case 'proxyTimeout':
                         options[optionKey] = Number.parseInt (labels[labelKey]);
@@ -146,7 +147,7 @@ function parseProxyOptions (labels) {
                         options[optionKey] = strToBool (labels[labelKey]);
                         break;
                     case 'buffer':
-                        console.log (`option ${optionKey} from label ${labelKey} ignored`);
+                        log.warn (`option ${optionKey} from label ${labelKey} ignored`);
                         break;
                 }
             }
