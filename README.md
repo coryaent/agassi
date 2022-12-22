@@ -25,11 +25,9 @@ AGASSI_TARGET_CNAME
 
 `SET cert:example.com [cert] EX [cert expiration]`
 
-`HSET service:[service id] [vhost] [auth] [options]`
+`HSET service:[service id] [vhost]`
 
-`SET auth:example.com [auth]`
-
-`SET opts:example.com [options]`
+`HSET vhost:example.com [auth] [options]`
 
 ## Flow
 Agassi requires the use of two seperate services, a client (ACME and Docker) and a server (HTTPS).
