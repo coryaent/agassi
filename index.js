@@ -5,7 +5,7 @@ const log = require ('./logger.js');
 const Redis = require ('ioredis')
 const Docker = require ('dockerode');
 
-const { isAgassiService } = require ('./agassiService.js');
+const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
 
 // check argv
 if (!process.argv.includes ('--client') && !process.argv.includes ('--server')) {
@@ -34,13 +34,16 @@ if (process.argv.includes ('--client')) {
     docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
         events.on ('data', async (data) => {
             let event = JSON.parse (data);
-            console.log (event);
+            log.trace (event);
             if (event.Action == 'create' || event.Action == 'update') {
                 let service = await docker.getService (event.Actor.ID);
                 service = await service.inspect ();
                 log.debug (service);
-                log.debug (parseServiceLabels (service));
-                log.debug (parseProxyOptions (parseServiceLabels (service)));
+                // log.debug (parseServiceLabels (service));
+                // log.debug (parseProxyOptions (parseServiceLabels (service)));
+                log.debug ('vhost: ' + getVHost (service));
+                log.debug ('auth: ' + getAuth (service));
+                log.debug ('options:', getOptions (service));
                 // if we have an agassi service
                 if (isAgassiService (service)) {
                     log.debug ('found service, updating redis');

@@ -4,26 +4,45 @@ const log = require ('./logger.js');
 
 const isValidDomain = require ('is-valid-domain');
 
+const vHostRegEx = /v(?:irtual\-?)?host/;
+
 module.exports = {
     isAgassiService: function (service) {
 
-        const vHostRegEx = /v(?:irtual\-?)?host/;
         const labels = parseServiceLabels (service);
 
         // no labels at all, not an agassi service
         if (!Object.keys (labels).length > 0) {
             return false;
         }
-        const virtualHostsLabel = Object.keys (labels)
+        const virtualHostLabel = Object.keys (labels)
             .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
             .find (label => vHostRegEx.test (label));            // find the virtual hosts label
-        if (virtualHostsLabel == undefined) {
+        if (virtualHostLabel == undefined) {
             return false;
         }
         return true;
+    },
+    getAuth: function (service) {
+        const authRegex = /auth(?:orization)?/;
+        const labels = parseServiceLabels (service);
+        const authLabel = Object.keys (labels)
+            .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
+            .find (label => authRegex.test (label));            // find the virtual hosts label
+        log.debug ('authLabel:', authLabel);
+        return labels['site.agassi.' + authLabel];
+    },
+    getVHost: function (service) {
+        const labels = parseServiceLabels (service);
+        const virtualHostLabel = Object.keys (labels)
+            .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
+            .find (label => vHostRegEx.test (label));            // find the virtual hosts label
+        log.debug ('virtualHostLabel:', virtualHostLabel);
+        return labels['site.agassi.' + virtualHostLabel];
+    },
+    getOptions: function (service) {
+        return parseProxyOptions (parseServiceLabels (service));
     }
-    // get vHost and auth
-    // get options
 }
 // pass service details
 function parseServiceLabels (service) {

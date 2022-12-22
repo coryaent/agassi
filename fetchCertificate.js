@@ -43,7 +43,7 @@ module.exports = async function (domain) {
 
     log.info ('fetching key authorization');
     const keyAuthorization = await client.getChallengeKeyAuthorization(dnsChallenge);
-    log.duebug (keyAuthorization);
+    log.debug (keyAuthorization);
 
     // set txt (ACME)
     log.info ('setting txt record');
@@ -69,6 +69,7 @@ module.exports = async function (domain) {
     log.info ('finalizing arder')
     const finalized = await client.finalizeOrder (order, csr);
     log.debug (finalized);
+    // expiration at finalized.expires
 
     log.info ('fetching cert');
     const cert = await client.getCertificate (finalized);
@@ -80,4 +81,5 @@ module.exports = async function (domain) {
     });
     log.debug (txtDelete.data);
 
+    return cert;
 }
