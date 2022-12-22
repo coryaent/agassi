@@ -81,5 +81,5 @@ module.exports = async function (domain) {
     });
     log.debug (txtDelete.data);
 
-    return cert;
+    return [cert, finalized.expires];
 }
