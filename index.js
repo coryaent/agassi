@@ -43,7 +43,7 @@ if (process.argv.includes ('--client')) {
                 log.debug (parseProxyOptions (parseServiceLabels (service)));
                 // if we have an agassi service
                 if (isAgassiService (service)) {
-                    log.debug ('found service, updating redis')
+                    log.debug ('found service, updating redis');
                 }
             }
             if (event.Action == 'remove') {
