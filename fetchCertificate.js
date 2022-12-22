@@ -20,7 +20,7 @@ const auth = {
     password: fs.readFileSync (process.env.AGASSI_MAILINABOX_PASSWORD_FILE).toString ().trim ()
 };
 
-(async () => {
+module.exports = async function (domain) {
     const account = await client.createAccount({
         termsOfServiceAgreed: true,
         contact: [`mailto:${process.env.AGASSI_LETS_ENCRYPT_EMAIL}`]
@@ -47,7 +47,7 @@ const auth = {
 
     // set txt (ACME)
     log.info ('setting txt record');
-    const txtSet = await axios.put (`https://corya.net/admin/dns/custom/_acme-challenge.${process.env.AGASSI_DOMAIN}/txt`, keyAuthorization, {
+    const txtSet = await axios.put (`https://corya.net/admin/dns/custom/_acme-challenge.${domain}/txt`, keyAuthorization, {
         auth
     });
     log.debug (txtSet.data);
@@ -64,7 +64,7 @@ const auth = {
 
     log.info ('creating csr');
     const [key, csr] = await acme.crypto.createCsr ({
-        commonName: process.env.AGASSI_DOMAIN
+        commonName: domain
     });
     log.info ('finalizing arder')
     const finalized = await client.finalizeOrder (order, csr);
@@ -75,9 +75,9 @@ const auth = {
 
     // remove challenge
     log.info ('removing challenge key');
-    const txtDelete = await axios.delete (`https://corya.net/admin/dns/custom/_acme-challenge.${process.env.AGASSI_DOMAIN}/txt`, {
+    const txtDelete = await axios.delete (`https://corya.net/admin/dns/custom/_acme-challenge.${domain}/txt`, {
         auth
     });
     log.debug (txtDelete.data);
 
-}) ();
+}
