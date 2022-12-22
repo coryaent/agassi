@@ -18,10 +18,6 @@ AGASSI_TARGET_ALIAS
 AGASSI_TARGET_CNAME
 ```
 ## Redis
-- We need to get the cert from the domain for SNI
-- We need to get the options from the domain for proxy handling
-- We need to get the domain from the hash W
-- We need to get virtual hosts by hash.
 
 `SET cert:example.com [cert] EX [cert expiration]`
 
