@@ -1,5 +1,7 @@
  "use strict";
 
+const log = require ('./logger.js');
+
 const acme = require ('acme-client');
 const axios = require ('axios');
 const forge = require ('node-forge');
@@ -23,60 +25,59 @@ const auth = {
         termsOfServiceAgreed: true,
         contact: [`mailto:${process.env.AGASSI_LETS_ENCRYPT_EMAIL}`]
     });
-    console.log ('order:');
+    log.info ('creating certificate order')
     const order = await client.createOrder({
         identifiers: [
             { type: 'dns', value: process.env.AGASSI_DOMAIN },
         ]
     });
-    console.log (order);
+    log.debug (order);
 
 
-    console.log ('authorizations');
+    log.info ('fetching authorizations');
     const authorizations = await client.getAuthorizations (order);
-    console.log (authorizations);
-    console.log ('dnsChallenge:');
+    log.debug (authorizations);
+    log.info ('finding dns challenge');
     const dnsChallenge = authorizations[0]['challenges'].find ((element) => element.type === 'dns-01');
-    console.log (dnsChallenge);
+    log.debug (dnsChallenge);
 
-    console.log ('keyAuthorization');
+    log.info ('fetching key authorization');
     const keyAuthorization = await client.getChallengeKeyAuthorization(dnsChallenge);
-    console.log (keyAuthorization);
+    log.duebug (keyAuthorization);
 
     // set txt (ACME)
-    console.log ('Setting TXT...');
+    log.info ('setting txt record');
     const txtSet = await axios.put (`https://corya.net/admin/dns/custom/_acme-challenge.${process.env.AGASSI_DOMAIN}/txt`, keyAuthorization, {
         auth
     });
-    console.log (txtSet.data);
+    log.debug (txtSet.data);
 
     // complete challenge
-    console.log ('Completing challenge...');
+    log.info ('completing challenge');
     const completion = await client.completeChallenge (dnsChallenge);
-    console.log (completion);
+    log.debug (completion);
 
     // await validation
-    console.log ('Awaiting validation...');
+    log.info ('awaiting validation');
     const validation = await client.waitForValidStatus (dnsChallenge);
-    console.log (validation);
+    log.debug (validation);
 
-    console.log ('Creating CSR...');
+    log.info ('creating csr');
     const [key, csr] = await acme.crypto.createCsr ({
         commonName: process.env.AGASSI_DOMAIN
     });
-    console.log ('Finalizing order...');
+    log.info ('finalizing arder')
     const finalized = await client.finalizeOrder (order, csr);
-    console.log (finalized);
+    log.debug (finalized);
 
-    console.log ('Fetching cert...');
+    log.info ('fetching cert');
     const cert = await client.getCertificate (finalized);
-    console.log (cert);
 
     // remove challenge
-    console.log ('Removing challenge key...');
+    log.info ('removing challenge key');
     const txtDelete = await axios.delete (`https://corya.net/admin/dns/custom/_acme-challenge.${process.env.AGASSI_DOMAIN}/txt`, {
         auth
     });
-    console.log (txtDelete.data);
+    log.debug (txtDelete.data);
 
 }) ();
