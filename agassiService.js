@@ -4,8 +4,6 @@ const log = require ('./logger.js');
 
 const isValidDomain = require ('is-valid-domain');
 
-const vHostRegEx = /v(?:irtual\-?)?host/;
-
 module.exports = {
     isAgassiService: function (service) {
 
@@ -33,6 +31,8 @@ module.exports = {
         return labels['site.agassi.' + authLabel];
     },
     getVHost: function (service) {
+        const vHostRegEx = /v(?:irtual\-?)?host/;
+
         const labels = parseServiceLabels (service);
         const virtualHostLabel = Object.keys (labels)
             .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
