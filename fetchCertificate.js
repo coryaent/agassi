@@ -7,6 +7,7 @@ const axios = require ('axios');
 const forge = require ('node-forge');
 const fs = require ('fs');
 
+// this account can be recreated every time the process reloads
 const accountKeys = forge.pki.rsa.generateKeyPair (4096);
 const accountPrivateKey = forge.pki.privateKeyToPem (accountKeys.privateKey);
 
