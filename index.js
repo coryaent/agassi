@@ -5,8 +5,6 @@ const log = require ('./logger.js');
 const Redis = require ('ioredis')
 const Docker = require ('dockerode');
 
-const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
-
 // check argv
 if (!process.argv.includes ('--client') && !process.argv.includes ('--server')) {
     log.fatal ('must specify client or server mode');
@@ -31,6 +29,9 @@ const docker = new Docker ({
 
 // if client start monitoring docker socket
 if (process.argv.includes ('--client')) {
+
+    const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
+
     docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
         events.on ('data', async (data) => {
             let event = JSON.parse (data);
@@ -47,6 +48,8 @@ if (process.argv.includes ('--client')) {
                 // if we have an agassi service
                 if (isAgassiService (service)) {
                     log.debug ('found service, updating redis');
+                    // `SET service:[service id] [vhost]`
+
                 }
             }
             if (event.Action == 'remove') {
