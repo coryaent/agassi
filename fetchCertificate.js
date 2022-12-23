@@ -6,6 +6,7 @@ const acme = require ('acme-client');
 const axios = require ('axios');
 const forge = require ('node-forge');
 const fs = require ('fs');
+const retry = require ('async-retry');
 
 // this account can be recreated every time the process reloads
 const accountKeys = forge.pki.rsa.generateKeyPair (4096);
@@ -29,7 +30,7 @@ module.exports = async function (domain) {
     log.info ('creating certificate order')
     const order = await client.createOrder({
         identifiers: [
-            { type: 'dns', value: process.env.AGASSI_DOMAIN },
+            { type: 'dns', value: domain },
         ]
     });
     log.debug (order);
@@ -60,13 +61,19 @@ module.exports = async function (domain) {
 
     // await validation
     log.info ('awaiting validation');
-    const validation = await client.waitForValidStatus (dnsChallenge);
+    // await client.waitForValidStatus (dnsChallenge)
+    // let validation = await retry (async function (retry, number) {
+    //     log.info ('attempt number', number);
+    //     return client.waitForValidStatus (dnsChallenge).catch (retry);
+    // });
+    let validation = await awaitValidStatus (dnsChallenge);
     log.debug (validation);
 
     log.info ('creating csr');
     const [key, csr] = await acme.crypto.createCsr ({
         commonName: domain
     });
+
     log.info ('finalizing arder')
     const finalized = await client.finalizeOrder (order, csr);
     log.debug (finalized);
@@ -84,3 +91,11 @@ module.exports = async function (domain) {
 
     return [cert, finalized.expires];
 }
+
+const awaitValidStatus = async (dnsChallenge) =>
+    retry (async (dnsChallenge) => {
+        log.debug ('attempting to verify completion');
+        let validation = await client.waitForValidStatus (dnsChallenge);
+        return validation;
+
+    });

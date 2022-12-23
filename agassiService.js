@@ -28,7 +28,6 @@ module.exports = {
         const authLabel = Object.keys (labels)
             .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
             .find (label => authRegex.test (label));            // find the virtual hosts label
-        log.debug ('authLabel:', authLabel);
         return labels['site.agassi.' + authLabel];
     },
     getVHost: function (service) {
@@ -38,7 +37,6 @@ module.exports = {
         const virtualHostLabel = Object.keys (labels)
             .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
             .find (label => vHostRegEx.test (label));            // find the virtual hosts label
-        log.debug ('virtualHostLabel:', virtualHostLabel);
         return labels['site.agassi.' + virtualHostLabel];
     },
     getOptions: function (service) {
