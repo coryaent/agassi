@@ -13,6 +13,7 @@ module.exports = {
         if (!Object.keys (labels).length > 0) {
             return false;
         }
+        const vHostRegEx = /v(?:irtual\-?)?host/;
         const virtualHostLabel = Object.keys (labels)
             .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
             .find (label => vHostRegEx.test (label));            // find the virtual hosts label
