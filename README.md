@@ -5,6 +5,7 @@ By taking advantage of Docker Swarm's built-in state management, Agassi is able 
 
 ## Configuration
 ```
+AGASSI_DEFAULT_PRIVATE_KEY_FILE
 AGASSI_DOCKER_API_VERSION defaults v1.37
 AGASSI_DOCKER_HOST
 AGASSI_DOCKER_PORT
