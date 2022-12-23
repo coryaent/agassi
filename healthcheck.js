@@ -12,7 +12,7 @@ const redis = new Redis({
 const docker = new Docker ({
     host: process.env.AGASSI_DOCKER_HOST,
     port: process.env.AGASSI_DOCKER_PORT,
-    version: 'v1.37'
+    version: process.env.AGASSI_DOCKER_API_VERSION
 });
 
 (async () => {
