@@ -23,7 +23,7 @@ module.exports = function generateDefaultCert () {
         value: `${os.hostname ()}.invalid`
     }]);
     log.debug ('created cert');
-    cert.sign (privateKey);
+    cert.sign (privateKey, forge.md.sha256.create ());
     log.debug ('signed cert');
     return Buffer.from (forge.pki.certificateToPem (cert));
 }

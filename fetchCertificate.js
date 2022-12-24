@@ -66,13 +66,14 @@ module.exports = async function (domain) {
     //     log.info ('attempt number', number);
     //     return client.waitForValidStatus (dnsChallenge).catch (retry);
     // });
-    let validation = await awaitValidStatus (dnsChallenge);
+    let validation = await client.waitForValidStatus (dnsChallenge)
+    //  let validation = await awaitValidStatus (dnsChallenge);
     log.debug (validation);
 
     log.info ('creating csr');
     const [key, csr] = await acme.crypto.createCsr ({
         commonName: domain
-    });
+    }, fs.readFileSync (process.env.AGASSI_DEFAULT_PRIVATE_KEY_FILE));
 
     log.info ('finalizing arder')
     const finalized = await client.finalizeOrder (order, csr);
@@ -80,7 +81,9 @@ module.exports = async function (domain) {
     // expiration at finalized.expires
 
     log.info ('fetching cert');
-    const cert = await client.getCertificate (finalized);
+    let cert = await client.getCertificate (finalized);
+    // I do not know why this is necessary, but getCertificate seems to return three of the same cert in one file.
+    cert = cert.substring (0, cert.indexOf ('-----END CERTIFICATE-----')).concat ('-----END CERTIFICATE-----');
 
     // remove challenge
     log.info ('removing challenge key');
@@ -97,5 +100,4 @@ const awaitValidStatus = async (dnsChallenge) =>
         log.debug ('attempting to verify completion');
         let validation = await client.waitForValidStatus (dnsChallenge);
         return validation;
-
     });

@@ -31,6 +31,7 @@
     "delay": "^5.0.0",
     "dockerode": "^3.3.4",
     "fast-date-format": "^2.2.4",
+    "http-proxy": "^1.18.1",
     "http-ratelimit": "^0.2.3",
     "ioredis": "^4.27.3",
     "is-valid-domain": "^0.1.6",

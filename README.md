@@ -20,7 +20,7 @@ AGASSI_TARGET_CNAME
 ```
 ## Redis
 
-`SET cert:example.com [cert] EX [cert expiration]`
+`HSET cert:example.com [cert] [cert expiration]`
 
 `SET service:[service id] [vhost]`
 

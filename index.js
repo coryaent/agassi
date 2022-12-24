@@ -55,16 +55,22 @@ if (process.argv.includes ('--client')) {
                     await redis.hset (`vhost:${getVHost (service)}`, 'auth', getAuth (service), 'options', JSON.stringify (getOptions (service)));
                     // need to fetch and add the certificate
                     let [cert, expiration] = await fetchCertificate (getVHost (service));
-                    log.debug (cert);
+                    // log.debug (cert);
                     log.debug (expiration);
-                    await redis.set (`cert:${getVHost (service)}`, cert, 'EX', expiration);
+                    log.debug ('adding cert to redis');
+                    // Math.floor (new Date (expiration).getTime ()/ 1000)
+                    await redis.hset (`cert:${getVHost (service)}`, 'cert', cert, 'expiration', expiration);
                 }
             }
             if (event.Action == 'remove') {
                 // first get the vhost
+                log.debug ('removing vhost');
                 let vHost = await redis.get ('service:' + event.Actor.ID);
                 log.debug (vHost);
                 let res = await redis.del ('vhost:' + vHost);
+                log.debug (res);
+                log.debug ('removing service');
+                res = await redis.del ('service:' + event.Actor.ID);
                 log.debug (res);
             }
         });
@@ -73,14 +79,15 @@ if (process.argv.includes ('--client')) {
 
 // if server start HTTPS server
 if (process.argv.includes ('--server')) {
+    const fs = require ('fs');
     const https = require ('https');
     const tls = require ('tls');
-    const forge = require ('node-forge');
     const os = require ('os');
     const rateLimit = require ('http-ratelimit');
     const memoize = require ('nano-memoize');
     const bcrypt = require ('bcryptjs');
     const compare = require ('tsscmp');
+    const generateCertificate = require ('./generateCertificate.js');
 
     const Proxy = require ('./proxy.js');
 
@@ -90,73 +97,48 @@ if (process.argv.includes ('--server')) {
     const base64RegEx = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
     // const bcryptRegEx = /\$2[xy]\$/;
 
-    function generateDefaultCert () {
-        const privateKey = forge.pki.privateKeyFromPem (Config.defaultKey);
-        const publicKey = forge.pki.setRsaPublicKey (privateKey.n, privateKey.e);
+    const defaultCert = generateCertificate ();
 
-        const cert = forge.pki.createCertificate ();
-        cert.publicKey = publicKey;
-        cert.validity.notBefore = new Date ();
-        cert.validity.notAfter = new Date ();
-        cert.validity.notAfter.setFullYear (cert.validity.notBefore.getFullYear() + 128);
-        cert.setSubject ([{
-            name: 'commonName',
-            value: `${os.hostname ()}.invalid`
-        }]);
-        cert.sign (privateKey);
-
-        return Buffer.from (forge.pki.certificateToPem (cert));
-    }
-
-    const defaultCert = generateDefaultCert ();
-
-    module.exports = https.createServer ({
+    https.createServer ({
         SNICallback: async (domain, callback) => {
             // get latest cert
-            const queryResponse = await rqlite.dbQuery (`SELECT certificate FROM certificates
-            WHERE domain = '${domain}' ORDER BY expiration DESC LIMIT 1;`, null);
+            const queryResponse = await redis.hget (`cert:${domain}`, 'cert');
 
-            if (queryResponse.results.length > 0) {
+            if (queryResponse) {
                 // got cert
-                log.debug (`Got certificate for ${domain} from database in ${queryResponse.time * 1000} ms.`);
+                log.debug (`got certificate for ${domain} from redis`);
                 return callback (null, tls.createSecureContext ({
                     key: Config.defaultKey,
                     cert: queryResponse.results[0].certificate
                 }));
             } else {
                 // did not get cert, use default
-                log.warn (`No certificate found for ${domain}.`);
+                log.warn (`no certificate found for ${domain}`);
                 return callback (null, false);
             }
         },
-        key: Config.defaultKey,
+        key: fs.readFileSync (process.env.AGASSI_DEFAULT_PRIVATE_KEY_FILE),
         cert: defaultCert
     }, async (request, response) => {
         const requestURL = new URL (request.url, `https://${request.headers.host}`);
-        const queryResponse = await rqlite.dbQuery (`SELECT protocol, hostname, port, auth, options FROM services
-        WHERE domain = '${requestURL.hostname}';`, null);
+        const virtualHost = await redis.hgetall (`vhost:${requestURL.hostname}`);
 
         // if there is no matching agassi service
-        if (!queryResponse.results.length > 0) {
-            log.debug (`No virtual host found for domain ${requestURL.hostname}.`);
+        // if it doesn't have .options it doesn't have a target or forward
+        if (!virtualHost.options) {
+            log.trace (`no virtual host found for domain ${requestURL.hostname}`);
             return;
         }
 
-        log.debug (`Got virtual host for domain ${requestURL.hostname} in ${queryResponse.time * 1000} ms.`);
+        log.trace (`got virtual host for domain ${requestURL.hostname}`);
 
         // parse proxy options
-        const virtualHost = queryResponse.results[0];
-        const proxyOptions = JSON.parse (virtualHost.options)
-        if (!proxyOptions.target && !proxyOptions.forward) {
-            proxyOptions.target = `${virtualHost.protocol}://${virtualHost.hostname}:${virtualHost.port}`;
-        }
-
         // basic auth protected host
-        if (virtualHost.auth && virtualHost.auth != 'null') {
+        if (virtualHost.auth) {
             // auth required but not provided
             if (!request.headers.authorization) {
                 // prompt for password in browser
-                response.writeHead (401, { 'WWW-Authenticate': `Basic realm="${Config.realm}"`});
+                response.writeHead (401, { 'WWW-Authenticate': `Basic realm="Agassi"`});
                 response.end ('Authorization is required.');
                 return;
             }
@@ -182,24 +164,24 @@ if (process.argv.includes ('--server')) {
 
             // compare provided header with expected values
             if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
-                Proxy.web (request, response, proxyOptions);
+                Proxy.web (request, response, virtualHost.options);
             } else {
                 // rate limit failed authentication
                 rateLimit.inboundRequest (request);
                 // prompt for password in browser
-                response.writeHead (401, { 'WWW-Authenticate': `Basic realm="${Config.realm}"`});
+                response.writeHead (401, { 'WWW-Authenticate': `Basic realm="Agassi"`});
                 response.end ('Authorization is required.');
             }
 
         } else {
             // basic auth not required
-            Proxy.web (request, response, proxyOptions);
+            Proxy.web (request, response, virtualHost.options);
         }
     })
     .once ('listening', rateLimit.init)
     .on ('listening', () => {
-        log.info ('HTTPS server started.');
+        log.info ('https server started');
     }).on ('close', () => {
-        log.info ('HTTPS server stopped.');
+        log.info ('https server stopped');
     });
 }
