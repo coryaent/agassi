@@ -73,7 +73,7 @@ module.exports = async function (domain) {
     log.info ('creating csr');
     const [key, csr] = await acme.crypto.createCsr ({
         commonName: domain
-    }, fs.readFileSync (process.env.AGASSI_DEFAULT_PRIVATE_KEY_FILE));
+    }, fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE));
 
     log.info ('finalizing arder')
     const finalized = await client.finalizeOrder (order, csr);

@@ -1,5 +1,8 @@
 FROM node:18
 
+ENV AGASSI_DOCKER_API_VERSION=v1.37
+ENV AGASSI_LOG_LEVEL=info
+
 # Create app directory
 WORKDIR /usr/src/app
 

@@ -13,7 +13,7 @@ module.exports = {
         if (!Object.keys (labels).length > 0) {
             return false;
         }
-        const vHostRegEx = /v(?:irtual\-?)?host/;
+        const vHostRegEx = /v(?:irtual(?:\-h|H)|[Hh])ost/;
         const virtualHostLabel = Object.keys (labels)
             .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
             .find (label => vHostRegEx.test (label));            // find the virtual hosts label
@@ -23,7 +23,7 @@ module.exports = {
         return true;
     },
     getAuth: function (service) {
-        const authRegex = /auth(?:orization)?/;
+        const authRegex = /auth(?:entication|oriz(?:ation|e)|enticate)?/;
         const labels = parseServiceLabels (service);
         const authLabel = Object.keys (labels)
             .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
@@ -31,7 +31,7 @@ module.exports = {
         return labels['site.agassi.' + authLabel];
     },
     getVHost: function (service) {
-        const vHostRegEx = /v(?:irtual\-?)?host/;
+        const vHostRegEx = /v(?:irtual(?:\-h|H)|[Hh])ost/;
 
         const labels = parseServiceLabels (service);
         const virtualHostLabel = Object.keys (labels)

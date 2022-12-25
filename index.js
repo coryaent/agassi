@@ -140,7 +140,7 @@ if (process.argv.includes ('--server')) {
                 // got cert
                 log.debug (`got certificate for ${domain} from redis`);
                 return callback (null, tls.createSecureContext ({
-                    key: fs.readFileSync (process.env.AGASSI_DEFAULT_PRIVATE_KEY_FILE),
+                    key: fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE),
                     cert: queryResponse
                 }));
             } else {
@@ -149,7 +149,7 @@ if (process.argv.includes ('--server')) {
                 return callback (null, false);
             }
         },
-        key: fs.readFileSync (process.env.AGASSI_DEFAULT_PRIVATE_KEY_FILE),
+        key: fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE),
         cert: defaultCert
     }, async (request, response) => {
         const requestURL = new URL (request.url, `https://${request.headers.host}`);

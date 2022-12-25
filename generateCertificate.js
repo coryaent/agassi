@@ -9,7 +9,7 @@ const os = require ('os');
 const log = require ('./logger.js');
 
 module.exports = function generateDefaultCert () {
-    const privateKey = forge.pki.privateKeyFromPem (fs.readFileSync (process.env.AGASSI_DEFAULT_PRIVATE_KEY_FILE));
+    const privateKey = forge.pki.privateKeyFromPem (fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE));
     log.debug ('read private key');
     const publicKey = forge.pki.setRsaPublicKey (privateKey.n, privateKey.e);
     log.debug ('created public key'); // I think

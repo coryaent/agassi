@@ -5,7 +5,7 @@ By taking advantage of Docker Swarm's built-in state management, Agassi is able 
 
 ## Configuration
 ```
-AGASSI_DEFAULT_PRIVATE_KEY_FILE
+AGASSI_DEFAULT_KEY_FILE
 AGASSI_DOCKER_API_VERSION default -> v1.37
 AGASSI_DOCKER_HOST
 AGASSI_DOCKER_PORT
@@ -45,5 +45,5 @@ Starts listening to HTTPS requests.
 htpasswd -n -B -C 12 user | base64 -w 0
 ```
 ```sh
-openssl genrsa -out default.pem 4096
+openssl genrsa 4096 | docker secret create agassi_default_key -
 ```
