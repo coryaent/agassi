@@ -38,14 +38,13 @@ if (process.argv.includes ('--client')) {
     docker.listServices ().then (async function (services) {
         console.log (services);
         for (let id of services.map (service => service.ID)) {
-            console.log (id);
             let service = await docker.getService (id);
             service = await service.inspect ();
             if (isAgassiService (service)) {
                 log.debug ('found agassi service')
                 // `SET service:[service id] [vhost]`
                 log.debug ('setting service -> vhost');
-                await redis.set (`service:${event.Actor.ID}`, getVHost (service) );
+                await redis.set (`service:${id}`, getVHost (service) );
                 log.debug ('setting vhost hash');
                 await redis.hset (`vhost:${getVHost (service)}`, 'auth', getAuth (service), 'options', JSON.stringify (getOptions (service)));
                 // need to fetch and add the certificate
