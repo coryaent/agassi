@@ -13,7 +13,6 @@ const accountKeys = forge.pki.rsa.generateKeyPair (4096);
 const accountPrivateKey = forge.pki.privateKeyToPem (accountKeys.privateKey);
 
 const client = new acme.Client({
-    directoryUrl: acme.directory.letsencrypt.staging,
     accountKey: accountPrivateKey
 });
 
