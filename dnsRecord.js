@@ -2,6 +2,8 @@
 
 const log = require ('./logger.js');
 
+const fs = require ('fs');
+
 const axios = require ('axios');
 
 const isValidDomain = require ('is-valid-domain');
