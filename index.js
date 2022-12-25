@@ -163,6 +163,8 @@ if (process.argv.includes ('--server')) {
         }
 
         log.trace (`got virtual host for domain ${requestURL.hostname}`);
+        log.trace ('auth:', virtualHost.auth);
+        log.trace ('options:' virtualHost.options);
 
         // parse proxy options
         // basic auth protected host
