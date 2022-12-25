@@ -34,6 +34,35 @@ if (process.argv.includes ('--client')) {
     const fetchCertificate = require ('./fetchCertificate.js');
     const setDNSRecord = require ('./dnsRecord.js');
 
+    // pull existing services
+    docker.listServices ().then (async function (services) {
+        console.log (services);
+        for (let id of services.map (service => service.ID)) {
+            console.log (id);
+            let service = await docker.getService (id);
+            service = await service.inspect ();
+            if (isAgassiService (service)) {
+                log.debug ('found agassi service')
+                // `SET service:[service id] [vhost]`
+                log.debug ('setting service -> vhost');
+                await redis.set (`service:${event.Actor.ID}`, getVHost (service) );
+                log.debug ('setting vhost hash');
+                await redis.hset (`vhost:${getVHost (service)}`, 'auth', getAuth (service), 'options', JSON.stringify (getOptions (service)));
+                // need to fetch and add the certificate
+                let [cert, expiration] = await fetchCertificate (getVHost (service));
+                // log.debug (cert);
+                log.debug (expiration);
+                log.debug ('adding cert to redis');
+                // Math.floor (new Date (expiration).getTime ()/ 1000)
+                await redis.hset (`cert:${getVHost (service)}`, 'cert', cert, 'expiration', expiration);
+                // set dns record
+                await setDNSRecord (getVHost (service));
+            }
+        }
+    });
+
+
+    // subscribe to events
     docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
         events.on ('data', async (data) => {
             let event = JSON.parse (data);
