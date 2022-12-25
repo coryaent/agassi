@@ -32,6 +32,7 @@ if (process.argv.includes ('--client')) {
 
     const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
     const fetchCertificate = require ('./fetchCertificate.js');
+    const setDNSRecord = require ('./dnsRecord.js');
 
     docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
         events.on ('data', async (data) => {
@@ -60,6 +61,8 @@ if (process.argv.includes ('--client')) {
                     log.debug ('adding cert to redis');
                     // Math.floor (new Date (expiration).getTime ()/ 1000)
                     await redis.hset (`cert:${getVHost (service)}`, 'cert', cert, 'expiration', expiration);
+                    // set dns record
+                    await setDNSRecord (getVHost (service));
                 }
             }
             if (event.Action == 'remove') {
@@ -108,8 +111,8 @@ if (process.argv.includes ('--server')) {
                 // got cert
                 log.debug (`got certificate for ${domain} from redis`);
                 return callback (null, tls.createSecureContext ({
-                    key: Config.defaultKey,
-                    cert: queryResponse.results[0].certificate
+                    key: fs.readFileSync (process.env.AGASSI_DEFAULT_PRIVATE_KEY_FILE),
+                    cert: queryResponse
                 }));
             } else {
                 // did not get cert, use default
@@ -181,7 +184,9 @@ if (process.argv.includes ('--server')) {
     .once ('listening', rateLimit.init)
     .on ('listening', () => {
         log.info ('https server started');
-    }).on ('close', () => {
+    })
+    .on ('close', () => {
         log.info ('https server stopped');
-    });
+    })
+    .listen (443);
 }
