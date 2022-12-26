@@ -170,9 +170,11 @@ if (process.argv.includes ('--server')) {
         // parse proxy options
         // basic auth protected host
         if (virtualHost.auth) {
+            log.trace ('auth required');
             // auth required but not provided
             if (!request.headers.authorization) {
                 // prompt for password in browser
+                log.trace ('prompting password');
                 response.writeHead (401, { 'WWW-Authenticate': `Basic realm="Agassi"`});
                 response.end ('Authorization is required.');
                 return;
@@ -180,6 +182,7 @@ if (process.argv.includes ('--server')) {
 
             // failure rate limit reached
             if (rateLimit.isRateLimited(request, 2)) {
+                log.trace ('failure rate limit reached');
                 response.writeHead(429, {
                     'Content-Type': 'text/plain'
                 });
@@ -188,20 +191,27 @@ if (process.argv.includes ('--server')) {
             }
 
             // parse authentication header
+            log.trace ('parsing authentication header');
             const requestAuth = (Buffer.from (request.headers.authorization.replace (/^Basic/, ''), 'base64')).toString ('utf-8');
             const [requestUser, requestPassword] = requestAuth.split (':');
+            log.trace ('got username', requestAuth);
 
             // parse vHost auth parameter
+            log.trace ('parsing vhost auth');
             const vHostAuth = base64RegEx.test (virtualHost.auth) ? // test if the provided agassi.auth is base64 encoded
                 (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8') : virtualHost.auth;
 
             const [virtualUser, virtualHash] = vHostAuth.split (':');
+            log.trace ('got username', virtualUser);
+
 
             // compare provided header with expected values
             if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
+                log.trace ('authentication passed, proxying request');
                 Proxy.web (request, response, virtualHost.options);
             } else {
                 // rate limit failed authentication
+                log.debug ('authentication failed');
                 rateLimit.inboundRequest (request);
                 // prompt for password in browser
                 response.writeHead (401, { 'WWW-Authenticate': `Basic realm="Agassi"`});
@@ -210,6 +220,7 @@ if (process.argv.includes ('--server')) {
 
         } else {
             // basic auth not required
+            log.trace ('athentication not required, proxying');
             Proxy.web (request, response, virtualHost.options);
         }
     })
