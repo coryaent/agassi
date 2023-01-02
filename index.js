@@ -157,15 +157,12 @@ if (process.argv.includes ('--server')) {
     }, async (request, response) => {
         const requestURL = new URL (request.url, `https://${request.headers.host}`);
         const virtualHost = await redis.hgetall (`vhost:${requestURL.hostname}`);
-        log.trace ('options pre-parse:', virtualHost.options);
-        virtualHost.options = JSON.parse (virtualHost.options);
-
-        // if there is no matching agassi service
         // if it doesn't have .options it doesn't have a target or forward
         if (!virtualHost.options) {
             log.trace (`no virtual host found for domain ${requestURL.hostname}`);
             return;
         }
+        virtualHost.options = JSON.parse (virtualHost.options);
 
         log.trace (`got virtual host for domain ${requestURL.hostname}`);
 
