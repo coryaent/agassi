@@ -197,14 +197,12 @@ if (process.argv.includes ('--server')) {
             const [requestUser, requestPassword] = requestAuth.split (':');
 
             // parse vHost auth parameter
-            const vHostAuth = base64RegEx.test (virtualHost.auth) ? // is the provided agassi.auth is base64 encoded
-                (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8') : virtualHost.auth;
+            const vHostAuth = (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8');
             const [virtualUser, virtualHash] = vHostAuth.split (':');
 
-            log.trace ('vHostAuth', vHostAuth);
-            log.trace ('virtualHash', virtualHash);
+
             // compare provided header with expected values
-            if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
+            if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash.trim ()))) {
                 log.trace ('authentication passed, proxying request');
                 Proxy.web (request, response, virtualHost.options);
             } else {
