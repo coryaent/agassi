@@ -190,19 +190,18 @@ if (process.argv.includes ('--server')) {
                 return;
             }
 
+            log.trace ('got authorization header', request.headers.authorization);
             // parse authentication header
-            log.trace ('parsing authentication header');
+            log.trace ('parsing authorization header');
             const requestAuth = (Buffer.from (request.headers.authorization.replace (/^Basic/, ''), 'base64')).toString ('utf-8');
             const [requestUser, requestPassword] = requestAuth.split (':');
-            log.trace ('got username', requestAuth);
+            log.trace ('got header username', requestUser);
 
             // parse vHost auth parameter
             log.trace ('parsing vhost auth');
-            const vHostAuth = base64RegEx.test (virtualHost.auth) ? // test if the provided agassi.auth is base64 encoded
-                (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8') : virtualHost.auth;
-
+            const vHostAuth = (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8');
             const [virtualUser, virtualHash] = vHostAuth.split (':');
-            log.trace ('got username', virtualUser);
+            log.trace ('got vhost username', virtualUser);
 
 
             // compare provided header with expected values
