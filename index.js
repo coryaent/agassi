@@ -204,7 +204,7 @@ if (process.argv.includes ('--server')) {
             log.trace ('vHostAuth', vHostAuth);
             log.trace ('virtualHash', virtualHash);
             // compare provided header with expected values
-            if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash.))) {
+            if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
                 log.trace ('authentication passed, proxying request');
                 Proxy.web (request, response, virtualHost.options);
             } else {
