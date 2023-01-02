@@ -167,7 +167,7 @@ if (process.argv.includes ('--server')) {
         }
 
         log.trace (`got virtual host for domain ${requestURL.hostname}`);
-        log.trace ('auth:', virtualHost.auth);
+        log.trace ('virtualHost.auth:', virtualHost.auth);
         log.trace ('options post parse:', virtualHost.options);
 
         // parse proxy options
@@ -197,12 +197,14 @@ if (process.argv.includes ('--server')) {
             // parse authentication header
             log.trace ('parsing authorization header');
             const requestAuth = (Buffer.from (request.headers.authorization.replace (/^Basic/, ''), 'base64')).toString ('utf-8');
+            log.trace ('request authentication', requestAuth);
             const [requestUser, requestPassword] = requestAuth.split (':');
             log.trace ('got header username', requestUser);
 
             // parse vHost auth parameter
             log.trace ('parsing vhost auth');
             const vHostAuth = (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8');
+            log.trace ('virtual host authentication', vHostAuth);
             const [virtualUser, virtualHash] = vHostAuth.split (':');
             log.trace ('got vhost username', virtualUser);
 
