@@ -57,6 +57,7 @@ if (process.argv.includes ('--client')) {
                     await redis.hset (`cert:${getVHost (service)}`, 'cert', cert, 'expiration', expiration);
                 // set dns record
                 await setDNSRecord (getVHost (service));
+                }
             }
         }
     });
