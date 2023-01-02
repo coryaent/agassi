@@ -205,7 +205,7 @@ if (process.argv.includes ('--server')) {
             // parse vHost auth parameter
             log.trace ('parsing vhost auth');
             const vHostAuth = (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8');
-            log.trace ('virtual host authentication', vHostAut.trimh());
+            log.trace ('virtual host authentication', vHostAuth.trim());
             const [virtualUser, virtualHash] = vHostAuth.split (':');
             log.trace ('got vhost username', virtualUser);
 
