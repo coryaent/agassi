@@ -47,7 +47,7 @@ if (process.argv.includes ('--client')) {
                 await redis.set (`service:${id}`, getVHost (service) );
                 log.debug ('setting vhost hash');
                 await redis.hset (`vhost:${getVHost (service)}`, 'auth', getAuth (service), 'options', JSON.stringify (getOptions (service)));
-                if (!redis.hexists (`cert:${getVhost(service)}`, 'cert')) {
+                if (!redis.hexists (`cert:${getVHost(service)}`, 'cert')) {
                     // need to fetch and add the certificate
                     let [cert, expiration] = await fetchCertificate (getVHost (service));
                     // log.debug (cert);
@@ -84,7 +84,7 @@ if (process.argv.includes ('--client')) {
                     await redis.set (`service:${event.Actor.ID}`, getVHost (service) );
                     log.debug ('setting vhost hash');
                     await redis.hset (`vhost:${getVHost (service)}`, 'auth', getAuth (service), 'options', JSON.stringify (getOptions (service)));
-                    if (!redis.hexists (`cert:${getVhost(service)}`, 'cert')) {
+                    if (!redis.hexists (`cert:${getVHost(service)}`, 'cert')) {
                         // need to fetch and add the certificate
                         let [cert, expiration] = await fetchCertificate (getVHost (service));
                         // log.debug (cert);
