@@ -201,9 +201,10 @@ if (process.argv.includes ('--server')) {
                 (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8') : virtualHost.auth;
             const [virtualUser, virtualHash] = vHostAuth.split (':');
 
-
+            log.trace ('vHostAuth', vHostAuth);
+            log.trace ('virtualHash', virtualHash);
             // compare provided header with expected values
-            if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash.trim ()))) {
+            if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash.))) {
                 log.trace ('authentication passed, proxying request');
                 Proxy.web (request, response, virtualHost.options);
             } else {
