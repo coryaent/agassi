@@ -168,8 +168,6 @@ if (process.argv.includes ('--server')) {
         }
 
         log.trace (`got virtual host for domain ${requestURL.hostname}`);
-        log.trace ('virtualHost.auth:', virtualHost.auth);
-        log.trace ('options post parse:', virtualHost.options);
 
         // parse proxy options
         // basic auth protected host
@@ -194,32 +192,23 @@ if (process.argv.includes ('--server')) {
                 return;
             }
 
-            log.trace ('got authorization header', request.headers.authorization);
             // parse authentication header
-            log.trace ('parsing authorization header');
             const requestAuth = (Buffer.from (request.headers.authorization.replace (/^Basic/, ''), 'base64')).toString ('utf-8');
-            log.trace ('request authentication', requestAuth);
             const [requestUser, requestPassword] = requestAuth.split (':');
-            log.trace ('got header username', requestUser);
 
             // parse vHost auth parameter
-            log.trace ('parsing vhost auth');
-            const vHostAuth = (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8');
-            log.trace ('virtual host authentication', vHostAuth.trim());
+            const vHostAuth = base64RegEx.test (virtualHost.auth) ? // is the provided agassi.auth is base64 encoded
+                (Buffer.from (virtualHost.auth, 'base64')).toString ('utf-8') : virtualHost.auth;
             const [virtualUser, virtualHash] = vHostAuth.split (':');
-            log.trace ('got vhost username', virtualUser);
 
 
-            log.trace ('compare (requestUser, virtualUser)', compare (requestUser, virtualUser));
-            log.trace ('requestPassword, virtualHash', requestPassword, virtualHash.trim ());
-            log.trace ('await compareHash (requestPassword, virtualHash)', await compareHash (requestPassword, virtualHash.trim ()));
             // compare provided header with expected values
             if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash.trim ()))) {
                 log.trace ('authentication passed, proxying request');
                 Proxy.web (request, response, virtualHost.options);
             } else {
                 // rate limit failed authentication
-                log.debug ('authentication failed');
+                log.trace ('authentication failed');
                 rateLimit.inboundRequest (request);
                 // prompt for password in browser
                 response.writeHead (401, { 'WWW-Authenticate': `Basic realm="Agassi"`});
