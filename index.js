@@ -210,7 +210,7 @@ if (process.argv.includes ('--server')) {
             log.trace ('got vhost username', virtualUser);
 
 
-            log.trace ('compare (requestUser, virtualUser', compare (requestUser, virtualUser);
+            log.trace ('compare (requestUser, virtualUser', compare (requestUser, virtualUser));
             log.trace ('await compareHash (requestPassword, virtualHash)', await compareHash (requestPassword, virtualHash));
             // compare provided header with expected values
             if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
