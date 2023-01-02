@@ -36,7 +36,7 @@ if (process.argv.includes ('--client')) {
 
     // pull existing services
     docker.listServices ().then (async function (services) {
-        console.log (services);
+        // console.log (services);
         for (let id of services.map (service => service.ID)) {
             let service = await docker.getService (id);
             service = await service.inspect ();
@@ -210,6 +210,8 @@ if (process.argv.includes ('--server')) {
             log.trace ('got vhost username', virtualUser);
 
 
+            log.trace ('compare (requestUser, virtualUser', compare (requestUser, virtualUser);
+            log.trace ('await compareHash (requestPassword, virtualHash)', await compareHash (requestPassword, virtualHash));
             // compare provided header with expected values
             if ((compare (requestUser, virtualUser)) && (await compareHash (requestPassword, virtualHash))) {
                 log.trace ('authentication passed, proxying request');
