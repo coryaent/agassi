@@ -4,28 +4,32 @@ Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockers
 By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates.
 
 ## Configuration
-```
-AGASSI_ACME_PRODUCTION
-AGASSI_DEFAULT_KEY_FILE
-AGASSI_DOCKER_API_VERSION default -> v1.37
-AGASSI_DOCKER_HOST
-AGASSI_DOCKER_PORT
-AGASSI_LETS_ENCRYPT_EMAIL
-AGASSI_LOG_LEVEL default -> info
-AGASSI_MAILINABOX_EMAIL
-AGASSI_MAILINABOX_PASSWORD_FILE
-AGASSI_REDIS_HOST
-AGASSI_REDIS_PORT
-AGASSI_TARGET_ALIAS
-AGASSI_TARGET_CNAME
-```
+
+ENVAR | Detail | Default
+--- | --- | ---
+`AGASSI_ACME_PRODUCTION` | if set to any value, fetch certificates from production Let's Encrypt |
+`AGASSI_AUTH_REALM` | the realm to use from basic authentication | 'Agassi'
+`AGASSI_DEFAULT_KEY_FILE` | the path to the default key used for signing certificates |
+`AGASSI_DOCKER_API_VERSION` | passed to [dockerode](https://github.com/apocas/dockerode) | 'v1.37'
+`AGASSI_DOCKER_HOST` | TCP socket passed to dockerode |
+`AGASSI_DOCKER_PORT` | TCP port passed to dockerode | 2375
+`AGASSI_LETS_ENCRYPT_EMAIL` | email address used to send certificate renewal notifications |
+`AGASSI_LOG_LEVEL` | trace, debug, info, warn, error, fatal | 'info'
+`AGASSI_MAILINABOX_EMAIL` | email used to authenticate mail-in-a-box API |
+`AGASSI_MAILINABOX_PASSWORD_FILE` | path to the password file used to authenticate mail-in-a-box API |
+`AGASSI_REDIS_HOST` | redis endpoint |
+`AGASSI_REDIS_PORT` | port used to connect to redis | 6379
+`AGASSI_TARGET_CNAME` | cname value to which DNS records point |
+
 ## Redis
 
-`HSET cert:example.com [cert] [cert expiration]`
+`SET cert:example.com [cert] EX [cert expiration]`
 
 `SET service:[service id] [vhost]`
 
 `HSET vhost:example.com [auth] [options]`
+
+## Labels
 
 ## Flow
 Agassi requires the use of two seperate services, a client (ACME and Docker) and a server (HTTPS).
