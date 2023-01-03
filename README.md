@@ -22,8 +22,8 @@ ENVAR | Detail | Default
 `AGASSI_TARGET_CNAME` | cname value to which DNS records point |
 
 ## Redis
-
-`SET cert:example.com [cert] EX [cert expiration]`
+*HSET should be SET with EX argument*
+`HSET cert:example.com [cert] [cert expiration]`
 
 `SET service:[service id] [vhost]`
 
