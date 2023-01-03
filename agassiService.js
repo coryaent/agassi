@@ -15,7 +15,7 @@ module.exports = {
         }
         const vHostRegEx = /v(?:irtual(?:\-h|H)|[Hh])ost/;
         const virtualHostLabel = Object.keys (labels)
-            .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
+            .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
             .find (label => vHostRegEx.test (label));            // find the virtual hosts label
         if (virtualHostLabel == undefined) {
             return false;
@@ -26,18 +26,18 @@ module.exports = {
         const authRegex = /auth(?:entication|oriz(?:ation|e)|enticate)?/;
         const labels = parseServiceLabels (service);
         const authLabel = Object.keys (labels)
-            .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
+            .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
             .find (label => authRegex.test (label));            // find the virtual hosts label
-        return labels['site.agassi.' + authLabel];
+        return labels[process.env.AGASSI_LABEL_PREFIX + '' + authLabel];
     },
     getVHost: function (service) {
         const vHostRegEx = /v(?:irtual(?:\-h|H)|[Hh])ost/;
 
         const labels = parseServiceLabels (service);
         const virtualHostLabel = Object.keys (labels)
-            .map  (label => label.replace ('site.agassi.', ''))  // remove prefix
+            .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
             .find (label => vHostRegEx.test (label));            // find the virtual hosts label
-        return labels['site.agassi.' + virtualHostLabel];
+        return labels[process.env.AGASSI_LABEL_PREFIX + '' + virtualHostLabel];
     },
     getOptions: function (service) {
         return parseProxyOptions (parseServiceLabels (service));
@@ -85,8 +85,8 @@ function parseProxyOptions (labels) {
 
     Object.keys (labels).forEach ((labelKey) => {
         // filter labels that start with the prefix
-        if (labelKey.startsWith ('site.agassi.')) {
-            const agassiLabel = labelKey.replace ('site.agassi.', '');
+        if (labelKey.startsWith (process.env.AGASSI_LABEL_PREFIX)) {
+            const agassiLabel = labelKey.replace (process.env.AGASSI_LABEL_PREFIX, '');
             // filter labels that define a proxy option
             if (optRegEx.test (agassiLabel)) {
                 const optionKey = camelCase (agassiLabel.substring (agassiLabel.lastIndexOf ('.') + 1));

@@ -13,6 +13,7 @@ ENVAR | Detail | Default
 `AGASSI_DOCKER_API_VERSION` | passed to [dockerode](https://github.com/apocas/dockerode) | 'v1.37'
 `AGASSI_DOCKER_HOST` | TCP socket passed to dockerode |
 `AGASSI_DOCKER_PORT` | TCP port passed to dockerode | 2375
+`AGASSI_LABEL_PREFIX` | label prefix to define virtual hosts |
 `AGASSI_LETS_ENCRYPT_EMAIL` | email address used to send certificate renewal notifications |
 `AGASSI_LOG_LEVEL` | trace, debug, info, warn, error, fatal | 'info'
 `AGASSI_MAILINABOX_EMAIL` | email used to authenticate mail-in-a-box API |
