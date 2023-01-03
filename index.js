@@ -64,6 +64,7 @@ if (process.argv.includes ('--client')) {
 
 
     // subscribe to events
+    // see https://github.com/apocas/dockerode/issues/635 to close listeners (to gracefully shutdown)
     docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
         events.on ('data', async (data) => {
             let event = JSON.parse (data);
