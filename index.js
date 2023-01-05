@@ -2,9 +2,6 @@
 
 const log = require ('./logger.js');
 
-const Redis = require ('ioredis')
-const Docker = require ('dockerode');
-
 // check argv
 if (!process.argv.includes ('--client') && !process.argv.includes ('--server')) {
     log.fatal ('must specify client or server mode');
@@ -14,6 +11,46 @@ if (process.argv.includes ('--client') && process.argv.includes ('--server')) {
     log.fatal ('cannot run as client and server simultaneously');
     process.exit (1);
 }
+
+const isValidPath = require ('is-valid-path');
+const isValidEmail = require ('is-valid-email');
+const isValidDomain = require ('is-valid-domain');
+
+if (!process.env.AGASSI_DEFAULT_KEY_FILE || !isValidPath (process.env.AGASSI_DEFAULT_KEY_FILE)) {
+    log.fatal ('AGASSI_DEFAULT_KEY_FILE is either not provided or invalid');
+    process.exit (1);
+}
+if (!process.env.AGASSI_DOCKER_HOST) {
+    log.fatal ('AGASSI_DOCKER_HOST must be defined');
+    process.exit (1);
+}
+if (!process.env.AGASSI_LABEL_PREFIX) {
+    log.fatal ('AGASSI_LABEL_PREFIX is required');
+    process.exit (1);
+}
+if (!process.env.AGASSI_LETS_ENCRYPT_EMAIL || !isValidEmail (process.env.AGASSI_LETS_ENCRYPT_EMAIL)) {
+    log.fatal ('AGASSI_LETS_ENCRYPT_EMAIL is either not provided or invalid');
+    process.exit (1);
+}
+if (!process.env.AGASSI_MAILINABOX_EMAIL || !isValidEmadil (process.env.AGASSI_MAILINABOX_EMAIL)) {
+    log.fatal ('AGASSI_MAILINABOX_EMAIL is either not defined or not valid');
+    process.exit (1);
+}
+if (!process.env.AGASSI_MAILINABOX_PASSWORD_FILE || !isValidPath (process.env.AGASSI_MAILINABOX_PASSWORD_FILE)) {
+    log.fatal ('AGASSI_MAILINABOX_PASSWORD_FILE is either not provided or not valid');
+    process.exit (1);
+}
+if (!process.env.AGASSI_REDIS_HOST) {
+    log.fatal ('AGASSI_REDI_HOST is must be defined');
+    process.exit (1);
+}
+if (!process.env.AGASSI_TARGET_CNAME || !isValidDomain (process.env.AGASSI_TARGET_CNAME, { subdomain: true })) {
+    log.fatal ('AGASSI_TARGET_CNAME is either undefined or invalid');
+    process.exit (1);
+}
+
+const Redis = require ('ioredis')
+const Docker = require ('dockerode');
 
 // initialization
 const redis = new Redis({

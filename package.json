@@ -35,6 +35,8 @@
     "http-ratelimit": "^0.2.3",
     "ioredis": "^4.27.3",
     "is-valid-domain": "^0.1.6",
+    "is-valid-email": "^0.0.5",
+    "is-valid-path": "^0.1.1",
     "nano-memoize": "^2.0.0",
     "node-forge": "^1.3.1",
     "p-retry": "^5.1.2",
