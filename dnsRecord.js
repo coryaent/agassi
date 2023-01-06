@@ -3,16 +3,7 @@
 const log = require ('./logger.js');
 
 const fs = require ('fs');
-
 const axios = require ('axios');
-
-const isValidDomain = require ('is-valid-domain');
-const isValidIP = require ('validate-ip-node');
-
-if (process.env.AGASSI_TARGET_ALIAS && process.env.AGASSI_TARGET_CNAME) {
-    log.error ('AGASSI_TARGET_ALIAS and AGASSI_TARGET_CNAME cannot both be set');
-    process.exit (1);
-}
 
 const auth = {
     username: process.env.AGASSI_MAILINABOX_EMAIL,
