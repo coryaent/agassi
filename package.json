@@ -33,7 +33,7 @@
     "fast-date-format": "^2.2.4",
     "http-proxy": "^1.18.1",
     "http-ratelimit": "^0.2.3",
-    "ioredis": "^4.27.3",
+    "ioredis": "^4.27.8",
     "is-valid-domain": "^0.1.6",
     "is-valid-email": "^0.0.5",
     "is-valid-path": "^0.1.1",
