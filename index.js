@@ -20,34 +20,10 @@ if (!process.env.AGASSI_DEFAULT_KEY_FILE || !isValidPath (process.env.AGASSI_DEF
     log.fatal ('AGASSI_DEFAULT_KEY_FILE is either not provided or invalid');
     process.exit (1);
 }
-if (!process.env.AGASSI_DOCKER_HOST) {
-    log.fatal ('AGASSI_DOCKER_HOST must be defined');
-    process.exit (1);
-}
-if (!process.env.AGASSI_LABEL_PREFIX) {
-    log.fatal ('AGASSI_LABEL_PREFIX is required');
-    process.exit (1);
-}
-if (!process.env.AGASSI_LETS_ENCRYPT_EMAIL || !isValidEmail (process.env.AGASSI_LETS_ENCRYPT_EMAIL)) {
-    log.fatal ('AGASSI_LETS_ENCRYPT_EMAIL is either not provided or invalid');
-    process.exit (1);
-}
-if (!process.env.AGASSI_MAILINABOX_EMAIL || !isValidEmadil (process.env.AGASSI_MAILINABOX_EMAIL)) {
-    log.fatal ('AGASSI_MAILINABOX_EMAIL is either not defined or not valid');
-    process.exit (1);
-}
-if (!process.env.AGASSI_MAILINABOX_PASSWORD_FILE || !isValidPath (process.env.AGASSI_MAILINABOX_PASSWORD_FILE)) {
-    log.fatal ('AGASSI_MAILINABOX_PASSWORD_FILE is either not provided or not valid');
-    process.exit (1);
-}
+
 if (!process.env.AGASSI_REDIS_HOST) {
-    log.fatal ('AGASSI_REDI_HOST is must be defined');
+    log.fatal ('AGASSI_REDIS_HOST is must be defined');
     process.exit (1);
-}
-if (!process.env.AGASSI_TARGET_CNAME || !isValidDomain (process.env.AGASSI_TARGET_CNAME, { subdomain: true })) {
-    log.fatal ('AGASSI_TARGET_CNAME is either undefined or invalid');
-    process.exit (1);
-}
 
 const Redis = require ('ioredis')
 const Docker = require ('dockerode');
@@ -66,6 +42,31 @@ const docker = new Docker ({
 
 // if client start monitoring docker socket
 if (process.argv.includes ('--client')) {
+    if (!process.env.AGASSI_DOCKER_HOST) {
+        log.fatal ('AGASSI_DOCKER_HOST must be defined');
+        process.exit (1);
+    }
+    if (!process.env.AGASSI_LABEL_PREFIX) {
+        log.fatal ('AGASSI_LABEL_PREFIX is required');
+        process.exit (1);
+    }
+    if (!process.env.AGASSI_LETS_ENCRYPT_EMAIL || !isValidEmail (process.env.AGASSI_LETS_ENCRYPT_EMAIL)) {
+        log.fatal ('AGASSI_LETS_ENCRYPT_EMAIL is either not provided or invalid');
+        process.exit (1);
+    }
+    if (!process.env.AGASSI_MAILINABOX_EMAIL || !isValidEmadil (process.env.AGASSI_MAILINABOX_EMAIL)) {
+        log.fatal ('AGASSI_MAILINABOX_EMAIL is either not defined or not valid');
+        process.exit (1);
+    }
+    if (!process.env.AGASSI_MAILINABOX_PASSWORD_FILE || !isValidPath (process.env.AGASSI_MAILINABOX_PASSWORD_FILE)) {
+        log.fatal ('AGASSI_MAILINABOX_PASSWORD_FILE is either not provided or not valid');
+        process.exit (1);
+    }
+
+    if (!process.env.AGASSI_TARGET_CNAME || !isValidDomain (process.env.AGASSI_TARGET_CNAME, { subdomain: true })) {
+        log.fatal ('AGASSI_TARGET_CNAME is either undefined or invalid');
+        process.exit (1);
+    }
 
     const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
     const fetchCertificate = require ('./fetchCertificate.js');

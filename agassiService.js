@@ -2,8 +2,6 @@
 
 const log = require ('./logger.js');
 
-const isValidDomain = require ('is-valid-domain');
-
 module.exports = {
     isAgassiService: function (service) {
 
