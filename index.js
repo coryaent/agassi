@@ -24,6 +24,7 @@ if (!process.env.AGASSI_DEFAULT_KEY_FILE || !isValidPath (process.env.AGASSI_DEF
 if (!process.env.AGASSI_REDIS_HOST) {
     log.fatal ('AGASSI_REDIS_HOST is must be defined');
     process.exit (1);
+}
 
 const Redis = require ('ioredis')
 const Docker = require ('dockerode');
