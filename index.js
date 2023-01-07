@@ -71,7 +71,7 @@ if (process.argv.includes ('--client')) {
 
     const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
     const fetchCertificate = require ('./fetchCertificate.js');
-    const setDNSRecord = require ('./dnsRecord.js');
+    const { setCnameRecord,  deleteCnameRecord } = require ('./dnsRecord.js');
 
     // pull existing services
     docker.listServices ().then (async function (services) {
@@ -95,7 +95,7 @@ if (process.argv.includes ('--client')) {
                     // Math.floor (new Date (expiration).getTime ()/ 1000)
                     await redis.hset (`cert:${getVHost (service)}`, 'cert', cert, 'expiration', expiration);
                 // set dns record
-                await setDNSRecord (getVHost (service));
+                await setCnameRecord (getVHost (service));
                 }
             }
         }
@@ -135,7 +135,7 @@ if (process.argv.includes ('--client')) {
                     }
                     log.debug ('found cert');
                     log.debug ('setting dns record');
-                    await setDNSRecord (getVHost (service));
+                    await setCnameRecord (getVHost (service));
                 }
             }
             if (event.Action == 'remove') {
