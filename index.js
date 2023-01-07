@@ -111,7 +111,6 @@ if (process.argv.includes ('--client')) {
             if (event.Action == 'create' || event.Action == 'update') {
                 let service = await docker.getService (event.Actor.ID);
                 service = await service.inspect ();
-                log.trace (service);
                 log.debug ('id: ' + event.Actor.ID);
                 log.debug ('vhost: ' + getVHost (service));
                 log.debug ('auth: ' + getAuth (service));
@@ -134,6 +133,8 @@ if (process.argv.includes ('--client')) {
                         await redis.hset (`cert:${getVHost (service)}`, 'cert', cert, 'expiration', expiration);
 
                     }
+                    log.debug ('found cert');
+                    log.debug ('setting dns record');
                     await setDNSRecord (getVHost (service));
                 }
             }
