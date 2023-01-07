@@ -1,3 +1,5 @@
+![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/coryaent/agassi?style=flat-square)
+
 # Agassi
 Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockerswarm.rocks/). When Traefik dropped support for distributed certificate storage, it created a situation all certificates were stored locally on a single machine. This removed redundency from the setup.
 
