@@ -54,7 +54,7 @@ if (process.argv.includes ('--client')) {
         log.fatal ('AGASSI_LETS_ENCRYPT_EMAIL is either not provided or invalid');
         process.exit (1);
     }
-    if (!process.env.AGASSI_MAILINABOX_EMAIL || !isValidEmadil (process.env.AGASSI_MAILINABOX_EMAIL)) {
+    if (!process.env.AGASSI_MAILINABOX_EMAIL || !isValidEmail (process.env.AGASSI_MAILINABOX_EMAIL)) {
         log.fatal ('AGASSI_MAILINABOX_EMAIL is either not defined or not valid');
         process.exit (1);
     }
