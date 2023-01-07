@@ -17,7 +17,7 @@ module.exports = {
         });
     },
     deleteCnameRecord: async function domain {
-        return await axios.delete ('https://corya.net/admin/dns/custom/${domain}/cname', {
+        return await axios.delete (`https://corya.net/admin/dns/custom/${domain}/cname`, {
             auth
         });
     }
