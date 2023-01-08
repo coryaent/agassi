@@ -27,7 +27,7 @@ const defaultCert = generateCertificate ();
 module.exports = https.createServer ({
     SNICallback: async (domain, callback) => {
         // get latest cert
-        const queryResponse = await redis.hget (`cert:${domain}`, 'cert');
+        const queryResponse = await redis.get (`cert:${domain}`);
 
         if (queryResponse) {
             // got cert

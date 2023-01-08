@@ -4,6 +4,7 @@ const log = require ('./logger.js');
 
 const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
 const { putCnameRecord, deleteCnameRecord } = require ('./dnsRecord.js');
+const fetchCertificate = require ('./fetchCertificate.js');
 const Redis = require ('ioredis');
 const Docker = require ('dockerode');
 
@@ -24,9 +25,12 @@ module.exports = {
         // pull existing services
         log.debug ('adding existing services');
         docker.listServices ().then (async function (services) {
+            log.debug ('found ' + services.length + ' services');
             for (let id of services.map (service => service.ID)) {
+                log.debug ('checking service ' + id);
                 let service = await docker.getService (id);
                 service = await service.inspect ();
+                log.debug ('parsed service ' + id);
                 if (isAgassiService (service)) {
                     log.debug ('found agassi service ' + id);
                     log.debug ('vhost: ' + getVHost (service));
@@ -64,9 +68,8 @@ module.exports = {
                 }
                 if (event.Action == 'remove') {
                     // removeServiceFromDB
-                    let removeService = await docker.getService (event.Actor.ID);
-                    removeService = await removeService.inspect ();
-                    await deleteCnameRecord (getVHost (removeService));
+                    let vHost = await redis.get (`service:${event.Actor.ID}`);
+                    await deleteCnameRecord (vHost);
                     await removeServiceFromDB (event.Actor.ID);
                 }
             });
@@ -78,13 +81,13 @@ async function addServiceToDB (service) {
 
     log.debug ('adding service to DB');
     // `SET service:[service id] [vhost]`
-    log.debug ('setting service -> vhost');
+    log.debug (`setting service ${service.ID} -> vhost ${getVHost (service)}`);
     let res = await redis.set (`service:${service.ID}`, getVHost (service) );
     log.debug (res);
-    log.debug ('setting vhost hash');
+    log.debug ('setting vhost ' + getVHost (service));
     res = await redis.hset (`vhost:${getVHost (service)}`, 'auth', getAuth (service), 'options', JSON.stringify (getOptions (service)));
     log.debug (res);
-    if (!redis.exists (`cert:${getVHost(service)}`, 'cert')) {
+    if (!await redis.exists (`cert:${getVHost(service)}`)) {
         // need to fetch and add the certificate
         let [cert, expiration] = await fetchCertificate (getVHost (service));
         log.debug ('expiration ' + expiration);

@@ -12,16 +12,21 @@ module.exports = {
             return false;
         }
         const vHostRegEx = /v(?:irtual(?:\-h|H)|[Hh])ost/;
-        log.debug ('process.env.AGASSI_LABEL_PREFIX = ' + process.env.AGASSI_LABEL_PREFIX);
-        const virtualHostLabel = Object.keys (labels)
-            .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
-            .find (label => vHostRegEx.test (label));            // find the virtual hosts label
-        log.debug ('got virtualHostLabel', virtualHostLabel);
-        log.debug ('vHostRegEx.test (virtualHostLabel)', vHostRegEx.test (virtualHostLabel));
-        if (virtualHostLabel == undefined) {
-            return false;
+        // we need to check for AGASSI_LABEL_PREFIX + vHost and
+
+        for (let labelKey of Object.keys (labels)) {
+            // filter labels that start with the prefix
+            if (labelKey.startsWith (process.env.AGASSI_LABEL_PREFIX)) {
+                const agassiLabel = labelKey.replace (process.env.AGASSI_LABEL_PREFIX, '');
+                // filter labels that define a proxy option
+                if (vHostRegEx.test (agassiLabel)) {
+                    log.debug ('found label', process.env.AGASSI_LABEL_PREFIX.concat (agassiLabel));
+                    log.debug ('this is an agassi service');
+                    return true;
+                }
+            }
         }
-        return true;
+        return false;
     },
     getAuth: function (service) {
         const authRegex = /auth(?:entication|oriz(?:ation|e)|enticate)?/;
@@ -29,6 +34,7 @@ module.exports = {
         const authLabel = Object.keys (labels)
             .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
             .find (label => authRegex.test (label));            // find the virtual hosts label
+        // log.debug ('got authLabel', authLabel);
         return labels[process.env.AGASSI_LABEL_PREFIX + '' + authLabel];
     },
     getVHost: function (service) {
