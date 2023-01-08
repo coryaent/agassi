@@ -71,7 +71,8 @@ if (process.argv.includes ('--client')) {
 
     const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
     const fetchCertificate = require ('./fetchCertificate.js');
-    const { setCnameRecord,  deleteCnameRecord } = require ('./dnsRecord.js');
+    const { putCnameRecord,  deleteCnameRecord } = require ('./dnsRecord.js');
+    const client = require ('./client');
 
     // pull existing services
     docker.listServices ().then (async function (services) {

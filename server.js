@@ -11,14 +11,16 @@ const memoize = require ('nano-memoize');
 const bcrypt = require ('bcryptjs');
 const compare = require ('tsscmp');
 const generateCertificate = require ('./generateCertificate.js');
+const Redis = require ('ioredis')
 
 const Proxy = require ('./proxy.js');
 
 // initializations
 const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
-
-const base64RegEx = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-// const bcryptRegEx = /\$2[xy]\$/;
+const redis = new Redis ({
+    host: process.env.AGASSI_REDIS_HOST,
+    port: process.env.AGASSI_REDIS_PORT
+});
 
 const defaultCert = generateCertificate ();
 

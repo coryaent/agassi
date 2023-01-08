@@ -11,13 +11,23 @@ const auth = {
 };
 
 module.exports = {
-    setCnameRecord: async function (domain) {
-        return await axios.put (`https://corya.net/admin/dns/custom/${domain}/cname`, process.env.AGASSI_TARGET_CNAME, {
+    putTxtRecord: async function (qname, text) {
+        return await axios.put (`https://corya.net/admin/dns/custom/${qname}/txt`, text, {
             auth
         });
     },
-    deleteCnameRecord: async function domain {
-        return await axios.delete (`https://corya.net/admin/dns/custom/${domain}/cname`, {
+    deleteTxtRecord: async function (qname) {
+        return await axios.delete (`https://corya.net/admin/dns/custom/${qname}/txt`, {
+            auth
+        });
+    },
+    putCnameRecord: async function (qname) {
+        return await axios.put (`https://corya.net/admin/dns/custom/${qname}/cname`, process.env.AGASSI_TARGET_CNAME, {
+            auth
+        });
+    },
+    deleteCnameRecord: async function (qname) {
+        return await axios.delete (`https://corya.net/admin/dns/custom/${qname}/cname`, {
             auth
         });
     }

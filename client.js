@@ -1,6 +1,17 @@
 "use strict";
 
-async function addServiceToDB {
+const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
+
+module.exports = {
+    addExistingServices: async function () {
+
+    },
+    listen: async function () {
+
+    }
+}
+
+async function addServiceToDB (service) {
 
     log.debug ('found agassi service')
     // `SET service:[service id] [vhost]`
@@ -8,7 +19,7 @@ async function addServiceToDB {
     await redis.set (`service:${id}`, getVHost (service) );
     log.debug ('setting vhost hash');
     await redis.hset (`vhost:${getVHost (service)}`, 'auth', getAuth (service), 'options', JSON.stringify (getOptions (service)));
-    if (!redis.hexists (`cert:${getVHost(service)}`, 'cert')) {
+    if (!redis.exists (`cert:${getVHost(service)}`, 'cert')) {
         // need to fetch and add the certificate
         let [cert, expiration] = await fetchCertificate (getVHost (service));
         // log.debug (cert);
@@ -17,7 +28,7 @@ async function addServiceToDB {
         // Math.floor (new Date (expiration).getTime ()/ 1000)
         await redis.hset (`cert:${getVHost (service)}`, 'cert', cert, 'expiration', expiration);
     // set dns record
-    await setCnameRecord (getVHost (service));
+    await putCnameRecord (getVHost (service));
 }
 
 async function removeServiceFromDB (service) {
