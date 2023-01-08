@@ -74,7 +74,7 @@ module.exports = async function (domain) {
 
     log.debug ('reading expiration');
     const { validTo } = new X509Certificate (cert);
-    const expiration = new Date (validTo));
+    const expiration = new Date (validTo);
 
     // remove challenge
     log.debug ('removing challenge key');

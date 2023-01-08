@@ -12,9 +12,12 @@ module.exports = {
             return false;
         }
         const vHostRegEx = /v(?:irtual(?:\-h|H)|[Hh])ost/;
+        log.debug ('process.env.AGASSI_LABEL_PREFIX = ' + process.env.AGASSI_LABEL_PREFIX);
         const virtualHostLabel = Object.keys (labels)
             .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
             .find (label => vHostRegEx.test (label));            // find the virtual hosts label
+        log.debug ('got virtualHostLabel', virtualHostLabel);
+        log.debug ('vHostRegEx.test (virtualHostLabel)', vHostRegEx.test (virtualHostLabel));
         if (virtualHostLabel == undefined) {
             return false;
         }

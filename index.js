@@ -26,21 +26,6 @@ if (!process.env.AGASSI_REDIS_HOST) {
     process.exit (1);
 }
 
-const Redis = require ('ioredis')
-const Docker = require ('dockerode');
-
-// initialization
-const redis = new Redis({
-    host: process.env.AGASSI_REDIS_HOST,
-    port: process.env.AGASSI_REDIS_PORT
-});
-
-const docker = new Docker ({
-    host: process.env.AGASSI_DOCKER_HOST,
-    port: process.env.AGASSI_DOCKER_PORT,
-    version: process.env.AGASSI_DOCKER_API_VERSION
-});
-
 // if client start monitoring docker socket
 if (process.argv.includes ('--client')) {
     if (!process.env.AGASSI_DOCKER_HOST) {
@@ -68,48 +53,9 @@ if (process.argv.includes ('--client')) {
         log.fatal ('AGASSI_TARGET_CNAME is either undefined or invalid');
         process.exit (1);
     }
-
-    const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
-    const fetchCertificate = require ('./fetchCertificate.js');
-    const { putCnameRecord,  deleteCnameRecord } = require ('./dnsRecord.js');
     const client = require ('./client');
-
-    // pull existing services
-    docker.listServices ().then (async function (services) {
-        // console.log (services);
-        for (let id of services.map (service => service.ID)) {
-            let service = await docker.getService (id);
-            service = await service.inspect ();
-            if (isAgassiService (service)) {
-                // addServiceToDB
-            }
-        }
-    });
-
-
-    // subscribe to events
-    // see https://github.com/apocas/dockerode/issues/635 to close listeners (to gracefully shutdown)
-    docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
-        events.on ('data', async (data) => {
-            let event = JSON.parse (data);
-            // log.trace (event);
-            if (event.Action == 'create' || event.Action == 'update') {
-                let service = await docker.getService (event.Actor.ID);
-                service = await service.inspect ();
-                log.debug ('id: ' + event.Actor.ID);
-                log.debug ('vhost: ' + getVHost (service));
-                log.debug ('auth: ' + getAuth (service));
-                log.debug ('options:', getOptions (service));
-                // if we have an agassi service
-                if (isAgassiService (service)) {
-                    // addServiceToDB
-                }
-            }
-            if (event.Action == 'remove') {
-                // removeServiceFromDB
-            }
-        });
-    });
+    client.addExistingServices ();
+    client.listen ();
 }
 
 // if server start HTTPS server
