@@ -102,7 +102,7 @@ async function removeServiceFromDB (id) {
     log.debug ('removing vhost');
     let vHost = await redis.get ('service:' + id);
     log.debug (vHost);
-    let res = await redis.hdel ('vhost:' + vHost);
+    let res = await redis.del ('vhost:' + vHost);
     log.debug (res);
     log.debug ('removing service ' + id);
     res = await redis.del ('service:' + id);

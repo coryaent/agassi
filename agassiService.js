@@ -18,11 +18,19 @@ module.exports = {
             // filter labels that start with the prefix
             if (labelKey.startsWith (process.env.AGASSI_LABEL_PREFIX)) {
                 const agassiLabel = labelKey.replace (process.env.AGASSI_LABEL_PREFIX, '');
-                // filter labels that define a proxy option
+                // filter labels that meet the regex
                 if (vHostRegEx.test (agassiLabel)) {
-                    log.debug ('found label', process.env.AGASSI_LABEL_PREFIX.concat (agassiLabel));
-                    log.debug ('this is an agassi service');
-                    return true;
+                    // has virtual host
+                    log.debug ('isAgassiService found label', process.env.AGASSI_LABEL_PREFIX.concat (agassiLabel));
+                    log.debug ('this may be an agassi service');
+                    if (getOptions (service)['forward']) {
+                        log.debug ('found forward option');
+                        return true
+                    }
+                    if (getOptions (service) ['target']) {
+                        log.debug ('found target option');
+                        return true
+                    }
                 }
             }
         }
@@ -46,9 +54,11 @@ module.exports = {
             .find (label => vHostRegEx.test (label));            // find the virtual hosts label
         return labels[process.env.AGASSI_LABEL_PREFIX + '' + virtualHostLabel];
     },
-    getOptions: function (service) {
-        return parseProxyOptions (parseServiceLabels (service));
-    }
+    getOptions: getOptions
+}
+
+function getOptions (service) {
+    return parseProxyOptions (parseServiceLabels (service));
 }
 // pass service details
 function parseServiceLabels (service) {

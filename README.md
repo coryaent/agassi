@@ -5,6 +5,9 @@ Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockers
 
 By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates.
 
+# TODO
+[ ] handle case where two services have the same vhost/domain
+
 ## Configuration
 
 ENVAR | Detail | Default
