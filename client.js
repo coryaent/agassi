@@ -67,13 +67,14 @@ module.exports = {
                         log.debug ('options:', getOptions (service));
                         await addServiceToDB (service);
                         res = await putCnameRecord (getVHost (service));
-                        log.debug (res);
+                        log.debug (res.data.trim ());
                     }
                 }
                 if (event.Action == 'remove') {
                     // removeServiceFromDB
                     let vHost = await redis.get (`service:${event.Actor.ID}`);
-                    await deleteCnameRecord (vHost);
+                    res = await deleteCnameRecord (vHost);
+                    log.debug (res.data.trim ());
                     res = await removeServiceFromDB (event.Actor.ID);
                     log.debug (res);
                 }
