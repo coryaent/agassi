@@ -1,4 +1,4 @@
-"use strict";
+ "use strict";
 
 const log = require ('./logger.js');
 
@@ -38,9 +38,11 @@ module.exports = {
                     log.debug ('options:', getOptions (service));
                     // adding service triggers a call to fetch the certificate
                     // and add it to the database
-                    await addServiceToDB (service);
+                    let res = await addServiceToDB (service);
+                    log.debug (res);
                     // set dns record
-                    await putCnameRecord (getVHost (service));
+                    res = await putCnameRecord (getVHost (service));
+                    log.debug (res);
                 }
             }
         });
@@ -49,6 +51,7 @@ module.exports = {
         log.debug ('subscribing to events');
         docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
             events.on ('data', async (data) => {
+                let res = null;
                 let event = JSON.parse (data);
                 // log.trace (event);
                 if (event.Action == 'create' || event.Action == 'update') {
@@ -63,14 +66,16 @@ module.exports = {
                         log.debug ('auth: ' + getAuth (service));
                         log.debug ('options:', getOptions (service));
                         await addServiceToDB (service);
-                        await putCnameRecord (getVHost (service));
+                        res = await putCnameRecord (getVHost (service));
+                        log.debug (res);
                     }
                 }
                 if (event.Action == 'remove') {
                     // removeServiceFromDB
                     let vHost = await redis.get (`service:${event.Actor.ID}`);
                     await deleteCnameRecord (vHost);
-                    await removeServiceFromDB (event.Actor.ID);
+                    res = await removeServiceFromDB (event.Actor.ID);
+                    log.debug (res);
                 }
             });
         });
