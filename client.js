@@ -19,6 +19,8 @@ const redis = new Redis ({
     port: process.env.AGASSI_REDIS_PORT
 });
 const msInDay = 86400000;
+const msInMinute = 60000;
+var maintenanceInterval = undefined;
 
 module.exports = {
     addExistingServices: async function () {
@@ -71,15 +73,32 @@ module.exports = {
                     }
                 }
                 if (event.Action == 'remove') {
-                    // removeServiceFromDB
-                    let vHost = await redis.get (`service:${event.Actor.ID}`);
-                    res = await deleteCnameRecord (vHost);
-                    log.debug (res.data.trim ());
-                    res = await removeServiceFromDB (event.Actor.ID);
-                    log.debug (res);
+                    if (await redis.exists (`service:${event.Actor.ID}`)) {
+                        // remove cname and remove service from db
+                        let vHost = await redis.get (`service:${event.Actor.ID}`);
+                        res = await deleteCnameRecord (vHost);
+                        log.debug (res.data.trim ());
+                        res = await removeServiceFromDB (event.Actor.ID);
+                        log.debug (res);
+                    }
                 }
             });
         });
+    },
+    maintenance: {
+        start: () => {
+            if (!maintenanceInterval) {
+                log.debug ('starting maintenance');
+                maintenanceInterval = setInterval (performMaintenance, Number.parseInt (process.env.AGASSI_MAINTENANCE_INTERVAL) * msInMinute);
+            }
+        },
+        stop: () => {
+            if (maintenanceInterval) {
+                log.debug ('stopping maintenance');
+                clearInterval (maintenanceInterval);
+                maintenanceInterval = undefined;
+            }
+        }
     }
 };
 
@@ -105,6 +124,7 @@ async function addServiceToDB (service) {
 
 async function removeServiceFromDB (id) {
     // leave the cert alone in this circumstance, it will expire on its own
+    log.debug ('removing service from database');
     log.debug ('removing vhost');
     let vHost = await redis.get ('service:' + id);
     log.debug (vHost);
@@ -114,6 +134,42 @@ async function removeServiceFromDB (id) {
     res = await redis.del ('service:' + id);
     log.debug (res);
 };
+
+// perform maintenance (will be called at a regular interval)
+async function performMaintenance () {
+    // remove services that are no longer in docker
+    // pull existing services from db
+    let dbServices = (await redis.keys ('service:*')).map (key => key.replace ('service:', ''));
+    log.debug (`found ${dbServices.length} db services`, dbServices);
+
+    // pull services from docker
+    let dockerServices = (await docker.listServices ()).map (service => service.ID);
+    log.debug (`found ${dockerServices.length} docker services`, dockerServices);
+
+    // iterate through each db service and check that it still exists in docker x
+    for (let id of dbServices) {
+        if (!dockerServices.includes (id)) {
+            // service only exists in the database, it needs to be pruned
+            await removeServiceFromDB (id);
+        }
+    }
+
+    // now that they're pruned, fetch the service keys again'
+    let serviceKeys = await redis.keys ('service:*');
+    for (let key of serviceKeys) {
+        log.debug ('fetching vhost for', key);
+        let vHost = await redis.get (key);
+        log.debug ('got vhost', vHost);
+        if (!await dbHasCurrentCert (vHost)) {
+            // we need to fetch a cert and insert it into the database
+            let [cert, expiration] = await fetchCertificate (getVHost (service));
+            log.debug ('expiration ' + expiration);
+            log.debug ('adding cert to redis');
+            res = await redis.set (`cert:${getVHost (service)}`, cert, 'PX', expiration);
+            log.debug (res);
+        }
+    }
+}
 
 // check if a cert expiration is beyond a certain safeguard
 async function dbHasCurrentCert (domain) {

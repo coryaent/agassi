@@ -3,7 +3,7 @@
 # Agassi
 Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockerswarm.rocks/). When Traefik dropped support for distributed certificate storage, it created a situation all certificates were stored locally on a single machine. This removed redundency from the setup.
 
-By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates.
+By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates. Domain and virtual host are used interchangably in the code.
 
 # TODO
 [ ] handle case where two services have the same vhost/domain
@@ -24,6 +24,7 @@ ENVAR | Detail | Default
 `AGASSI_LOG_LEVEL` | trace, debug, info, warn, error, fatal | 'info'
 `AGASSI_MAILINABOX_EMAIL` | email used to authenticate mail-in-a-box API |
 `AGASSI_MAILINABOX_PASSWORD_FILE` | path to the password file used to authenticate mail-in-a-box API |
+`AGASSI_MAINTENANCE_INTERVAL` | how often to prune services and update certificates (minutes) | '60'
 `AGASSI_REDIS_HOST` | redis endpoint |
 `AGASSI_REDIS_PORT` | port used to connect to redis | 6379
 `AGASSI_TARGET_CNAME` | cname value to which DNS records point |

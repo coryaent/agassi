@@ -56,6 +56,7 @@ if (process.argv.includes ('--client')) {
     const client = require ('./client');
     client.addExistingServices ();
     client.listen ();
+    client.maintenance.start ();
 }
 
 // if server start HTTPS server
