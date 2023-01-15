@@ -19,7 +19,6 @@ const redis = new Redis ({
     port: process.env.AGASSI_REDIS_PORT
 });
 const msInDay = 86400000;
-const msInMinute = 60000;
 var maintenanceInterval = undefined;
 
 module.exports = {
@@ -89,7 +88,8 @@ module.exports = {
         start: () => {
             if (!maintenanceInterval) {
                 log.debug ('starting maintenance');
-                maintenanceInterval = setInterval (performMaintenance, Number.parseInt (process.env.AGASSI_MAINTENANCE_INTERVAL) * 60000);// * msInMinute);
+                // 60000 is the number of milliseconds in a minute
+                maintenanceInterval = setInterval (performMaintenance, Number.parseInt (process.env.AGASSI_MAINTENANCE_INTERVAL) * 60000);
             }
         },
         stop: () => {
