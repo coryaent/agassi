@@ -137,6 +137,7 @@ async function removeServiceFromDB (id) {
 
 // perform maintenance (will be called at a regular interval)
 async function performMaintenance () {
+    log.debug ('performing maintenance');
     // remove services that are no longer in docker
     // pull existing services from db
     let dbServices = (await redis.keys ('service:*')).map (key => key.replace ('service:', ''));
@@ -155,6 +156,7 @@ async function performMaintenance () {
     }
 
     // now that they're pruned, fetch the service keys again'
+    // use keydb here or don't have too many services'
     let serviceKeys = await redis.keys ('service:*');
     for (let key of serviceKeys) {
         log.debug ('fetching vhost for', key);
