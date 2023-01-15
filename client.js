@@ -89,7 +89,7 @@ module.exports = {
         start: () => {
             if (!maintenanceInterval) {
                 log.debug ('starting maintenance');
-                maintenanceInterval = setInterval (performMaintenance, Number.parseInt (process.env.AGASSI_MAINTENANCE_INTERVAL) * msInMinute);
+                maintenanceInterval = setInterval (performMaintenance, Number.parseInt (process.env.AGASSI_MAINTENANCE_INTERVAL) * 60000);// * msInMinute);
             }
         },
         stop: () => {
