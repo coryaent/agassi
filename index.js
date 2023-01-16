@@ -28,6 +28,9 @@ if (!process.env.AGASSI_REDIS_HOST) {
 
 // if client start monitoring docker socket
 if (process.argv.includes ('--client')) {
+    if (!process.env.AGASSI_ACME_ACCOUNT_KEY_FILE || !isValidPath (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)) {
+        log.fatal ('AGASSI_ACME_ACCOUNT_KEY_FILE is either not defined or invalid');
+    }
     if (!process.env.AGASSI_DOCKER_HOST) {
         log.fatal ('AGASSI_DOCKER_HOST must be defined');
         process.exit (1);

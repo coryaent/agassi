@@ -17,7 +17,7 @@ const accountPrivateKey = forge.pki.privateKeyToPem (accountKeys.privateKey);
 
 const acmeClient = new acme.Client({
     directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
-    accountKey: accountPrivateKey
+    accountKey: fs.readFileSync (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)
 });
 
 module.exports = async function (domain) {

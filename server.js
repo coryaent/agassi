@@ -27,7 +27,7 @@ const defaultCert = generateCertificate ();
 module.exports = https.createServer ({
     SNICallback: async (domain, callback) => {
         // get latest cert
-        const queryResponse = await redis.get (`cert:${domain}`);
+        const queryResponse = await redis.get (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`);
 
         if (queryResponse) {
             // got cert

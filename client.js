@@ -112,12 +112,13 @@ async function addServiceToDB (service) {
     log.debug ('setting vhost ' + getVHost (service));
     res = await redis.hset (`vhost:${getVHost (service)}`, 'auth', getAuth (service), 'options', JSON.stringify (getOptions (service)));
     log.debug (res);
-    if (!await redis.exists (`cert:${getVHost(service)}`)) {
+    if (!await redis.exists (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${getVHost(service)}`)) {
         // need to fetch and add the certificate
         let [cert, expiration] = await fetchCertificate (getVHost (service));
         log.debug ('expiration ' + expiration);
         log.debug ('adding cert to redis');
-        res = await redis.set (`cert:${getVHost (service)}`, cert, 'PX', expiration);
+        res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${getVHost (service)}`, cert,
+                               'PX', new Date (expiration).getTime () - new Date ().getTime ());
         log.debug (res);
     }
 };
@@ -167,25 +168,26 @@ async function performMaintenance () {
             let [cert, expiration] = await fetchCertificate (getVHost (service));
             log.debug ('expiration ' + expiration);
             log.debug ('adding cert to redis');
-            res = await redis.set (`cert:${getVHost (service)}`, cert, 'PX', expiration);
+            let res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${getVHost (service)}`, cert,
+                                       'PX', new Date (expiration).getTime () - new Date ().getTime ());
             log.debug (res);
         }
     }
 }
 
-// check if a cert expiration is beyond a certain safeguard
+// check if a cert expiration is beyond a certain safeguardcert
 async function dbHasCurrentCert (domain) {
     log.debug (`checking for current certificates for ${domain}`);
-    if (!(await redis.exists (`cert:${domain}`))) {
+    if (!(await redis.exists (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`))) {
         log.debug ('could not find cert for domain ' + domain);
         return false;
     }
     log.debug ('found cert');
-    let expiration = await redis.pttl (`cert:${domain}`);
-    let daysUntilExpiration =  (expiration - new Date ().getTime ()) / msInDay;
+    let msUntilExpiration = await redis.pttl (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`);
+    let daysUntilExpiration = msUntilExpiration / msInDay;
     log.debug ('days until expiration ' + daysUntilExpiration);
     if (daysUntilExpiration < Number.parseInt (process.env.AGASSI_EXPIRATION_THRESHOLD)) {
-        log.debug ('service is past the expiration threshold');
+        log.debug ('cert is past the expiration threshold');
         return false;
     }
     log.debug ('domain ' + domain + ' has current cert');

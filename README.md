@@ -13,6 +13,7 @@ By taking advantage of Docker Swarm's built-in state management, Agassi is able 
 ENVAR | Detail | Default
 --- | --- | ---
 `AGASSI_ACME_PRODUCTION` | if set to any value, fetch certificates from production Let's Encrypt |
+`AGASSI_ACME_ACCOUNT_KEY_FILE` | the path to the key to the ACME account |
 `AGASSI_AUTH_REALM` | the realm to use from basic authentication | 'Agassi'
 `AGASSI_DEFAULT_KEY_FILE` | the path to the default key used for signing certificates |
 `AGASSI_DOCKER_API_VERSION` | passed to [dockerode](https://github.com/apocas/dockerode) | 'v1.37'
@@ -30,8 +31,7 @@ ENVAR | Detail | Default
 `AGASSI_TARGET_CNAME` | cname value to which DNS records point |
 
 ## Redis
-*HSET should be SET with EX argument*
-`HSET cert:example.com [cert] [cert expiration]`
+`SET cert:example.com [cert] PX [ms until expiration]`
 
 `SET service:[service id] [vhost]`
 
@@ -55,7 +55,7 @@ Starts listening to HTTPS requests.
 
 ## Authorization
 ```sh
-htpasswd -n -B -C 12 user | base64 -w 0
+htpasswd -n -B -C 24 user | base64 -w 0
 ```
 ```sh
 openssl genrsa 4096 | docker secret create agassi_default_key -
