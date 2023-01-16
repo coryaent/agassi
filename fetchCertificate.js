@@ -9,11 +9,7 @@ const fs = require ('fs');
 const retry = require ('async-retry');
 const { X509Certificate } = require ('crypto');
 
-const { putTxtRecord, deleteTxtRecord } = require ('./dnsRecord.js')
-
-// this account can be recreated every time the process reloads
-const accountKeys = forge.pki.rsa.generateKeyPair (4096);
-const accountPrivateKey = forge.pki.privateKeyToPem (accountKeys.privateKey);
+const { putTxtRecord, deleteTxtRecord } = require ('./dnsRecord.js');
 
 const acmeClient = new acme.Client({
     directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
