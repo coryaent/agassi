@@ -4,7 +4,7 @@ const log = require ('./logger.js');
 
 const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
 const { putCnameRecord, deleteCnameRecord } = require ('./dnsRecord.js');
-const fetchCertificate = require ('./fetchCertificate.js');
+const certify = require ('./certify.js');
 const Redis = require ('ioredis');
 const Docker = require ('dockerode');
 
@@ -114,12 +114,7 @@ async function addServiceToDB (service) {
     log.debug (res);
     if (!await redis.exists (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${getVHost(service)}`)) {
         // need to fetch and add the certificate
-        let [cert, expiration] = await fetchCertificate (getVHost (service));
-        log.debug ('expiration ' + expiration);
-        log.debug ('adding cert to redis');
-        res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${getVHost (service)}`, cert,
-                               'PX', new Date (expiration).getTime () - new Date ().getTime ());
-        log.debug (res);
+        await certify (getVHost (service));
     }
 };
 
@@ -165,12 +160,7 @@ async function performMaintenance () {
         log.debug ('got vhost', vHost);
         if (!await dbHasCurrentCert (vHost)) {
             // we need to fetch a cert and insert it into the database
-            let [cert, expiration] = await fetchCertificate (getVHost (service));
-            log.debug ('expiration ' + expiration);
-            log.debug ('adding cert to redis');
-            let res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${getVHost (service)}`, cert,
-                                       'PX', new Date (expiration).getTime () - new Date ().getTime ());
-            log.debug (res);
+            await certify (getVHost (service));
         }
     }
 }
