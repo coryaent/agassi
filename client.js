@@ -43,7 +43,7 @@ module.exports = {
                     log.debug (res);
                     // set dns record
                     res = await putCnameRecord (getVHost (service));
-                    log.debug (res);
+                    log.debug (res.data.trim ());
                 }
             }
         });

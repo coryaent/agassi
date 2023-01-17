@@ -8,12 +8,18 @@ const forge = require ('node-forge');
 const fs = require ('fs');
 const retry = require ('async-retry');
 const { X509Certificate } = require ('crypto');
+const Redis = require ('ioredis');
 
 const { putTxtRecord, deleteTxtRecord } = require ('./dnsRecord.js');
 
 const acmeClient = new acme.Client({
     directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
     accountKey: fs.readFileSync (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)
+});
+
+const redis = new Redis ({
+    host: process.env.AGASSI_REDIS_HOST,
+    port: process.env.AGASSI_REDIS_PORT
 });
 
 module.exports = async function (domain) {
