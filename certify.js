@@ -68,7 +68,6 @@ module.exports = async function (domain) {
 
         log.debug ('finalizing order')
         const finalized = await acmeClient.finalizeOrder (order, csr);
-        // expiration at finalized.expires
 
         log.debug ('fetching cert');
         let cert = await acmeClient.getCertificate (finalized);
@@ -85,7 +84,7 @@ module.exports = async function (domain) {
 
         log.debug ('expiration ' + expiration);
         log.debug ('adding cert to redis');
-        res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${getVHost (service)}`, cert,
+        res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`, cert,
                                'PX', new Date (expiration).getTime () - new Date ().getTime ());
         log.debug (res);
     } catch (error) {
