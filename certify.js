@@ -84,7 +84,7 @@ module.exports = async function (domain) {
 
         log.debug ('expiration ' + expiration);
         log.debug ('adding cert to redis');
-        res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`, cert,
+        let res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`, cert,
                                'PX', new Date (expiration).getTime () - new Date ().getTime ());
         log.debug (res);
     } catch (error) {
