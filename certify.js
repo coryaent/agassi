@@ -83,7 +83,7 @@ module.exports = async function (domain) {
                                'PX', new Date (expiration).getTime () - new Date ().getTime ());
         log.debug (res);
     } catch (error) {
-        log.erorr (error.message);
+        log.error (error.message);
     }
 }
 
