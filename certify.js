@@ -60,7 +60,7 @@ module.exports = async function (domain) {
             commonName: domain
         }, fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE));
 
-        log.debug ('finalizing arder')
+        log.debug ('finalizing order')
         const finalized = await acmeClient.finalizeOrder (order, csr);
         // expiration at finalized.expires
 
