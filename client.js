@@ -33,10 +33,10 @@ module.exports = {
                 service = await service.inspect ();
                 log.debug ('parsed service ' + id);
                 if (isAgassiService (service)) {
-                    log.debug ('found agassi service ' + id);
-                    log.debug ('vhost: ' + getVHost (service));
-                    log.debug ('auth: ' + getAuth (service));
-                    log.debug ('options:', getOptions (service));
+                    log.trace ('found agassi service ' + id);
+                    log.trace ('vhost: ' + getVHost (service));
+                    log.trace ('auth: ' + getAuth (service));
+                    log.trace ('options:', getOptions (service));
                     // adding service triggers a call to fetch the certificate
                     // and add it to the database
                     let res = await addServiceToDB (service);
@@ -59,18 +59,26 @@ module.exports = {
                     log.debug ('found new or updated service');
                     let service = await docker.getService (event.Actor.ID);
                     service = await service.inspect ();
-                    log.debug ('id: ' + event.Actor.ID);
+                    log.trace ('id: ' + event.Actor.ID);
                     // if we have an agassi service
                     if (isAgassiService (service)) {
                         log.debug ('found agassi service ' + event.Actor.ID);
-                        log.debug ('vhost: ' + getVHost (service));
-                        log.debug ('auth: ' + getAuth (service));
-                        log.debug ('options:', getOptions (service));
+                        log.trace ('vhost: ' + getVHost (service));
+                        log.trace ('auth: ' + getAuth (service));
+                        log.trace ('options:', getOptions (service));
                         await addServiceToDB (service);
                         res = await putCnameRecord (getVHost (service));
                         log.debug (res.data.trim ());
                     }
                 }
+                // on update
+                    // if the service exists in the database
+                        // pull its vhost
+                        // if the pulled vhost is different from the new one
+                            // remove the old vhost
+                            // update the service
+                    // if aggasi service
+                        // add it to database
                 if (event.Action == 'remove') {
                     if (await redis.exists (`service:${event.Actor.ID}`)) {
                         // remove cname and remove service from db
@@ -151,7 +159,7 @@ async function performMaintenance () {
         }
     }
 
-    // now that they're pruned, fetch the service keys again'
+    // now that they're pruned, fetch the service keys again
     // use keydb here or don't have too many services'
     let serviceKeys = await redis.keys ('service:*');
     for (let key of serviceKeys) {
@@ -163,9 +171,29 @@ async function performMaintenance () {
             await certify (getVHost (service));
         }
     }
+
+    log.debug ('pruniing vhosts');
+    // get each current service vhost
+    const serviceVHosts = [];
+    for (let key of serviceKeys) {
+        let vHost = await redis.get (key);
+        serviceVHosts.push (vHost);
+    }
+    log.debug ('found', serviceVHosts.length, 'service vhosts');
+    // get all the vhosts from the db
+    const dbVHosts = (await redis.keys ('vhost:*')).map (key => key.replace ('vhost:', ''));
+    log.debug ('found', dbVHosts.length, 'db vhosts');
+    // for each vhost from the db
+    for (let vHost of dbVHosts) {
+        if (!serviceVHosts.includes (vHost)) {
+            log.debug ('removing vHost', vHost);
+            let res = await redis.del (`vhost:${vHost}`);
+            log.debug (res);
+        }
+    }
 }
 
-// check if a cert expiration is beyond a certain safeguardcert
+// check if a cert expiration is beyond a certain safeguard
 async function dbHasCurrentCert (domain) {
     log.debug (`checking for current certificates for ${domain}`);
     if (!(await redis.exists (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`))) {
