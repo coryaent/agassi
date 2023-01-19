@@ -20,7 +20,7 @@ ENVAR | Detail | Default
 `AGASSI_DOCKER_HOST` | TCP socket passed to dockerode |
 `AGASSI_DOCKER_PORT` | TCP port passed to dockerode | 2375
 `AGASSI_EXPIRATION_THRESHOLD` | days before certificate expires to renew | '45'
-`AGASSI_LABEL_PREFIX` | label prefix to define virtual hosts |
+`AGASSI_LABEL_PREFIX` | label prefix to define virtual hosts | 'page.agassi.'
 `AGASSI_LETS_ENCRYPT_EMAIL` | email address used to send certificate renewal notifications |
 `AGASSI_LOG_LEVEL` | trace, debug, info, warn, error, fatal | 'info'
 `AGASSI_MAILINABOX_EMAIL` | email used to authenticate mail-in-a-box API |
