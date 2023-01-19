@@ -41,6 +41,7 @@ ENVAR | Detail | Default
 - `page.agassi.vhost` set to your target domain `example.com`
 - `page.agassi.auth` see Authorization for how to generate an auth string
 - `page.agassi.opts.target` the service access address for example `http://myservice:80`
+All options prefixed with `page.agassi.opts.` are camel-cased (set `prependPath` with the label `page.agassi.opts.prepend-path`) and passed to [node-http-proxy](https://github.com/http-party/node-http-proxy).
 
 ## Flow
 Agassi requires the use of two seperate services, a client (ACME and Docker) and a server (HTTPS).
