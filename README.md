@@ -38,6 +38,9 @@ ENVAR | Detail | Default
 `HSET vhost:example.com [auth] [options]`
 
 ## Labels
+- `page.agassi.vhost` set to your target domain `example.com`
+- `page.agassi.auth` see Authorization for how to generate an auth string
+- `page.agassi.opts.target` the service access address for example `http://myservice:80`
 
 ## Flow
 Agassi requires the use of two seperate services, a client (ACME and Docker) and a server (HTTPS).
