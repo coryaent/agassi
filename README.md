@@ -42,6 +42,24 @@ ENVAR | Detail | Default
 - `page.agassi.auth` see Authorization for how to generate an auth string
 - `page.agassi.opts.target` the service access address for example `http://myservice:80`
 All options prefixed with `page.agassi.opts.` are camel-cased (set `prependPath` with the label `page.agassi.opts.prepend-path`) and passed to [node-http-proxy](https://github.com/http-party/node-http-proxy).
+Pass the labels into your swarm compose file.
+```yaml
+# defining at this level takes priority
+services:
+  service-01:
+    image:
+    labels:
+      page.agassi.vhost: example.com
+      page.agassi.opts.target: http://service-01:80
+# this means of labeling gets overwritten by the former
+services:
+  service-01:
+    image:
+    deploy:
+      labels:
+        page.agassi.vhost: example.com
+        page.agassi.opts.target: http://service-01:80
+```
 
 ## Flow
 Agassi requires the use of two seperate services, a client (ACME and Docker) and a server (HTTPS).
