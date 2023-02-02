@@ -21,17 +21,14 @@ const redis = new Redis ({
     host: process.env.AGASSI_REDIS_HOST,
     port: process.env.AGASSI_REDIS_PORT
 });
-
 const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
-const dbGet = memoize (redis.get, {maxAge: 1000 * 60 * 1}); // cache cert for 1 minutes
-const dbHGetAll = memoize (redis.hgetall, {maxAge: 1000 * 60 *1}); // cache vhost for 1 minute
 
 const defaultCert = generateCertificate ();
 
 module.exports = https.createServer ({
     SNICallback: async (domain, callback) => {
         // get latest cert
-        const queryResponse = await dbGet (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`);
+        const queryResponse = await redis.get (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`);
 
         if (queryResponse) {
             // got cert
@@ -50,10 +47,10 @@ module.exports = https.createServer ({
     cert: defaultCert
 }, async (request, response) => {
     const requestURL = new URL (request.url, `https://${request.headers.host}`);
-    const virtualHost = await dbHGetAll (`vhost:${requestURL.hostname}`);
+    const virtualHost = await redis.hgetall (`vhost:${requestURL.hostname}`);
     // if it doesn't have .options it doesn't have a target or forward
     if (!virtualHost.options) {
-        log.trace (`no virtual host found for domain ${requestURL.hostname}`);
+        log.trace (`no target found for domain ${requestURL.hostname}`);
         response.writeHead(404, {
             'Content-Type': 'text/plain'
         });
