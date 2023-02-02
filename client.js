@@ -71,21 +71,13 @@ module.exports = {
                         log.debug (res.data.trim ());
                     }
                 }
-                // on update
-                    // if the service exists in the database
-                        // pull its vhost
-                        // if the pulled vhost is different from the new one
-                            // remove the old vhost
-                            // update the service
-                    // if aggasi service
-                        // add it to database
                 if (event.Action == 'remove') {
                     if (await redis.exists (`service:${event.Actor.ID}`)) {
                         // remove cname and remove service from db
                         let vHost = await redis.get (`service:${event.Actor.ID}`);
                         res = await deleteCnameRecord (vHost);
                         log.debug (res.data.trim ());
-                        res = await removeServiceFromDB (event.Actor.ID);
+                        res = await rmServiceAndVHost (event.Actor.ID);
                         log.debug (res);
                     }
                 }
@@ -126,7 +118,7 @@ async function addServiceToDB (service) {
     }
 };
 
-async function removeServiceFromDB (id) {
+async function rmServiceAndVHost (id) {
     // leave the cert alone in this circumstance, it will expire on its own
     log.debug ('removing service', id, 'and its vhost from database');
     let vHost = await redis.get ('service:' + id);
@@ -164,12 +156,12 @@ async function performMaintenance () {
 
     // now that they're pruned, fetch the service keys again
     // use keydb here or don't have too many services'
-    log.debug ('looking for current certs');
+    log.debug ('checking for current certs');
     let serviceKeys = await redis.keys ('service:*');
     for (let key of serviceKeys) {
         log.debug ('fetching vhost for', key);
         let vHost = await redis.get (key);
-        log.debug ('got vhost', vHost);
+        log.debug ('cheking cert for vhost', vHost);
         if (!await dbHasCurrentCert (vHost)) {
             // we need to fetch a cert and insert it into the database
             await certify (getVHost (service));
