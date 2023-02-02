@@ -24,7 +24,7 @@ const redis = new Redis ({
 
 const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locally cache authentication(s)
 const dbGet = memoize (redis.get, {maxAge: 1000 * 60 * 1}); // cache cert for 1 minutes
-const dbHGetAll = memoize (redis.dbHGetAll, {maxAge: 1000 * 60 *1}); // cache vhost for 1 minute
+const dbHGetAll = memoize (redis.hgetall, {maxAge: 1000 * 60 *1}); // cache vhost for 1 minute
 
 const defaultCert = generateCertificate ();
 
