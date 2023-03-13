@@ -29,7 +29,7 @@
     "bcryptjs": "^2.4.3",
     "console-log-level": "^1.4.1",
     "delay": "^5.0.0",
-    "dockerode": "^3.3.4",
+    "dockerode": "^3.3.5",
     "fast-date-format": "^2.2.4",
     "http-proxy": "^1.18.1",
     "http-ratelimit": "^0.2.3",
