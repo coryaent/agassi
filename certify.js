@@ -12,6 +12,13 @@ const Redis = require ('ioredis');
 
 const { putTxtRecord, deleteTxtRecord } = require ('./dnsRecord.js');
 
+// initialization
+
+function sleep (ms) {
+    return new Promise ((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}
 const acmeClient = new acme.Client({
     directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
     accountKey: fs.readFileSync (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)
@@ -58,6 +65,7 @@ module.exports = async function (domain) {
         //     log.info ('attempt number', number);
         //     return acmeClient.waitForValidStatus (dnsChallenge).catch (retry);
         // });
+        await sleep (7500);
         let validation = await acmeClient.waitForValidStatus (dnsChallenge)
         //  let validation = await awaitValidStatus (dnsChallenge);
 
