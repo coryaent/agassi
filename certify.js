@@ -100,9 +100,9 @@ module.exports = async function (domain) {
     }
 }
 
-const awaitValidStatus = async (dnsChallenge) =>
-    retry (async (dnsChallenge) => {
-        log.debug ('attempting to verify completion');
-        let validation = await client.waitForValidStatus (dnsChallenge);
-        return validation;
-    });
+// const awaitValidStatus = async (dnsChallenge) =>
+//     retry (async (dnsChallenge) => {
+//         log.debug ('attempting to verify completion');
+//         let validation = await client.waitForValidStatus (dnsChallenge);
+//         return validation;
+//     });
