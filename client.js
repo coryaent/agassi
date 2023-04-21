@@ -1,9 +1,9 @@
  "use strict";
 
-const log = require ('./logger.js');
+// const log = require ('./logger.js');
 
 const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
-const { putCnameRecord, deleteCnameRecord } = require ('./dnsRecord.js');
+const { putCnameRecord, putTxtRecord } = require ('./dns/dns.js');
 const certify = require ('./certify.js');
 const Redis = require ('ioredis');
 const Docker = require ('dockerode');
@@ -75,8 +75,8 @@ module.exports = {
                     if (await redis.exists (`service:${event.Actor.ID}`)) {
                         // remove cname and remove service from db
                         let vHost = await redis.get (`service:${event.Actor.ID}`);
-                        res = await deleteCnameRecord (vHost);
-                        log.debug (res.data.trim ());
+                        // res = await deleteCnameRecord (vHost);
+                        // log.debug (res.data.trim ());
                         res = await rmServiceAndVHost (event.Actor.ID);
                         log.debug (res);
                     }
