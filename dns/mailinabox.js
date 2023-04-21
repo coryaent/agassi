@@ -21,8 +21,8 @@ module.exports = {
             auth
         });
     },
-    putCnameRecord: async function (qname) {
-        return await axios.put (`https://corya.net/admin/dns/custom/${qname}/cname`, process.env.AGASSI_TARGET_CNAME, {
+    putCnameRecord: async function (qname, target) {
+        return await axios.put (`https://corya.net/admin/dns/custom/${qname}/cname`, target, {
             auth
         });
     },

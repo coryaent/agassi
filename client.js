@@ -42,7 +42,7 @@ module.exports = {
                     let res = await addServiceToDB (service);
                     log.debug (res);
                     // set dns record
-                    res = await putCnameRecord (getVHost (service));
+                    res = await putCnameRecord (getVHost (service), process.env.AGASSI_TARGET_CNAME);
                     log.debug (res.data.trim ());
                 }
             }
@@ -67,7 +67,7 @@ module.exports = {
                         log.trace ('auth: ' + getAuth (service));
                         log.trace ('options:', getOptions (service));
                         await addServiceToDB (service);
-                        res = await putCnameRecord (getVHost (service));
+                        res = await putCnameRecord (getVHost (service), process.env.AGASSI_TARGET_CNAME);
                         log.debug (res.data.trim ());
                     }
                 }

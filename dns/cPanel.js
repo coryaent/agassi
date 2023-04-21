@@ -14,6 +14,10 @@ const auth = {
     headers: {'Authorization': `cpanel ${username}:${apitoken}`}
 };
 
+// this is a variable that is set once by dig and subsequently on response data
+// it does not need to be accessed outside of this module
+var serial;
+
 module.exports = {
     // putTxtRecord: async function (qname, text) {
     //     return await axios.put (`https://corya.net/admin/dns/custom/${qname}/txt`, text, {
@@ -24,33 +28,48 @@ module.exports = {
     // qname -> dname
     // text -> data
     putTxtRecord: async function (dname, data) {
+        // get serial (as string)
+        if (!serial) {
+            serial = (await dig ([tld, 'SOA'])).answer[0].value.split (' ')[2];
+        }
 
+        // parse tld from fqdn
+        let tld = getDomain (dname);;
+
+        // post get
+        let got = await axios.get (`https://${cpanelServer}/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${dname}","ttl":"300","record_type":"TXT","data":["${data}"]}`, auth);
+        serial = got.data.data.new_serial;
+
+        // deleteTxtRecord: async function (qname) {
+        //     return await axios.delete (`https://corya.net/admin/dns/custom/${qname}/txt`, {
+        //         auth
+        //     });
+        // },
+
+        // TODO remove calls to this function
+
+        // putCnameRecord: async function (qname) {
+        //     return await axios.put (`https://corya.net/admin/dns/custom/${qname}/cname`, process.env.AGASSI_TARGET_CNAME, {
+        //         auth
+        //     });
+        // },
+        // cname -> dname
     },
-    // get serial (as string)
-    let serial = (await dig ([tld, 'SOA'])).answer[0].value.split (' ')[2];
-    let tld = getDomain (dname);;
+    putCnameRecord: async function (dname, target) {
+        // get serial (as string)
+        if (!serial) {
+            serial = (await dig ([tld, 'SOA'])).answer[0].value.split (' ')[2];
+        }
 
-    // post get
-    let got = await axios.get (`https://${cpanelServer}/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${dname}","ttl":"300","record_type":"TXT","data":["${data}"]}`, auth);
-    serial = got.data.data.new_serial;
-    // got response .data
-    // check got for error and throw
+        // parse tld from fqdn
+        let tld = getDomain (dname);
 
-    // deleteTxtRecord: async function (qname) {
-    //     return await axios.delete (`https://corya.net/admin/dns/custom/${qname}/txt`, {
-    //         auth
-    //     });
-    // },
-
-    // TODO remove calls to this function
-
-    // putCnameRecord: async function (qname) {
-    //     return await axios.put (`https://corya.net/admin/dns/custom/${qname}/cname`, process.env.AGASSI_TARGET_CNAME, {
-    //         auth
-    //     });
-    // },
-    // cname -> dname
-    putCnameRecord: async function (dname, ) {
+        // post get and set cname record
+        let got = await axios.get (`https://cpanel.corya.net:2083/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${subdomain}","ttl":"300","record_type":"CNAME","data":["${target}"]}`,
+            {
+                 headers: {'Authorization': 'cpanel coryane1:H087DTEWGEVB520CQ7N13M6DZCZXRZGE'}
+            }
+        );
 
     }
 
