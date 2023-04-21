@@ -8,7 +8,7 @@ const { getDomain } = require ('tldjs');
 
 const cpanelServer = process.env.AGASSI_CPANEL_SERVER; // include port
 const username = process.env.AGASSI_CPANEL_USERNAME;
-const apitoken = fs.readFileSync (process.env.AGASSI_CPANEL_APITOKEN_FILE).toString ().trim ()
+const apitoken = fs.readFileSync (process.env.AGASSI_CPANEL_API_TOKEN_FILE).toString ().trim ()
 
 const auth = {
     headers: {'Authorization': `cpanel ${username}:${apitoken}`}

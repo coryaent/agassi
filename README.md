@@ -16,6 +16,9 @@ ENVAR | Detail | Default
 `AGASSI_ACME_PRODUCTION` | if set to any value, fetch certificates from production Let's Encrypt |
 `AGASSI_ACME_ACCOUNT_KEY_FILE` | the path to the key to the ACME account |
 `AGASSI_AUTH_REALM` | the realm to use from basic authentication | 'Agassi'
+`AGASSI_CPANEL_SERVER` | the base URL for the cpanel endpoint |
+`AGASSI_CPANEL_USERNAME` | the username to log in to cPanel |
+`AGASSI_CPANEL_API_TOKEN_FILE` | the path to the cPanel API token |
 `AGASSI_DEFAULT_KEY_FILE` | the path to the default key used for signing certificates |
 `AGASSI_DOCKER_API_VERSION` | passed to [dockerode](https://github.com/apocas/dockerode) | 'v1.37'
 `AGASSI_DOCKER_HOST` | TCP socket passed to dockerode |
