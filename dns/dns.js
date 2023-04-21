@@ -10,9 +10,11 @@ if ((process.env.AGASSI_CPANEL_SERVER || process.env.AGASSI_CPANEL_USERNAME || p
 }
 
 if (process.env.AGASSI_CPANEL_SERVER) {
+    log.debug ('Loading cPanel functions');
     module.exports = require ('./cPanel');
 }
 
 if (process.env.AGASSI_MAILINABOX_EMAIL) {
+    log.debug ('Loading mailinabox functions');
     module.exports = require ('./mailinabox.js');
 }

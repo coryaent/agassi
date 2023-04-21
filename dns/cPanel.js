@@ -6,7 +6,7 @@ const fs = require ('fs');
 const axios = require ('axios');
 const { getDomain } = require ('tldjs');
 
-const cpanelServer = process.env.AGASSI_CPANEL_SERVER; // include port
+const cpanelServer = process.env.AGASSI_CPANEL_SERVER.trim (); // include port
 const username = process.env.AGASSI_CPANEL_USERNAME;
 const apitoken = fs.readFileSync (process.env.AGASSI_CPANEL_API_TOKEN_FILE).toString ().trim ()
 
