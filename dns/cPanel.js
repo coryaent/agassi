@@ -29,13 +29,14 @@ module.exports = {
     // qname -> dname
     // text -> data
     putTxtRecord: async function (dname, data) {
+
+        // parse tld from fqdn
+        let tld = getDomain (dname);;
+
         // get serial (as string)
         if (!serial) {
             serial = (await dig ([tld, 'SOA'])).answer[0].value.split (' ')[2];
         }
-
-        // parse tld from fqdn
-        let tld = getDomain (dname);;
 
         // post get
         let got = await axios.get (`https://${cpanelServer}/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${dname}","ttl":"300","record_type":"TXT","data":["${data}"]}`, auth);
@@ -57,13 +58,14 @@ module.exports = {
         // cname -> dname
     },
     putCnameRecord: async function (dname, target) {
+
+        // parse tld from fqdn
+        let tld = getDomain (dname);
+
         // get serial (as string)
         if (!serial) {
             serial = (await dig ([tld, 'SOA'])).answer[0].value.split (' ')[2];
         }
-
-        // parse tld from fqdn
-        let tld = getDomain (dname);
 
         // post get and set cname record
         let got = await axios.get (`https://cpanel.corya.net:2083/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${subdomain}","ttl":"300","record_type":"CNAME","data":["${target}"]}`,
