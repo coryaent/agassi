@@ -10,9 +10,7 @@ const retry = require ('async-retry');
 const { X509Certificate } = require ('crypto');
 const Redis = require ('ioredis');
 
-const { putTxtRecord, deleteTxtRecord } = require ('./dnsRecord.js');
-
-// initialization
+const { putTxtRecord } = require ('./dns.js');
 
 function sleep (ms) {
     return new Promise ((resolve) => {
@@ -87,8 +85,8 @@ module.exports = async function (domain) {
         const expiration = new Date (validTo);
 
         // remove challenge
-        log.debug ('removing challenge key');
-        const txtDelete = await deleteTxtRecord (`_acme-challenge.${domain}`);
+        // log.debug ('removing challenge key');
+        // const txtDelete = await deleteTxtRecord (`_acme-challenge.${domain}`);
 
         log.debug ('expiration ' + expiration);
         log.debug ('adding cert to redis');

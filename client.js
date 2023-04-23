@@ -3,7 +3,7 @@
 // const log = require ('./logger.js');
 
 const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
-const { putCnameRecord, putTxtRecord } = require ('./dns/dns.js');
+const { putCnameRecord } = require ('./dns/dns.js');
 const certify = require ('./certify.js');
 const Redis = require ('ioredis');
 const Docker = require ('dockerode');
