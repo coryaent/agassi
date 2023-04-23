@@ -1,6 +1,6 @@
  "use strict";
 
-// const log = require ('./logger.js');
+const log = require ('./logger.js');
 
 const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
 const { putCnameRecord } = require ('./dns/dns.js');
