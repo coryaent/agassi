@@ -11,7 +11,7 @@ if ((process.env.AGASSI_CPANEL_SERVER || process.env.AGASSI_CPANEL_USERNAME || p
 
 if (process.env.AGASSI_CPANEL_SERVER) {
     log.debug ('Loading cPanel functions');
-    module.exports = require ('./cPanel');
+    module.exports = require ('./cPanel.js');
 }
 
 if (process.env.AGASSI_MAILINABOX_EMAIL) {

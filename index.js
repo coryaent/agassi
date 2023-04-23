@@ -43,14 +43,6 @@ if (process.argv.includes ('--client')) {
         log.fatal ('AGASSI_LETS_ENCRYPT_EMAIL is either not provided or invalid');
         process.exit (1);
     }
-    if (!process.env.AGASSI_MAILINABOX_EMAIL || !isValidEmail (process.env.AGASSI_MAILINABOX_EMAIL)) {
-        log.fatal ('AGASSI_MAILINABOX_EMAIL is either not defined or not valid');
-        process.exit (1);
-    }
-    if (!process.env.AGASSI_MAILINABOX_PASSWORD_FILE || !isValidPath (process.env.AGASSI_MAILINABOX_PASSWORD_FILE)) {
-        log.fatal ('AGASSI_MAILINABOX_PASSWORD_FILE is either not provided or not valid');
-        process.exit (1);
-    }
 
     if (!process.env.AGASSI_TARGET_CNAME || !isValidDomain (process.env.AGASSI_TARGET_CNAME, { subdomain: true })) {
         log.fatal ('AGASSI_TARGET_CNAME is either undefined or invalid');
