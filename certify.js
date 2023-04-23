@@ -10,7 +10,7 @@ const retry = require ('async-retry');
 const { X509Certificate } = require ('crypto');
 const Redis = require ('ioredis');
 
-const { putTxtRecord } = require ('./dns.js');
+const { putTxtRecord } = require ('./dns/dns.js');
 
 function sleep (ms) {
     return new Promise ((resolve) => {
