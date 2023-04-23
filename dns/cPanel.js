@@ -68,11 +68,8 @@ module.exports = {
         }
 
         // post get and set cname record
-        let got = await axios.get (`https://cpanel.corya.net:2083/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${subdomain}","ttl":"300","record_type":"CNAME","data":["${target}"]}`,
-            {
-                 headers: {'Authorization': 'cpanel coryane1:H087DTEWGEVB520CQ7N13M6DZCZXRZGE'}
-            }
-        );
+        let got = await axios.get (`https://cpanel.corya.net:2083/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${dname}","ttl":"300","record_type":"CNAME","data":["${target}"]}`, auth);
+        serial = got.data.data.new_serial;
 
     }
 
