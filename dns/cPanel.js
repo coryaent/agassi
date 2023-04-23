@@ -1,7 +1,8 @@
 "use strict";
 
+const log = require ('../logger.js');
+
 const dig = require ('node-dig-dns');
-const log = require ('./logger.js');
 const fs = require ('fs');
 const axios = require ('axios');
 const { getDomain } = require ('tldjs');

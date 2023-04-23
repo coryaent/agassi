@@ -1,6 +1,6 @@
 "use strict";
 
-const log = require ('./logger.js');
+const log = require ('../logger.js');
 
 const fs = require ('fs');
 const axios = require ('axios');
