@@ -17,6 +17,7 @@ function sleep (ms) {
         setTimeout(resolve, ms);
     });
 }
+
 const acmeClient = new acme.Client({
     directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
     accountKey: fs.readFileSync (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)
