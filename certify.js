@@ -51,6 +51,7 @@ module.exports = async function (domain) {
 
         // set txt (ACME)
         log.debug ('setting txt record');
+        log.debug (`${domain} -> ${keyAuthorization}`);
         const txtSet = await putTxtRecord (`_acme-challenge.${domain}`, keyAuthorization);
 
         // complete challenge
