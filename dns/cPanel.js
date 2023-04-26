@@ -37,7 +37,8 @@ module.exports = {
         let tld = getDomain (dname);
 
         // pause to let serial update
-        // await sleep (15000);
+        log.trace ('waiting for serial update to set txt record...');
+        await sleep (15000);
 
         // get serial (as string)
         let serial = (await dig ([`@${nameserver}`, tld, 'SOA'])).answer[0].value.split (' ')[2];
@@ -58,7 +59,8 @@ module.exports = {
         let tld = getDomain (dname);
 
         // pause to let serial update
-        // await sleep (15000);
+        log.trace ('waiting for serial update to set cname record...');
+        await sleep (15000);
 
         // get serial (as string)
         let serial = (await dig ([`@${nameserver}`, tld, 'SOA'])).answer[0].value.split (' ')[2];
