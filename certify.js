@@ -51,15 +51,16 @@ module.exports = async function (domain) {
 
         // set txt (ACME)
         log.debug ('setting txt record');
-        log.debug (`${domain} -> ${keyAuthorization}`);
+        log.trace (`${domain} -> ${keyAuthorization}`);
         const txtSet = await putTxtRecord (`_acme-challenge.${domain}`, keyAuthorization);
+        log.trace (txtSet.data);
 
         // complete challenge
         log.debug ('completing challenge');
         const completion = await acmeClient.completeChallenge (dnsChallenge);
 
         // await validation
-        log.debug ('awaiting validation');
+        log.debug ('awaiting validation...');
         // await acmeClient.waitForValidStatus (dnsChallenge)
         // let validation = await retry (async function (retry, number) {
         //     log.info ('attempt number', number);
