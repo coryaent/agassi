@@ -43,7 +43,7 @@ module.exports = {
                     log.debug (res);
                     // set dns record
                     res = await putCnameRecord (getVHost (service), process.env.AGASSI_TARGET_CNAME);
-                    log.debug (res.data.trim ());
+                    log.debug (res);
                 }
             }
         });
@@ -68,7 +68,7 @@ module.exports = {
                         log.trace ('options:', getOptions (service));
                         await addServiceToDB (service);
                         res = await putCnameRecord (getVHost (service), process.env.AGASSI_TARGET_CNAME);
-                        log.debug (res.data.trim ());
+                        log.debug (res);
                     }
                 }
                 if (event.Action == 'remove') {
