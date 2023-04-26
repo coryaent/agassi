@@ -28,6 +28,7 @@ ENVAR | Detail | Default
 `AGASSI_LABEL_PREFIX` | label prefix to define virtual hosts | 'page.agassi.'
 `AGASSI_LETS_ENCRYPT_EMAIL` | email address used to send certificate renewal notifications |
 `AGASSI_LOG_LEVEL` | trace, debug, info, warn, error, fatal | 'info'
+`AGASSI_MAILINABOX_DOMAIN` | domain of mail-in-a-box server |
 `AGASSI_MAILINABOX_EMAIL` | email used to authenticate mail-in-a-box API |
 `AGASSI_MAILINABOX_PASSWORD_FILE` | path to the password file used to authenticate mail-in-a-box API |
 `AGASSI_MAINTENANCE_INTERVAL` | how often to prune services and update certificates (minutes) | '60'
