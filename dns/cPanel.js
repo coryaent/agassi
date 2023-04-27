@@ -41,10 +41,12 @@ module.exports = {
         await sleep (15000);
 
         log.trace ('digging serial record...');
-        log.trace (await dig ([`@${nameserver}`, tld, 'SOA']));
+        // log.trace (await dig ([`@${nameserver}`, tld, 'SOA']));
+        let dug = await dig ([`@${nameserver}`, tld, 'SOA']);
+        log.trace (dug);
 
         // get serial (as string)
-        let serial = (await dig ([`@${nameserver}`, tld, 'SOA'])).answer[0].value.split (' ')[2];
+        let serial = dug.answer[0].value.split (' ')[2];
 
         // post get
         return await axios.get (`https://${cpanelServer}/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${dname}","ttl":"300","record_type":"TXT","data":["${data}"]}`, auth);
