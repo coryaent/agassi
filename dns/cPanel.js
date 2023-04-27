@@ -66,7 +66,7 @@ module.exports = {
         await sleep (15000);
 
         // get serial (as string)
-        let serial = (await dig ([`@${nameserver}`, tld, 'SOA'])).answer[0].value.split (' ')[2];
+        let serial = (await dig ([`@${nameserver}`, domain.domain, 'SOA'])).answer[0].value.split (' ')[2];
 
         // post get and set cname record
         return await axios.get (`https://${cpanelServer}/execute/DNS/mass_edit_zone?zone=${domain.domain}&serial=${serial}&add={"dname":"${domain.sub}","ttl":"300","record_type":"CNAME","data":["${target}"]}`, auth);
