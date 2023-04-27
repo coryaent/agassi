@@ -5,7 +5,7 @@ const log = require ('../logger.js');
 const dig = require ('node-dig-dns');
 const fs = require ('fs');
 const axios = require ('axios');
-const { getDomain } = require ('tldjs');
+const parseDomain = require ('tld-extract');
 
 function sleep (ms) {
     return new Promise ((resolve) => {
@@ -34,7 +34,7 @@ module.exports = {
     putTxtRecord: async function (dname, data) {
 
         // parse tld from fqdn
-        let tld = getDomain (dname);
+        let tld = parseDomain (`https://${dname}`).domain;
         log.trace (`setting txt record for ${dname} on domain ${tld}`);
 
         // pause to let serial update
@@ -43,11 +43,11 @@ module.exports = {
 
         log.trace ('digging serial record...');
         // log.trace (await dig ([`@${nameserver}`, tld, 'SOA']));
-        let dug = await dig ([`@${nameserver}`, tld, 'SOA']);
-        log.trace (dug);
+        // let dug = await dig ([`@${nameserver}`, tld, 'SOA']);
+        // log.trace (dug);
 
         // get serial (as string)
-        let serial = dug.answer[0].value.split (' ')[2];
+        let serial = (await dig ([`@${nameserver}`, tld, 'SOA'])).answer[0].value.split (' ')[2];
 
         // post get
         return await axios.get (`https://${cpanelServer}/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${dname}","ttl":"300","record_type":"TXT","data":["${data}"]}`, auth);
@@ -62,7 +62,8 @@ module.exports = {
     putCnameRecord: async function (dname, target) {
 
         // parse tld from fqdn
-        let tld = getDomain (dname);
+        let tld = parseDomain (`https://${dname}`).domain;
+        log.trace (`setting cname record for ${dname} on domain ${tld}`);
 
         // pause to let serial update
         log.trace ('waiting for serial update to set cname record...');
