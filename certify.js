@@ -65,7 +65,7 @@ module.exports = async function (domain) {
     //     log.info ('attempt number', number);
     //     return acmeClient.waitForValidStatus (dnsChallenge).catch (retry);
     // });
-    await sleep (75000);
+    await sleep (7500);
     let validation = await acmeClient.waitForValidStatus (dnsChallenge)
 
     log.debug ('creating csr');
