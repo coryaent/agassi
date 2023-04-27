@@ -65,9 +65,8 @@ module.exports = async function (domain) {
     //     log.info ('attempt number', number);
     //     return acmeClient.waitForValidStatus (dnsChallenge).catch (retry);
     // });
-    await sleep (7500);
+    await sleep (75000);
     let validation = await acmeClient.waitForValidStatus (dnsChallenge)
-    //  let validation = await awaitValidStatus (dnsChallenge);
 
     log.debug ('creating csr');
     const [key, csr] = await acme.crypto.createCsr ({
