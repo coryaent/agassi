@@ -35,7 +35,7 @@ module.exports = {
 
         // parse tld from fqdn
         let domain = parseDomain (`https://${dname}`);
-        log.trace (`setting txt record for ${dname} on domain ${tld}`);
+        log.trace (`setting txt record for ${dname} on domain ${domain.domain}`);
 
         // pause to let serial update
         log.trace ('waiting for serial update to set txt record...');
