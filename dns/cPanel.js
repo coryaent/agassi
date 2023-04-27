@@ -39,7 +39,7 @@ module.exports = {
 
         // pause to let serial update
         log.trace ('waiting for serial update to set txt record...');
-        await sleep (15000);
+        await sleep (30000);
 
         log.trace ('digging serial record...');
         // get serial (as string)
@@ -63,7 +63,7 @@ module.exports = {
 
         // pause to let serial update
         log.trace ('waiting for serial update to set cname record...');
-        await sleep (15000);
+        await sleep (30000);
 
         // get serial (as string)
         let serial = (await dig ([`@${nameserver}`, domain.domain, 'SOA'])).answer[0].value.split (' ')[2];
