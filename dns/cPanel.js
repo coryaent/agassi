@@ -34,7 +34,7 @@ module.exports = {
     putTxtRecord: async function (dname, data) {
 
         // parse tld from fqdn
-        let tld = parseDomain (`https://${dname}`).domain;
+        let domain = parseDomain (`https://${dname}`);
         log.trace (`setting txt record for ${dname} on domain ${tld}`);
 
         // pause to let serial update
@@ -42,15 +42,11 @@ module.exports = {
         await sleep (15000);
 
         log.trace ('digging serial record...');
-        // log.trace (await dig ([`@${nameserver}`, tld, 'SOA']));
-        // let dug = await dig ([`@${nameserver}`, tld, 'SOA']);
-        // log.trace (dug);
-
         // get serial (as string)
-        let serial = (await dig ([`@${nameserver}`, tld, 'SOA'])).answer[0].value.split (' ')[2];
+        let serial = (await dig ([`@${nameserver}`, domain.domain, 'SOA'])).answer[0].value.split (' ')[2];
 
         // post get
-        return await axios.get (`https://${cpanelServer}/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${dname}","ttl":"300","record_type":"TXT","data":["${data}"]}`, auth);
+        return await axios.get (`https://${cpanelServer}/execute/DNS/mass_edit_zone?zone=${domain.domain}&serial=${serial}&add={"dname":"${domain.sub}","ttl":"300","record_type":"TXT","data":["${data}"]}`, auth);
 
     },
     // putCnameRecord: async function (qname) {
@@ -62,8 +58,8 @@ module.exports = {
     putCnameRecord: async function (dname, target) {
 
         // parse tld from fqdn
-        let tld = parseDomain (`https://${dname}`).domain;
-        log.trace (`setting cname record for ${dname} on domain ${tld}`);
+        let domain = parseDomain (`https://${dname}`);
+        log.trace (`setting cname record for ${dname} on domain ${domain.domain}`);
 
         // pause to let serial update
         log.trace ('waiting for serial update to set cname record...');
@@ -73,7 +69,7 @@ module.exports = {
         let serial = (await dig ([`@${nameserver}`, tld, 'SOA'])).answer[0].value.split (' ')[2];
 
         // post get and set cname record
-        return await axios.get (`https://${cpanelServer}/execute/DNS/mass_edit_zone?zone=${tld}&serial=${serial}&add={"dname":"${dname}","ttl":"300","record_type":"CNAME","data":["${target}"]}`, auth);
+        return await axios.get (`https://${cpanelServer}/execute/DNS/mass_edit_zone?zone=${domain.domain}&serial=${serial}&add={"dname":"${domain.sub}","ttl":"300","record_type":"CNAME","data":["${target}"]}`, auth);
 
     }
 };
