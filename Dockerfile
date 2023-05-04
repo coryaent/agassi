@@ -17,7 +17,7 @@ WORKDIR /usr/src/app
 # where available (npm@5+)
 COPY package*.json ./
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y dnsutils && npm install
+RUN apt-get update && apt-get upgrade -y && apt-get install -y dnsutils redis-tools && npm install
 # Bundle app source
 COPY . .
 
