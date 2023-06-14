@@ -143,16 +143,16 @@ async function performMaintenance () {
     log.debug (`found ${dockerServices.length} docker services`, dockerServices);
 
     // iterate through each db service and check that it still exists in docker x
-    // log.debug ('looking for services to prune');
-    // for (let id of dbServices) {
-    //     if (!dockerServices.includes (id)) {
+    log.debug ('looking for services to prune');
+    for (let id of dbServices) {
+        if (!dockerServices.includes (id)) {
             // service only exists in the database, it needs to be pruned
             // do not remove the service and its vhost, the vhost may be used by an active service
-    //         log.debug ('deleting service ' + id);
-    //         let res = await redis.del ('service:' + id);
-    //         log.trace (res);
-    //     }
-    // }
+            log.debug ('deleting service ' + id);
+            let res = await redis.del ('service:' + id);
+            log.trace (res);
+        }
+    }
 
     // now that they're pruned, fetch the service keys again
     // use keydb here or don't have too many services'
@@ -168,25 +168,25 @@ async function performMaintenance () {
         }
     }
 
-    // log.debug ('looking for vhosts to prune');
+    log.debug ('looking for vhosts to prune');
     // get each current service vhost
-    // const serviceVHosts = [];
-    // for (let key of serviceKeys) {
-    //     let vHost = await redis.get (key);
-    //     serviceVHosts.push (vHost);
-    // }
-    // log.debug ('found', serviceVHosts.length, 'service vhosts');
-    // // get all the vhosts from the db
-    // const dbVHosts = (await redis.keys ('vhost:*')).map (key => key.replace ('vhost:', ''));
-    // log.debug ('found', dbVHosts.length, 'db vhosts');
-    // // for each vhost from the db
-    // for (let vHost of dbVHosts) {
-    //     if (!serviceVHosts.includes (vHost)) {
-    //         log.debug ('removing vHost', vHost);
-    //         let res = await redis.del (`vhost:${vHost}`);
-    //         log.trace (res);
-    //     }
-    // }
+    const serviceVHosts = [];
+    for (let key of serviceKeys) {
+        let vHost = await redis.get (key);
+        serviceVHosts.push (vHost);
+    }
+    log.debug ('found', serviceVHosts.length, 'service vhosts');
+    // get all the vhosts from the db
+    const dbVHosts = (await redis.keys ('vhost:*')).map (key => key.replace ('vhost:', ''));
+    log.debug ('found', dbVHosts.length, 'db vhosts');
+    // for each vhost from the db
+    for (let vHost of dbVHosts) {
+        if (!serviceVHosts.includes (vHost)) {
+            log.debug ('removing vHost', vHost);
+            let res = await redis.del (`vhost:${vHost}`);
+            log.trace (res);
+        }
+    }
 }
 
 // check if a cert expiration is beyond a certain safeguard
