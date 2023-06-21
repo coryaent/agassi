@@ -1,4 +1,26 @@
 "use strict";
+/*
+
+an Agassi Service is defined by docker service labels labels:
+  page.agassi.virtual-host: 'some.fully.qualified.domain.name'
+  page.agassi.authentication: 'dXNlcjokMnkkMDgkS3JxSkJIWWRnSXBNTlU3bDRsaXlGT3NsWUQyZmkwSHprNkhDY3dFRDBsRTNkb1dKWVUxd20KCg=='
+      // authentication can be generated using htpasswd -B -n -C 8 user | printf %s\n $(base64 -w 0 -)`
+  page.agassi.options.target: 'http://some_service_name:8080' (can be anything reachable)
+  page.agassi.options.another-option: 'option_value' // gets passed to http-proxy
+
+the data that constitutes an agassiService goes like this:
+  {
+    virtualHost: "...",
+    authentication: "...",
+    serviceID: "...",
+    updatedAt: "2011-10-05T14:48:00.000Z", // ISO String date
+    options: {
+      target: "...",
+      "anotherOption": "..."
+    }
+  }
+
+*/
 
 const log = require ('./logger.js');
 
@@ -37,7 +59,7 @@ module.exports = {
         return false;
     },
     getAuth: function (service) {
-        const authRegex = /auth(?:entication|oriz(?:ation|e)|enticate)?/;
+        const authRegex = /auth(?:entication)?/;
         const labels = parseServiceLabels (service);
         const authLabel = Object.keys (labels)
             .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
