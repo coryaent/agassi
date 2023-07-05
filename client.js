@@ -41,13 +41,25 @@ const msInDay = 86400000;
 var maintenanceInterval = undefined;
 
 function start () {
-    docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
+    docker.getEvents ({ filters: { type: ["service"]}}).then (async (events) => {
         events.on ('data', async (data) => {
             let res = null;
             let event = JSON.parse (data);
-            // processEvent (event)
+            await processEvent (event);
         });
         // add existing services
+        let services = await docker.listServices ();
+        for (let id of services.map (service => service.ID)) {
+            let service = await docker.getService (id);
+            service = await service.inspect ();
+            let agassiService = parseAgassiService (service);
+            log.debug ('parsed service ' + id);
+            if (agassiService) {
+                log.debug ('found agassi service ' + service.ID ' with virtual host ' + agassiService.virtualHost);
+                await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
+                await addService (service);
+            }
+        }
     });
 };
 
@@ -57,26 +69,16 @@ async function processEvent (event) {
         let service = await docker.getService (event.Actor.ID);
         service = await service.inspect ();
         log.trace ('id: ' + event.Actor.ID);
+        let agassiService = parseAgassiService (service);
         // if we have an agassi service
-        if (isAgassiService (service)) {
-            log.debug ('found agassi service ' + event.Actor.ID);
-            log.trace ('vhost: ' + getVHost (service));
-            log.trace ('auth: ' + getAuth (service));
-            log.trace ('options:', getOptions (service));
+        if (agassiService) {
+            log.debug ('found agassi service ' + service.ID ' with virtual host ' + agassiService.virtualHost);
+            await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
             await addService (service);
-            res = await putCnameRecord (getVHost (service), process.env.AGASSI_TARGET_CNAME);
-            log.debug (res.data);
         }
     }
     if (event.Action == 'remove') {
-        if (await redis.exists (`service:${event.Actor.ID}`)) {
-            // remove cname and remove service from db
-            let vHost = await redis.get (`service:${event.Actor.ID}`);
-            // res = await deleteCnameRecord (vHost);
-            // log.debug (res.data.trim ()
-            res = await removeService (event.Actor.ID);
-            log.debug (res);
-        }
+        await removeService (event.Actor.ID);
     }
 }
 
@@ -86,6 +88,7 @@ module.exports = {
     maintenance
 };
 
+// for updating certificates and for adding services that were missed by events
 var maintenance ={
     start: () => {
         if (!maintenanceInterval) {
