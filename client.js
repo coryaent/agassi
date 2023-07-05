@@ -18,7 +18,7 @@ const acmeClient = new acme.Client({
     directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
     accountKey: fs.readFileSync (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)
 });
-const etcdClient = new Etcd3({ 
+const etcdClient = new Etcd3({
     hosts: process.env.AGASSI_ETCD_HOSTS.split (',')
 });
 const docker = new Docker ({
@@ -30,27 +30,68 @@ const docker = new Docker ({
 const msInDay = 86400000;
 var maintenanceInterval = undefined;
 
+function start () {
+    docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
+        events.on ('data', async (data) => {
+            let res = null;
+            let event = JSON.parse (data);
+            // log.trace (event);
+        });
+    });
+};
+
+async function processEvent (event) {
+    if (event.Action == 'create' || event.Action == 'update') {
+        log.debug ('found new or updated service');
+        let service = await docker.getService (event.Actor.ID);
+        service = await service.inspect ();
+        log.trace ('id: ' + event.Actor.ID);
+        // if we have an agassi service
+        if (isAgassiService (service)) {
+            log.debug ('found agassi service ' + event.Actor.ID);
+            log.trace ('vhost: ' + getVHost (service));
+            log.trace ('auth: ' + getAuth (service));
+            log.trace ('options:', getOptions (service));
+            await addService (service);
+            res = await putCnameRecord (getVHost (service), process.env.AGASSI_TARGET_CNAME);
+            log.debug (res.data);
+        }
+    }
+    if (event.Action == 'remove') {
+        if (await redis.exists (`service:${event.Actor.ID}`)) {
+            // remove cname and remove service from db
+            let vHost = await redis.get (`service:${event.Actor.ID}`);
+            // res = await deleteCnameRecord (vHost);
+            // log.debug (res.data.trim ()
+            res = await removeService (event.Actor.ID);
+            log.debug (res);
+        }
+    }
+}
 
 module.exports = {
     addExistingServices,
     listen,
-    maintenance: {
-        start: () => {
-            if (!maintenanceInterval) {
-                log.debug ('starting maintenance');
-                // 60000 is the number of milliseconds in a minute
-                maintenanceInterval = setInterval (performMaintenance, Number.parseInt (process.env.AGASSI_MAINTENANCE_INTERVAL) * 60000);
-            }
-        },
-        stop: () => {
-            if (maintenanceInterval) {
-                log.debug ('stopping maintenance');
-                clearInterval (maintenanceInterval);
-                maintenanceInterval = undefined;
-            }
+    maintenance
+};
+
+var maintenance ={
+    start: () => {
+        if (!maintenanceInterval) {
+            log.debug ('starting maintenance');
+            // 60000 is the number of milliseconds in a minute
+            maintenanceInterval = setInterval (performMaintenance, Number.parseInt (process.env.AGASSI_MAINTENANCE_INTERVAL) * 60000);
+        }
+    },
+    stop: () => {
+        if (maintenanceInterval) {
+            log.debug ('stopping maintenance');
+            clearInterval (maintenanceInterval);
+            maintenanceInterval = undefined;
         }
     }
 };
+
 async function addExistingServices () {
     // pull existing services
     log.debug ('adding existing services');
@@ -68,7 +109,7 @@ async function addExistingServices () {
                 log.trace ('options:', getOptions (service));
                 // adding service triggers a call to fetch the certificate
                 // and add it to the database
-                let res = await addServiceToDB (service);
+                let res = await addService (service);
                 log.debug (res);
                 // set dns record
                 await putCnameRecord (getVHost (service), process.env.AGASSI_TARGET_CNAME);
@@ -76,7 +117,7 @@ async function addExistingServices () {
         }
     });
 };
-async function () {
+async function watchEvents () {
     log.debug ('subscribing to events');
     docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
         events.on ('data', async (data) => {
@@ -94,7 +135,7 @@ async function () {
                     log.trace ('vhost: ' + getVHost (service));
                     log.trace ('auth: ' + getAuth (service));
                     log.trace ('options:', getOptions (service));
-                    await addServiceToDB (service);
+                    await addService (service);
                     res = await putCnameRecord (getVHost (service), process.env.AGASSI_TARGET_CNAME);
                     log.debug (res.data);
                 }
@@ -105,7 +146,7 @@ async function () {
                     let vHost = await redis.get (`service:${event.Actor.ID}`);
                     // res = await deleteCnameRecord (vHost);
                     // log.debug (res.data.trim ());
-                    res = await rmServiceAndVHost (event.Actor.ID);
+                    res = await removeService (event.Actor.ID);
                     log.debug (res);
                 }
             }
@@ -113,7 +154,7 @@ async function () {
     });
 };
 
-async function addServiceToDB (service) {
+async function addService (service) {
     log.debug ('adding service to DB');
     // `SET service:[service id] [vhost]`
     log.debug (`setting service ${service.ID} -> vhost ${getVHost (service)}`);
@@ -128,7 +169,7 @@ async function addServiceToDB (service) {
     }
 };
 
-async function rmServiceAndVHost (id) {
+async function removeService (id) {
     // leave the cert alone in this circumstance, it will expire on its own
     log.debug ('removing service', id, 'and its vhost from database');
     let vHost = await redis.get ('service:' + id);
