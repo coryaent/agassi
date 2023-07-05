@@ -4,7 +4,7 @@
     the client script pulls existing services and adds new services based on events
 
     when adding a service we must check to see that it is the latest update
-    therefore, we need to check the
+    therefore, we need to check the UpdatedAt property to see which is greater
 
     we cannot call
         docker.getService (id);
@@ -164,12 +164,23 @@ async function watchEvents () {
     });
 };
 
-async function addService (service) {
-    log.debug ('adding service to DB');
+async function addService (dockerService) {
+    let agassiService = parseAgassiService (dockerService);
+    log.debug ('adding service to etcd');
     // `SET service:[service id] [vhost]`
     log.debug (`setting service ${service.ID} -> vhost ${getVHost (service)}`);
-    let res = await redis.set (`service:${service.ID}`, getVHost (service) );
-    log.debug (res);
+    let prefix = '/agassi/virtual-hosts/';
+    let all = await etcdClient.getAll (prefix);
+    // get an array of objects with properties 'key' and 'value'
+    let agassiHosts = [];
+    all.forEach (pair => agassiHosts.push ({'key': pair[0], 'value': pair[1]}));
+    // check if the service exists
+    let existingHost = agassiHosts.find (host => host.key == prefix + agassiService.virtualHost);
+    if (exstingHost) { // service already exists in etcd
+
+    } else { // add a new service
+        await etcdClient.put (prefix + 'agassiService.virtualHost').value (JSON.stringify (agassiService));
+    }
     log.debug ('setting vhost ' + getVHost (service));
     res = await redis.hset (`vhost:${getVHost (service)}`, 'auth', getAuth (service), 'options', JSON.stringify (getOptions (service)));
     log.debug (res);
