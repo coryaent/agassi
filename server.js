@@ -118,4 +118,4 @@ module.exports = https.createServer ({
 })
 .on ('close', () => {
     log.info ('https server stopped');
-})
+});
