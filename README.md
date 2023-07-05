@@ -6,8 +6,7 @@ Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockers
 By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates. Domain and virtual host are used interchangably in the code.
 
 # TODO
-- [ ] handle case where two services have the same vhost/domain
-- [ ] fix the issue where the maintenance is removing 
+- [ ] Create a healthcheck for the client that pings the docker socket (etcd should reconnect automatically)
 
 ## Configuration
 
