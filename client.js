@@ -12,9 +12,15 @@ const certify = require ('./certify.js');
 const Redis = require ('ioredis');
 const Docker = require ('dockerode');
 const { Etcd3 } = require('etcd3');
-const client = new Etcd3({ hosts: process.env.AGASSI_ETCD_HOSTS.split (',') });
+const acme = require ('acme-client');
+const forge = require ('node-forge');
 
-// initialization
+// create clients
+const acmeClient = new acme.Client({z
+    directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
+    accountKey: fs.readFileSync (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)
+});
+const etcdClient = new Etcd3({ hosts: process.env.AGASSI_ETCD_HOSTS.split (',') });
 const docker = new Docker ({
     host: process.env.AGASSI_DOCKER_HOST,
     port: process.env.AGASSI_DOCKER_PORT,
@@ -211,15 +217,6 @@ async function dbHasCurrentCert (domain) {
 }
  "use strict";
 
-const log = require ('./logger.js');
-
-const acme = require ('acme-client');
-const axios = require ('axios');
-const forge = require ('node-forge');
-const fs = require ('fs');
-const retry = require ('async-retry');
-const { X509Certificate } = require ('crypto');
-const Redis = require ('ioredis');
 
 const { putTxtRecord } = require ('./dns/dns.js');
 
@@ -229,17 +226,7 @@ function sleep (ms) {
     });
 }
 
-const acmeClient = new acme.Client({
-    directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
-    accountKey: fs.readFileSync (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)
-});
-
-const redis = new Redis ({
-    host: process.env.AGASSI_REDIS_HOST,
-    port: process.env.AGASSI_REDIS_PORT
-});
-
-module.exports = async function (domain) {
+async function getCertificate (domain) {
     const account = await acmeClient.createAccount({
         termsOfServiceAgreed: true,
         contact: [`mailto:${process.env.AGASSI_LETS_ENCRYPT_EMAIL}`]
@@ -305,6 +292,7 @@ module.exports = async function (domain) {
     let res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`, cert,
                             'PX', new Date (expiration).getTime () - new Date ().getTime ());
     log.debug (res);
+    return cert;
 }
 
 // const awaitValidStatus = async (dnsChallenge) =>
