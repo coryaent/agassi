@@ -2,7 +2,7 @@
 
 const log = require ('./logger.js');
 
-const { isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
+const { parseAgassiService, isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
 const { putCnameRecord } = require ('./dns/dns.js');
 const certify = require ('./certify.js');
 const Redis = require ('ioredis');
@@ -15,10 +15,6 @@ const docker = new Docker ({
     host: process.env.AGASSI_DOCKER_HOST,
     port: process.env.AGASSI_DOCKER_PORT,
     version: process.env.AGASSI_DOCKER_API_VERSION
-});
-const redis = new Redis ({
-    host: process.env.AGASSI_REDIS_HOST,
-    port: process.env.AGASSI_REDIS_PORT
 });
 const msInDay = 86400000;
 var maintenanceInterval = undefined;
