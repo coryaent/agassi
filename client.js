@@ -2,6 +2,16 @@
 
 /*
     the client script pulls existing services and adds new services based on events
+
+    when adding a service we must check to see that it is the latest update
+    therefore, we need to check the
+
+    we cannot call
+        docker.getService (id);
+        service.inspect ();
+    on a service upon removal
+    therefore, we need to iterate over the keys at /agassi/virtual-hosts and parse their JSON values
+    when a matching serviceID is found, we remove the virtual-host
 */
 
 const log = require ('./logger.js');
