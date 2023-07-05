@@ -8,14 +8,18 @@ const dig = require ('node-dig-dns');
 const axios = require ('axios');
 const parseDomain = require ('tld-extract');
 
-const apitoken = fs.readFileSync ('./cpanel-api-key.txt').toString ().trim ();
-const cPanelServer = 'cpanel.corya.net';
-const domain = 'corya.co';
-const username = 'coryane1';
+const apiToken = fs.readFileSync (process.env.AGASSI_CPANEL_API_TOKEN_FILE).toString ().trim ();
+const cPanelServer = process.env.AGASSI_CPANEL_SERVER.trim ();
+const username = AGASSI_CPANEL_USERNAME.trim ();
 const ttl = 14400;
 
 const auth = {
-    headers: {'Authorization': `cpanel ${username}:${apitoken}`}
+    headers: {'Authorization': `cpanel ${username}:${apiToken}`}
+};
+
+module.exports = {
+    putCnameRecord,
+    putTxtRecord
 };
 
 async function putCnameRecord (_fqdn, _target) {

@@ -7,7 +7,7 @@
 const log = require ('./logger.js');
 
 const { parseAgassiService, isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
-const { putCnameRecord } = require ('./dns/dns.js');
+const { putCnameRecord, putTxtRecord } = require ('./cPanel.js');
 const certify = require ('./certify.js');
 const Redis = require ('ioredis');
 const Docker = require ('dockerode');
@@ -216,9 +216,6 @@ async function dbHasCurrentCert (fqdn) {
     return true;
 }
  "use strict";
-
-
-const { putTxtRecord } = require ('./dns/dns.js');
 
 function sleep (ms) {
     return new Promise ((resolve) => {
