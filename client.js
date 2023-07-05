@@ -8,8 +8,6 @@ const log = require ('./logger.js');
 
 const { parseAgassiService, isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
 const { putCnameRecord, putTxtRecord } = require ('./cPanel.js');
-const certify = require ('./certify.js');
-const Redis = require ('ioredis');
 const Docker = require ('dockerode');
 const { Etcd3 } = require('etcd3');
 const acme = require ('acme-client');
@@ -26,6 +24,7 @@ const docker = new Docker ({
     port: process.env.AGASSI_DOCKER_PORT,
     version: process.env.AGASSI_DOCKER_API_VERSION
 });
+
 const msInDay = 86400000;
 var maintenanceInterval = undefined;
 
@@ -215,7 +214,6 @@ async function dbHasCurrentCert (fqdn) {
     log.debug ('domain ' + fqdn + ' has current cert');
     return true;
 }
- "use strict";
 
 function sleep (ms) {
     return new Promise ((resolve) => {
@@ -276,15 +274,6 @@ async function getCertificate (fqdn) {
     // I do not know why this is necessary, but getCertificate seems to return three of the same cert in one file.
     cert = cert.substring (0, cert.indexOf ('-----END CERTIFICATE-----')).concat ('-----END CERTIFICATE-----');
 
-    log.debug ('reading expiration');
-    const { validTo } = new X509Certificate (cert);
-    const expiration = new Date (validTo);
-
-    log.debug ('expiration ' + expiration);
-    log.debug ('adding cert to redis');
-    let res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${fqdn}`, cert,
-                            'PX', new Date (expiration).getTime () - new Date ().getTime ());
-    log.debug (res);
     return cert;
 }
 
