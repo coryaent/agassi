@@ -169,25 +169,21 @@ async function addService (agassiService) {
     log.debug ('adding service to etcd');
     // `SET service:[service id] [vhost]`
     log.debug (`setting service ${service.ID} -> vhost ${getVHost (service)}`);
-    let prefix = '/agassi/virtual-hosts/';
-    let all = await etcdClient.getAll().prefix(prefix);
-    // get an array of objects with properties 'key' and 'value'
-    let existingServices = [];
-    all.forEach (pair => existingServices.push ({'key': pair[0], 'value': pair[1]}));
-    // check if the service exists
-    let existingService = existingServices.find (host => host.key == prefix + agassiService.virtualHost);
-    if (exstingService) { // service already exists in etcd
-         // check which service is newer
-        if (Date.parse (agassiService.UpdatedAt) > Date.parse (existingService.UpdatedAt)) {
-            // add the new service to etcd
-            await etcdClient.put (prefix + agassiService.virtualHost).value (JSON.stringify (agassiService));
+    let vHostPath = `/agassi/virtual-hosts/${agassiService.virtualHost}`;
+    let existingVirtualHost = await etcdClient.get (vHostPath);
+    if (existingVirtualHost) { // service already exists in etcd
+         // check which virtual host is newer
+        if (Date.parse (agassiService.UpdatedAt) > Date.parse (existingVirtualHost.UpdatedAt)) {
+            // add the new host to etcd
+            await etcdClient.put (vHostPath).value (JSON.stringify (agassiService));
         }
-    } else { // add a new service
-        await etcdClient.put (prefix + agassiService.virtualHost).value (JSON.stringify (agassiService));
+    } else { // add the new host to etcd
+        await etcdClient.put (vHostPath).value (JSON.stringify (agassiService));
     }
     // check if the certificate exists
     let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${agassiService.virtualHost}`;
-    if (!await etcdClient.get (certPath)) {
+    let existingCert = await etcdClient.get (certPath);
+    if (!existingCert) {
         log.debug (`no cert found for ${agassiService.virtualHost}`);
         // need to fetch and add the certificate
         let pemCert = await fetchCertificate (agassiService.virtualHost);
@@ -197,22 +193,27 @@ async function addService (agassiService) {
         let ttl = Math.floor ( ( Date.parse (cert.validity.notAfter) - Date.now () ) / 1000 );
         log.debug (`cert will expire in ${ttl / ( 60 * 60 * 24 )} days`);
         // add cert to etcd with ttl
-        let lease = client.lease (ttl);
+        let lease = etcdClient.lease (ttl);
         await lease.put (certPath).value (pemCert);
     }
 };
 
 // this must be done by service ID because once the service is removed we cannot inspect it
-async function removeService (id) {
+async function removeService (serviceID) {
     // leave the cert alone in this circumstance, it will expire on its own
-    log.debug ('removing service', id, 'and its vhost from database');
-    let vHost = await redis.get ('service:' + id);
-    log.debug ('deleting vhost', vHost);
-    let res = await redis.del ('vhost:' + vHost);
-    log.trace (res);
-    log.debug ('deleting service ' + id);
-    res = await redis.del ('service:' + id);
-    log.trace (res);
+    log.debug (`removing service with ID ${serviceID}`);
+    let prefix = '/agassi/virtual-hosts/';
+    let all = await etcdClient.getAll().prefix(prefix);
+    // get an array of objects with properties 'key' and 'value'
+    let existingVirtualHosts = [];
+    all.forEach (pair => existingVirtualHosts.push ({'key': pair[0], 'value': pair[1]}));
+    for (let vHost of existingVirtualHosts) {
+        if (JSON.parse (vHost.value).serviceID == serviceID {
+            log.debug (`deleting virtual host at ${vHost.key}`);
+            await etcdClient.delete(vHost.key);
+            log.debug (`${vHost.key} deleted`);
+        }
+    }
 };
 
 // perform maintenance (will be called at a regular interval)
