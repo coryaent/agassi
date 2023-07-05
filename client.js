@@ -7,6 +7,8 @@ const { putCnameRecord } = require ('./dns/dns.js');
 const certify = require ('./certify.js');
 const Redis = require ('ioredis');
 const Docker = require ('dockerode');
+const { Etcd3 } = require('etcd3');
+const client = new Etcd3({ hosts: process.env.AGASSI_ETCD_HOSTS.split (',') });
 
 // initialization
 const docker = new Docker ({
@@ -206,4 +208,4 @@ async function dbHasCurrentCert (domain) {
     }
     log.debug ('domain ' + domain + ' has current cert');
     return true;
-};
+}
