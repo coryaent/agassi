@@ -299,7 +299,7 @@ function sleep (ms) {
     });
 }
 
-async function getCertificate (fqdn) {
+async function fetchCertificate (fqdn) {
     const account = await acmeClient.createAccount({
         termsOfServiceAgreed: true,
         contact: [`mailto:${process.env.AGASSI_LETS_ENCRYPT_EMAIL}`]
