@@ -73,7 +73,7 @@ async function addExistingServices () {
             }
         }
     });
-}
+};
 async function () {
     log.debug ('subscribing to events');
     docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
@@ -109,10 +109,9 @@ async function () {
             }
         });
     });
-}
+};
 
 async function addServiceToDB (service) {
-
     log.debug ('adding service to DB');
     // `SET service:[service id] [vhost]`
     log.debug (`setting service ${service.ID} -> vhost ${getVHost (service)}`);
