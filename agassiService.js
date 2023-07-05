@@ -13,7 +13,7 @@ the data that constitutes an agassiService goes like this:
     virtualHost: "...",
     authentication: "...",
     serviceID: "...",
-    updatedAt: "2011-10-05T14:48:00.000Z", // ISO String date
+    UpdatedAt: "2011-10-05T14:48:00.000Z", // ISO String date, capitalized for consistency with the docker API
     options: {
       target: "...",
       "anotherOption": "..."
