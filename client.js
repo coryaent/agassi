@@ -1,4 +1,4 @@
- "use strict";
+"use strict";
 
 /*
     the client script pulls existing services and adds new services based on events
@@ -14,11 +14,13 @@ const acme = require ('acme-client');
 const forge = require ('node-forge');
 
 // create clients
-const acmeClient = new acme.Client({z
+const acmeClient = new acme.Client({
     directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
     accountKey: fs.readFileSync (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)
 });
-const etcdClient = new Etcd3({ hosts: process.env.AGASSI_ETCD_HOSTS.split (',') });
+const etcdClient = new Etcd3({ 
+    hosts: process.env.AGASSI_ETCD_HOSTS.split (',')
+});
 const docker = new Docker ({
     host: process.env.AGASSI_DOCKER_HOST,
     port: process.env.AGASSI_DOCKER_PORT,
