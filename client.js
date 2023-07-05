@@ -198,21 +198,21 @@ async function performMaintenance () {
 }
 
 // check if a cert expiration is beyond a certain safeguard
-async function dbHasCurrentCert (domain) {
-    log.debug (`checking for current certificates for ${domain}`);
-    if (!(await redis.exists (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`))) {
-        log.debug ('could not find cert for domain ' + domain);
+async function dbHasCurrentCert (fqdn) {
+    log.debug (`checking for current certificates for ${fqdn}`);
+    if (!(await redis.exists (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${fqdn}`))) {
+        log.debug ('could not find cert for domain ' + fqdn);
         return false;
     }
     log.debug ('found cert');
-    let msUntilExpiration = await redis.pttl (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`);
+    let msUntilExpiration = await redis.pttl (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${fqdn}`);
     let daysUntilExpiration = msUntilExpiration / msInDay;
     log.debug ('days until expiration ' + daysUntilExpiration);
     if (daysUntilExpiration < Number.parseInt (process.env.AGASSI_EXPIRATION_THRESHOLD)) {
         log.debug ('cert is past the expiration threshold');
         return false;
     }
-    log.debug ('domain ' + domain + ' has current cert');
+    log.debug ('domain ' + fqdn + ' has current cert');
     return true;
 }
  "use strict";
@@ -226,7 +226,7 @@ function sleep (ms) {
     });
 }
 
-async function getCertificate (domain) {
+async function getCertificate (fqdn) {
     const account = await acmeClient.createAccount({
         termsOfServiceAgreed: true,
         contact: [`mailto:${process.env.AGASSI_LETS_ENCRYPT_EMAIL}`]
@@ -234,7 +234,7 @@ async function getCertificate (domain) {
     log.debug ('creating certificate order')
     const order = await acmeClient.createOrder({
         identifiers: [
-            { type: 'dns', value: domain },
+            { type: 'dns', value: fqdn },
         ]
     });
 
@@ -248,8 +248,8 @@ async function getCertificate (domain) {
 
     // set txt (ACME)
     log.debug ('setting txt record');
-    log.trace (`${domain} -> ${keyAuthorization}`);
-    const txtSet = await putTxtRecord (`_acme-challenge.${domain}`, keyAuthorization);
+    log.trace (`${fqdn} -> ${keyAuthorization}`);
+    const txtSet = await putTxtRecord (`_acme-challenge.${fqdn}`, keyAuthorization);
     log.trace (txtSet.data);
 
     // complete challenge
@@ -268,7 +268,7 @@ async function getCertificate (domain) {
 
     log.debug ('creating csr');
     const [key, csr] = await acme.crypto.createCsr ({
-        commonName: domain
+        commonName: fqdn
     }, fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE));
 
     log.debug ('finalizing order')
@@ -283,13 +283,9 @@ async function getCertificate (domain) {
     const { validTo } = new X509Certificate (cert);
     const expiration = new Date (validTo);
 
-    // remove challenge
-    // log.debug ('removing challenge key');
-    // const txtDelete = await deleteTxtRecord (`_acme-challenge.${domain}`);
-
     log.debug ('expiration ' + expiration);
     log.debug ('adding cert to redis');
-    let res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${domain}`, cert,
+    let res = await redis.set (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${fqdn}`, cert,
                             'PX', new Date (expiration).getTime () - new Date ().getTime ());
     log.debug (res);
     return cert;
