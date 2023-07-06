@@ -41,6 +41,7 @@ const msInDay = 86400000;
 var maintenanceInterval = undefined;
 
 function start () {
+    // listen for events
     docker.getEvents ({ filters: { type: ["service"]}}).then (async (events) => {
         events.on ('data', async (data) => {
             let res = null;
@@ -80,7 +81,7 @@ async function processEvent (event) {
     if (event.Action == 'remove') {
         await removeService (event.Actor.ID);
     }
-}
+};
 
 module.exports = {
     addExistingServices,
