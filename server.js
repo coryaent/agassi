@@ -56,6 +56,10 @@ module.exports = https.createServer ({
             // found a cert in the cache
             log.debug (`got cached cert for domain ${domain}`);
             authorizedCert = cachedCert;
+            return callback (null, tls.createSecureContext ({
+                key: pemKey,
+                cert: authorizedCert
+            }));
         } else { // no cached cert
             // try from etcd
             authorizedCert = await etcdClient.get (certPath);
