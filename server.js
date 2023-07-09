@@ -21,13 +21,10 @@ const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locall
 const cache = new Map ();
 
 // generate default key, certificate and sign it
-log.debug ('generating keypair...');
-const keypair = rsa.generateKeyPair({bits: 4096, e: 0x10001});
-const defaultKey = Buffer.from (forge.pki.privateKeyToPem (keypair.privateKey));
-const privateKey = keypair.privateKey;
-const publicKey = keypair.publicKey;
-log.debug ('keypair successfully generated');
-log.debug ('creating certificate...');
+log.debug ('generating default certificate...');
+const privateKey = forge.pki.privateKeyFromPem (fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE));
+log.debug ('read private key');
+const publicKey = forge.pki.setRsaPublicKey (privateKey.n, privateKey.e);
 const cert = forge.pki.createCertificate ();
 log.debug ('certificate successfully created');
 // configure the certificate
@@ -66,19 +63,19 @@ module.exports = https.createServer ({
                 cache.set (certPath, authorizedCert);
                 log.dubg ('set cert in cache');
                 return callback (null, tls.createSecureContext ({
-                    key: defaultKey,
+                    key: privateKey,
                     cert: authorizedCert
                 }));
             } else { // no cert from etcd or cache
                 log.warn (`no certificate found for ${domain}`);
                 return callback (null, tls.createSecureContext ({
-                    key: defaultKey,
+                    key: privateKey,
                     cert: defaultCert
                 }));
             }
         }
     },
-    key: defaultKey,
+    key: privateKey,
     cert: defaultCert
 }, async (request, response) => {
     const requestURL = new URL (request.url, `https://${request.headers.host}`);

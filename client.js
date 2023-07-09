@@ -22,6 +22,7 @@ const Docker = require ('dockerode');
 const { Etcd3 } = require('etcd3');
 const acme = require ('acme-client');
 const forge = require ('node-forge');
+const fs = require ('fs');
 
 // create clients
 const acmeClient = new acme.Client({
