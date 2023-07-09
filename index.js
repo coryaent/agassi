@@ -17,11 +17,6 @@ const isValidEmail = require ('is-valid-email');
 const isValidDomain = require ('is-valid-domain');
 
 
-if (!process.env.AGASSI_REDIS_HOST) {
-    log.fatal ('AGASSI_REDIS_HOST is must be defined');
-    process.exit (1);
-}
-
 // if client start monitoring docker socket
 if (process.argv.includes ('--client')) {
     if (!process.env.AGASSI_ACME_ACCOUNT_KEY_FILE || !isValidPath (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)) {
