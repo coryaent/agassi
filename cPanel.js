@@ -10,7 +10,7 @@ const parseDomain = require ('tld-extract');
 
 const apiToken = fs.readFileSync (process.env.AGASSI_CPANEL_API_TOKEN_FILE).toString ().trim ();
 const cPanelServer = process.env.AGASSI_CPANEL_SERVER.trim ();
-const username = AGASSI_CPANEL_USERNAME.trim ();
+const username = process.env.AGASSI_CPANEL_USERNAME.trim ();
 const ttl = 14400;
 
 const auth = {
