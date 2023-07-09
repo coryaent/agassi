@@ -82,10 +82,14 @@ module.exports = https.createServer ({
 }, async (request, response) => {
     const requestURL = new URL (request.url, `https://${request.headers.host}`);
     const vHostPath = `/agassi/virtual-hosts/v0/${requestURL.hostname}`;
+    log.trace (`received request for domain ${requestURL.hostname}`)
     let virtualHost = null;
     // check cache for virtual host
+    log.trace ('checking cache for virtual host...');
     virtualHost = cache.get (vHostPath);
     if (!virtualHost) { // no vHost in cache 
+        log.trace (`virtual host ${requestURL.hostname} not found in cache`);
+        log.trace (`checking store for virtual host for ${requestURL.hostname}...`);
         // this will set virtualHost to null (again) if there is no vHost in etcd
         virtualHost = await etcdClient.get (vHostPath);
         if (virtualHost) { // got virtual host from etcd
@@ -108,9 +112,9 @@ module.exports = https.createServer ({
         response.end (`Could not find virtual host for domain ${requestURL.hostname}`);
         return;
     }
+    log.trace ('parsing virtual host options...');
     virtualHost.options = JSON.parse (virtualHost.options);
-
-    log.trace (`got virtual host for domain ${requestURL.hostname}`);
+    log.trace ('parsed options');
 
     // parse proxy options
     // basic auth protected host
