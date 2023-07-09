@@ -99,7 +99,10 @@ module.exports = https.createServer ({
         if (virtualHost) { // got virtual host from etcd
             log.debug (`got virtual host for domain from etcd`);
             // parse the virtual host from etcd
+            log.debug ('parsiing virtual host from etcd...');
             virtualHost = JSON.parse (virtualHost)
+            log.debug ('parsed virtual host');
+            log.debug ('virtual host options:', virtualHost.options);
             log.debug ('cacheing virtual host...');
             // set cache to parsed virtual host so that we don't parse it again
             cache.set (vHostPath, virtualHost);
@@ -116,9 +119,9 @@ module.exports = https.createServer ({
         response.end (`Could not find virtual host for domain ${requestURL.hostname}`);
         return;
     }
-    log.trace ('parsing virtual host options...');
-    virtualHost.options = JSON.parse (virtualHost.options);
-    log.trace ('parsed options');
+    //log.trace ('parsing virtual host options...');
+    //virtualHost.options = JSON.parse (virtualHost.options);
+    //log.trace ('parsed options');
 
     // parse proxy options
     // basic auth protected host
