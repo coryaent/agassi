@@ -208,7 +208,7 @@ async function addService (agassiService) {
         let ttl = Math.floor ( ( Date.parse (cert.validity.notAfter) - Date.now () ) / 1000 );
         log.debug (`cert will expire in ${ttl / ( 60 * 60 * 24 )} days`);
         // add cert to etcd with ttl
-        let lease = etcdClient.lease (ttl);
+        let lease = etcdClient.lease (ttl, {autoKeepAlive: false});
         await lease.put (certPath).value (pemCert);
     }
 };
