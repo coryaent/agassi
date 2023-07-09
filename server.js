@@ -42,7 +42,7 @@ cert.setSubject ([{
 // sign the certificate
 log.debug ('signing certificate...');
 cert.sign (privateKey, forge.md.sha256.create ());
-log.debug ('certifiacte signed');
+log.debug ('certificate signed');
 const pemDefaultCert = Buffer.from (forge.pki.certificateToPem (cert));
 
 module.exports = https.createServer ({
@@ -63,7 +63,7 @@ module.exports = https.createServer ({
                 // cache the cert from etcd
                 log.debug (`got cert for domain ${domain} from etcd, caching...`);
                 cache.set (certPath, authorizedCert);
-                log.dubg ('set cert in cache');
+                log.debug ('set cert in cache');
                 return callback (null, tls.createSecureContext ({
                     key: pemKey,
                     cert: authorizedCert
