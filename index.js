@@ -16,10 +16,6 @@ const isValidPath = require ('is-valid-path');
 const isValidEmail = require ('is-valid-email');
 const isValidDomain = require ('is-valid-domain');
 
-if (!process.env.AGASSI_DEFAULT_KEY_FILE || !isValidPath (process.env.AGASSI_DEFAULT_KEY_FILE)) {
-    log.fatal ('AGASSI_DEFAULT_KEY_FILE is either not provided or invalid');
-    process.exit (1);
-}
 
 if (!process.env.AGASSI_REDIS_HOST) {
     log.fatal ('AGASSI_REDIS_HOST is must be defined');
