@@ -58,8 +58,12 @@ function start () {
             log.debug ('parsed service ' + id);
             if (agassiService) {
                 log.debug ('found agassi service ' + service.ID + ' with virtual host ' + agassiService.virtualHost);
+                log.debug ('setting CNAME record...');
                 await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
+                log.debug ('CNAME record set');
+                log.debug ('adding service to store...');
                 await addService (service);
+                log.debug ('service added to store');
             }
         }
     });
@@ -80,7 +84,11 @@ async function processEvent (event) {
         }
     }
     if (event.Action == 'remove') {
+        log.debug ('service ' + event.Actor.ID + ' removed from swarm');
+        log.debug ('removing service ' + event.Actor.ID + ' from store...');
         await removeService (event.Actor.ID);
+        log.debug ('removed service ' + event.Actor.ID + ' from store');
+
     }
 };
 
@@ -173,7 +181,7 @@ async function watchEvents () {
 async function addService (agassiService) {
     log.debug ('adding service to etcd');
     // `SET service:[service id] [vhost]`
-    log.debug (`setting service ${service.ID} -> vhost ${getVHost (service)}`);
+    log.debug (`setting service ${agassiService.serviceID} -> vhost ${agassiService.virtualHost}`);
     let vHostPath = `/agassi/virtual-hosts/v0/${agassiService.virtualHost}`;
     let existingVirtualHost = await etcdClient.get (vHostPath);
     if (existingVirtualHost) { // service already exists in etcd
