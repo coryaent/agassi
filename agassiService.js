@@ -95,7 +95,7 @@ module.exports = {
     getVHost: getVHost,
     getOptions: getOptions
 }
-function (service) {
+function getAuth (service) {
     const authRegex = /auth(?:entication)?/;
     const labels = parseServiceLabels (service);
     const authLabel = Object.keys (labels)
