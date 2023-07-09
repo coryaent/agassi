@@ -63,7 +63,7 @@ function start () {
                 await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
                 log.debug ('CNAME record set');
                 log.debug ('adding service to store...');
-                await addService (service);
+                await addService (agassiService);
                 log.debug ('service added to store');
             }
         }
@@ -82,7 +82,7 @@ async function processEvent (event) {
         if (agassiService) {
             log.debug ('found agassi service ' + agassiService.serviceID + ' with virtual host ' + agassiService.virtualHost);
             await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
-            await addService (service);
+            await addService (agassiService);
         }
     }
     if (event.Action == 'remove') {
@@ -181,7 +181,6 @@ async function watchEvents () {
 };
 
 async function addService (agassiService) {
-    log.debug ('adding service...');
     log.debug ('agassiService:', agassiService);
     // `SET service:[service id] [vhost]`
     log.debug (`setting service ${agassiService.serviceID} -> vhost ${agassiService.virtualHost}`);
