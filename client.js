@@ -56,7 +56,7 @@ function start () {
             let agassiService = parseAgassiService (service);
             log.debug ('parsed service ' + id);
             if (agassiService) {
-                log.debug ('found agassi service ' + service.ID ' with virtual host ' + agassiService.virtualHost);
+                log.debug ('found agassi service ' + service.ID + ' with virtual host ' + agassiService.virtualHost);
                 await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
                 await addService (service);
             }
@@ -73,7 +73,7 @@ async function processEvent (event) {
         let agassiService = parseAgassiService (service);
         // if we have an agassi service
         if (agassiService) {
-            log.debug ('found agassi service ' + service.ID ' with virtual host ' + agassiService.virtualHost);
+            log.debug ('found agassi service ' + service.ID + ' with virtual host ' + agassiService.virtualHost);
             await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
             await addService (service);
         }
@@ -212,7 +212,7 @@ async function removeService (serviceID) {
     let existingVirtualHosts = [];
     all.forEach (pair => existingVirtualHosts.push ({'key': pair[0], 'value': pair[1]}));
     for (let vHost of existingVirtualHosts) {
-        if (JSON.parse (vHost.value).serviceID == serviceID {
+        if (JSON.parse (vHost.value).serviceID == serviceID) {
             log.debug (`deleting virtual host at ${vHost.key}`);
             await etcdClient.delete(vHost.key);
             log.debug (`${vHost.key} deleted`);
