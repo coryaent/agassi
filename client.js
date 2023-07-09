@@ -10,7 +10,7 @@
         docker.getService (id);
         service.inspect ();
     on a service upon removal
-    therefore, we need to iterate over the keys at /agassi/virtual-hosts and parse their JSON values
+    therefore, we need to iterate over the keys at /agassi/virtual-hosts/v0 and parse their JSON values
     when a matching serviceID is found, we remove the virtual-host
 */
 
@@ -174,7 +174,7 @@ async function addService (agassiService) {
     log.debug ('adding service to etcd');
     // `SET service:[service id] [vhost]`
     log.debug (`setting service ${service.ID} -> vhost ${getVHost (service)}`);
-    let vHostPath = `/agassi/virtual-hosts/${agassiService.virtualHost}`;
+    let vHostPath = `/agassi/virtual-hosts/v0/${agassiService.virtualHost}`;
     let existingVirtualHost = await etcdClient.get (vHostPath);
     if (existingVirtualHost) { // service already exists in etcd
          // check which virtual host is newer
@@ -207,7 +207,7 @@ async function addService (agassiService) {
 async function removeService (serviceID) {
     // leave the cert alone in this circumstance, it will expire on its own
     log.debug (`removing service with ID ${serviceID}`);
-    let prefix = '/agassi/virtual-hosts/';
+    let prefix = '/agassi/virtual-hosts/v0/';
     let all = await etcdClient.getAll().prefix(prefix);
     // get an array of objects with properties 'key' and 'value'
     let existingVirtualHosts = [];

@@ -79,13 +79,13 @@ module.exports = https.createServer ({
     cert: defaultCert
 }, async (request, response) => {
     const requestURL = new URL (request.url, `https://${request.headers.host}`);
-    const vHostPath = `/agassi/virtual-hosts/${requestURL.hostname}`;
+    const vHostPath = `/agassi/virtual-hosts/v0/${requestURL.hostname}`;
     let virtualHost = null;
     // check cache for virtual host
     virtualHost = cache.get (vHostPath);
     if (!virtualHost) { // no vHost in cache 
         // this will set virtualHost to null (again) if there is no vHost in etcd
-        virtualHost = await etcdClient.get (`/agassi/virtual-hosts/${requestURL.hostname}`);
+        virtualHost = await etcdClient.get (vHostPath);
         if (virtualHost) { // got virtual host from etcd
             log.debug (`got virtual host for domain from etcd`);
             // parse the virtual host from etcd
