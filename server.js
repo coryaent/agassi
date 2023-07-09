@@ -23,7 +23,8 @@ const cache = new Map ();
 
 // generate default key, certificate and sign it
 log.debug ('generating default certificate...');
-const privateKey = forge.pki.privateKeyFromPem (fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE));
+const pemKey = fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE);
+const privateKey = forge.pki.privateKeyFromPem (pemKey);
 log.debug ('read private key');
 const publicKey = forge.pki.setRsaPublicKey (privateKey.n, privateKey.e);
 const cert = forge.pki.createCertificate ();
@@ -42,7 +43,7 @@ cert.setSubject ([{
 log.debug ('signing certificate...');
 cert.sign (privateKey, forge.md.sha256.create ());
 log.debug ('certifiacte signed');
-const defaultCert = Buffer.from (forge.pki.certificateToPem (cert));
+const pemDefaultCert = Buffer.from (forge.pki.certificateToPem (cert));
 
 module.exports = https.createServer ({
     SNICallback: async (domain, callback) => {
@@ -64,20 +65,20 @@ module.exports = https.createServer ({
                 cache.set (certPath, authorizedCert);
                 log.dubg ('set cert in cache');
                 return callback (null, tls.createSecureContext ({
-                    key: privateKey,
+                    key: pemKey,
                     cert: authorizedCert
                 }));
             } else { // no cert from etcd or cache
                 log.warn (`no certificate found for ${domain}`);
                 return callback (null, tls.createSecureContext ({
-                    key: privateKey,
-                    cert: defaultCert
+                    key: pemKey,
+                    cert: pemDefaultCert
                 }));
             }
         }
     },
-    key: privateKey,
-    cert: defaultCert
+    key: pemKey,
+    cert: pemDefaultCert
 }, async (request, response) => {
     const requestURL = new URL (request.url, `https://${request.headers.host}`);
     const vHostPath = `/agassi/virtual-hosts/v0/${requestURL.hostname}`;
