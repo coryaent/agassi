@@ -40,9 +40,9 @@ if (process.argv.includes ('--client')) {
         process.exit (1);
     }
     const client = require ('./client');
-    client.addExistingServices ();
-    client.listen ();
-    client.maintenance.start ();
+    //client.addExistingServices ();
+    client.start ();
+    //client.maintenance.start ();
 }
 
 // if server start HTTPS server

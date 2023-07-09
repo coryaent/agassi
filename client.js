@@ -86,7 +86,7 @@ async function processEvent (event) {
 
 module.exports = {
     addExistingServices,
-    listen,
+    start,
     maintenance
 };
 
