@@ -1,6 +1,6 @@
 "use strict";
 
-const log = require ('../logger');
+const log = require ('./logger');
 
 const fs = require ('fs');
 const dns = require ('node:dns').promises;
