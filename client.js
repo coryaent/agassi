@@ -56,6 +56,7 @@ function start () {
             service = await service.inspect ();
             let agassiService = parseAgassiService (service);
             log.debug ('parsed service ' + id);
+            log.debug ('aggasi service:', agassiService);
             if (agassiService) {
                 log.debug ('found agassi service ' + service.ID + ' with virtual host ' + agassiService.virtualHost);
                 log.debug ('setting CNAME record...');
@@ -77,8 +78,9 @@ async function processEvent (event) {
         log.trace ('id: ' + event.Actor.ID);
         let agassiService = parseAgassiService (service);
         // if we have an agassi service
+        log.debug ('agassiService:', agassiService);
         if (agassiService) {
-            log.debug ('found agassi service ' + service.ID + ' with virtual host ' + agassiService.virtualHost);
+            log.debug ('found agassi service ' + agassiService.serviceID + ' with virtual host ' + agassiService.virtualHost);
             await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
             await addService (service);
         }
@@ -179,7 +181,8 @@ async function watchEvents () {
 };
 
 async function addService (agassiService) {
-    log.debug ('adding service to etcd');
+    log.debug ('adding service...');
+    log.debug ('agassiService:', agassiService);
     // `SET service:[service id] [vhost]`
     log.debug (`setting service ${agassiService.serviceID} -> vhost ${agassiService.virtualHost}`);
     let vHostPath = `/agassi/virtual-hosts/v0/${agassiService.virtualHost}`;
