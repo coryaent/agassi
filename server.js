@@ -12,6 +12,7 @@ const bcrypt = require ('bcryptjs');
 const compare = require ('tsscmp');
 const { Etcd3 } = require ('etcd3');
 const Proxy = require ('./proxy.js');
+const forge = require ('node-forge');
 
 // initializations
 const etcdClient = new Etcd3({
