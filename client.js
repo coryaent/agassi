@@ -288,7 +288,6 @@ async function fetchCertificate (fqdn) {
 
     // set txt (ACME)
     log.debug ('setting txt record');
-    log.trace (`${fqdn} -> ${keyAuthorization}`);
     const txtSet = await putTxtRecord (`_acme-challenge.${fqdn}`, keyAuthorization);
     log.trace (txtSet.data);
 
