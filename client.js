@@ -49,39 +49,38 @@ const docker = new Docker ({
 const msInDay = 86400000;
 var maintenanceInterval = undefined;
 
-function start () {
-    log.debug ('starting events listener...');
+async function start () {
+    // where to start listening (passed to getEvents)
+    let timestamp = Math.floor (new Date().getTime ());
+    // add existing services
+    let services = await docker.listServices ();
+    for (let id of services.map (service => service.ID)) {
+        let service = await docker.getService (id);
+        service = await service.inspect ();
+        let agassiService = parseAgassiService (service);
+        log.debug ('parsed service ' + id);
+        if (agassiService) {
+            log.debug ('found agassi service ' + service.ID + ' with virtual host ' + agassiService.virtualHost);
+            log.debug ('setting CNAME record...');
+            await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
+            log.debug ('CNAME record set');
+            log.debug ('adding service to store...');
+            await addService (agassiService);
+            log.debug ('service added to store');
+        }
+    }
     // listen for events
-    // using events 'since' directive would alleviate the load on docker managers
-    //   and etcd nodes
-    docker.getEvents ({ filters: { type: ["service"]}}).then (async (events) => {
+    log.debug (`starting events listener...`);
+    docker.getEvents ({ filters: { type: ["service"] }, since: timestamp }).then (async (events) => {
         log.info ('docker events listener started');
         events.on ('data', async (data) => {
             let event = JSON.parse (data);
             await processEvent (event);
         });
         events.on ('close', () => {
-            log.warn ('docker events connection closed');
+            log.warn ('docker events connection closed, reconnecting...');
             setTimeout (start, 7500);
         });
-        // add existing services
-        let services = await docker.listServices ();
-        for (let id of services.map (service => service.ID)) {
-            let service = await docker.getService (id);
-            service = await service.inspect ();
-            let agassiService = parseAgassiService (service);
-            log.debug ('parsed service ' + id);
-            log.debug ('aggasi service:', agassiService);
-            if (agassiService) {
-                log.debug ('found agassi service ' + service.ID + ' with virtual host ' + agassiService.virtualHost);
-                log.debug ('setting CNAME record...');
-                await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
-                log.debug ('CNAME record set');
-                log.debug ('adding service to store...');
-                await addService (agassiService);
-                log.debug ('service added to store');
-            }
-        }
     }).catch ((error) => {
         log.error ('could not connect to docker event stream:', error.code);
         setTimeout (start, 7500);
@@ -190,10 +189,11 @@ async function performMaintenance () {
     let prefix = '/agassi/virtual-hosts/v0/';
     let all = await etcdClient.getAll().prefix(prefix);
 
-    // get an array of key-value pairs [{key: example.com, value: someJSON}]
-    let storedAgassiServices = [];
-    all.forEach (pair => storedAgassiServices.push ({'key': pair[0], 'value': pair[1]}));
-    log.debug (`found ${storedAgassiServices.length} in store`);
+    // get a map of key-value pairs [{key: example.com, value: someJSON}]
+    // parse JSON later
+    let storedAgassiServices = new Map ();
+    all.forEach (pair => storedAgassiServices.set (pair[0], pair[1]));
+    log.debug (`found ${storedAgassiServices.size} in store`);
 
     // pull services from docker
     let dockerServiceIDs = (await docker.listServices ()).map (service => service.ID);
@@ -201,12 +201,16 @@ async function performMaintenance () {
 
     // iterate through each db service and check that it still exists in docker
     log.debug ('looking for services to prune');
-    for (let agassiService of storedAgassiServices) {
-        let value = JSON.parse (agassiService.value);
+    for (let agassiServiceKey of storedAgassiServices.keys ()) {
+        // parse JSON here
+        let value = JSON.parse (storedAgassiServices.get (agassiServiceKey));
         if (!dockerServiceIDs.includes (value.serviceID)) {
+            // remove service from store
             log.debug ('purging ' + value.serviceID + ' from store with vHost ' + value.virtualHost);
-            await etcdClient.delete (agassiService.key);
-            log.debug (`deleted key ${agassiService.key}`);
+            await etcdClient.delete (agassiServiceKey);
+            log.debug (`deleted key ${agassiServiceKey} from store`);
+            // also remove from map of stored services
+            storedAgassiServices.delete (agassiServiceKey);
         }
     }
     /* TODO (the rest of this function) and check that an array may be more effective than a may above */
@@ -214,6 +218,18 @@ async function performMaintenance () {
     // use keydb here or don't have too many services'
     log.debug ('checking for current certs');
     // update all now that we have pruned
+    for (let agassiServiceKey of storedAgassiServices.keys ()) {
+        let value = JSON.parse (storedAgassiServices.get (agassiServiceKey));
+        let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${value.virtualHost}`;
+        let pemCert = await etcdClient.get (certPath);
+        if (pemCert) {
+            let cert = forge.pki.certificateFromPem (pemCert);
+            let msUntilExpiration = new Date (cert.validity.notAfter).getTime () - new Date ().getTime ();
+            let daysUntilExpiration = msUntilExpiration / (1000 * 60 * 60 * 24);
+        }
+    }
+    //console.log ('cert from pem:', certFromPem);
+    console.log ('cert years until expiration:', (new Date (certFromPem.validity.notAfter).getTime () - new Date ().getTime ())/(1000*60*60*24*365));
 
     let serviceKeys = await redis.keys ('service:*');
     for (let key of serviceKeys) {
