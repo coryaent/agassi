@@ -80,7 +80,7 @@ Starts listening to HTTPS requests.
 
 ## Authorization
 ```sh
-htpasswd -n -B -C 24 user | base64 -w 0
+echo $(htpasswd -n -B -C 4 user | base64 -w 0)
 ```
 ```sh
 openssl genrsa 4096 | docker secret create agassi_default_key -
