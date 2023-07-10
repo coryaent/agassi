@@ -15,8 +15,7 @@
 
     maintenance needs to run on a regular interval (specified in hours, default to 24)
     it needs to perform function
-      1. prune services/virtualHosts that exist in etcd but not docker swarm
-      2. scan each cert
+      - scan each cert
         a) if there is an agassiService/virtualHost for the cert, check if its expiration is pat a threshold
            (expires within 45 days by default)
         b) otherwise renew the cert (it will be removed from etcd automatically when the lease expires
@@ -51,7 +50,7 @@ var maintenanceInterval = undefined;
 
 async function start () {
     // where to start listening (passed to getEvents)
-    let timestamp = Math.floor (new Date().getTime ());
+    let timestamp = Math.floor (new Date().getTime () / 1000);
     // add existing services
     let services = await docker.listServices ();
     for (let id of services.map (service => service.ID)) {
