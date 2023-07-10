@@ -206,13 +206,15 @@ async function performMaintenance () {
         if (!dockerServiceIDs.includes (value.serviceID)) {
             log.debug ('purging ' + value.serviceID + ' from store with vHost ' + value.virtualHost);
             await etcdClient.delete (agassiService.key);
-            log.debug (`deleted agassi service with virtualhost ${value.virtualHost}`);
+            log.debug (`deleted key ${agassiService.key}`);
         }
     }
     /* TODO (the rest of this function) */
     // now that they're pruned, fetch the service keys again
     // use keydb here or don't have too many services'
     log.debug ('checking for current certs');
+    // update all now that we have pruned
+
     let serviceKeys = await redis.keys ('service:*');
     for (let key of serviceKeys) {
         log.debug ('fetching vhost for', key);
