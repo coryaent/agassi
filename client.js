@@ -42,12 +42,17 @@ const msInDay = 86400000;
 var maintenanceInterval = undefined;
 
 function start () {
+    log.debug ('starting events listener...');
     // listen for events
     docker.getEvents ({ filters: { type: ["service"]}}).then (async (events) => {
+        log.info ('docker events listener started');
         events.on ('data', async (data) => {
-            let res = null;
             let event = JSON.parse (data);
             await processEvent (event);
+        });
+        events.on ('close', () => {
+            log.warn ('docker events connection closed');
+            setTimeout (start, 7500);
         });
         // add existing services
         let services = await docker.listServices ();
@@ -67,6 +72,9 @@ function start () {
                 log.debug ('service added to store');
             }
         }
+    }).catch ((error) => {
+        log.error ('could not connect to docker event stream:', error.code);
+        setTimeout (start, 7500);
     });
 };
 
