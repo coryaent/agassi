@@ -57,43 +57,7 @@ module.exports = {
             }
         }
         return null;
-    },
-    isAgassiService: function (service) {
-
-        const labels = parseServiceLabels (service);
-
-        // no labels at all, not an agassi service
-        if (!Object.keys (labels).length > 0) {
-            return false;
-        }
-        const vHostRegEx = /v(?:irtual(?:\-h|H)|[Hh])ost/;
-        // we need to check for AGASSI_LABEL_PREFIX + vHost and
-
-        for (let labelKey of Object.keys (labels)) {
-            // filter labels that start with the prefix
-            if (labelKey.startsWith (process.env.AGASSI_LABEL_PREFIX)) {
-                const agassiLabel = labelKey.replace (process.env.AGASSI_LABEL_PREFIX, '');
-                // filter labels that meet the regex
-                if (vHostRegEx.test (agassiLabel)) {
-                    // has virtual host
-                    log.debug ('isAgassiService found label', process.env.AGASSI_LABEL_PREFIX.concat (agassiLabel));
-                    log.debug ('this may be an agassi service');
-                    if (getOptions (service)['forward']) {
-                        log.debug ('found forward option');
-                        return true
-                    }
-                    if (getOptions (service) ['target']) {
-                        log.debug ('found target option');
-                        return true
-                    }
-                }
-            }
-        }
-        return false;
-    },
-    getAuth: getAuth,
-    getVHost: getVHost,
-    getOptions: getOptions
+    }
 }
 function getAuth (service) {
     const authRegex = /auth(?:entication)?/;
@@ -260,4 +224,3 @@ function camelCase (text) {
         return c ? c.toUpperCase () : '';
     });
 }
-

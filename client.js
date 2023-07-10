@@ -24,7 +24,7 @@
 
 const log = require ('./logger.js');
 
-const { parseAgassiService, isAgassiService, getAuth, getVHost, getOptions } = require ('./agassiService.js');
+const { parseAgassiService } = require ('./agassiService.js');
 const { putCnameRecord, putTxtRecord } = require ('./cPanel.js');
 const Docker = require ('dockerode');
 const { Etcd3 } = require('etcd3');
@@ -112,91 +112,6 @@ async function processEvent (event) {
     }
 };
 
-module.exports = {
-    addExistingServices,
-    start,
-    maintenance
-};
-
-// for updating certificates and for adding services that were missed by events
-var maintenance ={
-    start: () => {
-        if (!maintenanceInterval) {
-            log.debug ('starting maintenance');
-            // 60000 is the number of milliseconds in a minute
-            maintenanceInterval = setInterval (performMaintenance, Number.parseInt (process.env.AGASSI_MAINTENANCE_INTERVAL) * 60000);
-        }
-    },
-    stop: () => {
-        if (maintenanceInterval) {
-            log.debug ('stopping maintenance');
-            clearInterval (maintenanceInterval);
-            maintenanceInterval = undefined;
-        }
-    }
-};
-
-async function addExistingServices () {
-    // pull existing services
-    log.debug ('adding existing services');
-    docker.listServices ().then (async function (services) {
-        log.debug ('found ' + services.length + ' services');
-        for (let id of services.map (service => service.ID)) {
-            log.debug ('checking service ' + id);
-            let service = await docker.getService (id);
-            service = await service.inspect ();
-            log.debug ('parsed service ' + id);
-            if (isAgassiService (service)) {
-                log.trace ('found agassi service ' + id);
-                log.trace ('vhost: ' + getVHost (service));
-                log.trace ('auth: ' + getAuth (service));
-                log.trace ('options:', getOptions (service));
-                // adding service triggers a call to fetch the certificate
-                // and add it to the database
-                let res = await addService (service);
-                log.debug (res);
-                // set dns record
-                await putCnameRecord (getVHost (service), process.env.AGASSI_TARGET_CNAME);
-            }
-        }
-    });
-};
-async function watchEvents () {
-    log.debug ('subscribing to events');
-    docker.getEvents ({ filters: { type: ["service"]}}).then (events => {
-        events.on ('data', async (data) => {
-            let res = null;
-            let event = JSON.parse (data);
-            // log.trace (event);
-            if (event.Action == 'create' || event.Action == 'update') {
-                log.debug ('found new or updated service');
-                let service = await docker.getService (event.Actor.ID);
-                service = await service.inspect ();
-                log.trace ('id: ' + event.Actor.ID);
-                // if we have an agassi service
-                if (isAgassiService (service)) {
-                    log.debug ('found agassi service ' + event.Actor.ID);
-                    log.trace ('vhost: ' + getVHost (service));
-                    log.trace ('auth: ' + getAuth (service));
-                    log.trace ('options:', getOptions (service));
-                    await addService (service);
-                    res = await putCnameRecord (getVHost (service), process.env.AGASSI_TARGET_CNAME);
-                    log.debug (res.data);
-                }
-            }
-            if (event.Action == 'remove') {
-                if (await redis.exists (`service:${event.Actor.ID}`)) {
-                    // remove cname and remove service from db
-                    let vHost = await redis.get (`service:${event.Actor.ID}`);
-                    // res = await deleteCnameRecord (vHost);
-                    // log.debug (res.data.trim ());
-                    res = await removeService (event.Actor.ID);
-                    log.debug (res);
-                }
-            }
-        });
-    });
-};
 
 async function addService (agassiService) {
     log.debug ('agassiService:', agassiService);
@@ -245,6 +160,24 @@ async function removeService (serviceID) {
             log.debug (`deleting virtual host at ${vHost.key}`);
             await etcdClient.delete(vHost.key);
             log.debug (`${vHost.key} deleted`);
+        }
+    }
+};
+
+// for updating certificates and pruning old services
+const maintenance ={
+    start: () => {
+        if (!maintenanceInterval) {
+            log.debug ('starting maintenance');
+            // 60000 is the number of milliseconds in a minute
+            maintenanceInterval = setInterval (performMaintenance, Number.parseInt (process.env.AGASSI_MAINTENANCE_INTERVAL) * 60000);
+        }
+    },
+    stop: () => {
+        if (maintenanceInterval) {
+            log.debug ('stopping maintenance');
+            clearInterval (maintenanceInterval);
+            maintenanceInterval = undefined;
         }
     }
 };
@@ -365,11 +298,7 @@ async function fetchCertificate (fqdn) {
 
     // await validation
     log.debug ('awaiting validation...');
-    // await acmeClient.waitForValidStatus (dnsChallenge)
-    // let validation = await retry (async function (retry, number) {
-    //     log.info ('attempt number', number);
-    //     return acmeClient.waitForValidStatus (dnsChallenge).catch (retry);
-    // });
+    // give the DNS records a few seconds to propagate
     await sleep (7500);
     let validation = await acmeClient.waitForValidStatus (dnsChallenge)
 
@@ -389,9 +318,7 @@ async function fetchCertificate (fqdn) {
     return cert;
 }
 
-// const awaitValidStatus = async (dnsChallenge) =>
-//     retry (async (dnsChallenge) => {
-//         log.debug ('attempting to verify completion');
-//         let validation = await client.waitForValidStatus (dnsChallenge);
-//         return validation;
-//     });
+module.exports = {
+    start,
+    maintenance
+};
