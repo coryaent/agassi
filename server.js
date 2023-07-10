@@ -125,14 +125,14 @@ module.exports = https.createServer ({
 
     // parse proxy options
     // basic auth protected host
-    if (virtualHost.authorization) {
-        log.trace ('authorization required');
+    if (virtualHost.authentication) {
+        log.trace ('authentication required');
         // authorization required but not provided
         if (!request.headers.authorization) {
             // prompt for password in browser
             log.trace ('prompting password');
             response.writeHead (401, { 'WWW-Authenticate': `Basic realm="process.env.AGASSI_AUTH_REALM"`});
-            response.end ('Authorization is required.');
+            response.end ('Authentication is required.');
             return;
         }
 
@@ -142,7 +142,7 @@ module.exports = https.createServer ({
             response.writeHead(429, {
                 'Content-Type': 'text/plain'
             });
-            response.end ('Authorization failed.');
+            response.end ('Authentication failed.');
             return;
         }
 
