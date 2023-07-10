@@ -209,7 +209,7 @@ async function performMaintenance () {
             log.debug (`deleted key ${agassiService.key}`);
         }
     }
-    /* TODO (the rest of this function) */
+    /* TODO (the rest of this function) and check that an array may be more effective than a may above */
     // now that they're pruned, fetch the service keys again
     // use keydb here or don't have too many services'
     log.debug ('checking for current certs');
