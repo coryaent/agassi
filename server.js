@@ -151,7 +151,7 @@ module.exports = https.createServer ({
         const [requestUser, requestPassword] = requestAuth.split (':');
 
         // parse vHost authorization parameter
-        const vHostAuth = (Buffer.from (virtualHost.authorization, 'base64')).toString ('utf-8');
+        const vHostAuth = (Buffer.from (virtualHost.authentication, 'base64')).toString ('utf-8');
         const [virtualUser, virtualHash] = vHostAuth.split (':');
 
 
