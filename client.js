@@ -187,6 +187,16 @@ const maintenance ={
 
 // perform maintenance (will be called at a regular interval)
 async function performMaintenance () {
+
+    /*
+        this function is far easier now that dockre is pulling all
+        services and events soundly
+
+        what it needs to do is pull all the certs, check that each cert
+        is associate with an agassiService (from the store) and then
+        renew certs that are over 45 days old (by default)
+    */
+
     log.debug ('performing maintenance');
     // remove services that are no longer in docker
     // pull existing services from db
