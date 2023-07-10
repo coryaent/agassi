@@ -12,6 +12,14 @@
     on a service upon removal
     therefore, we need to iterate over the keys at /agassi/virtual-hosts/v0 and parse their JSON values
     when a matching serviceID is found, we remove the virtual-host
+
+    maintenance needs to run on a regular interval (specified in hours, default to 24)
+    it needs to perform function
+      1. prune services/virtualHosts that exist in etcd but not docker swarm
+      2. scan each cert
+        a) if there is an agassiService/virtualHost for the cert, check if its expiration is pat a threshold
+           (expires within 45 days by default)
+        b) otherwise renew the cert (it will be removed from etcd automatically when the lease expires
 */
 
 const log = require ('./logger.js');
@@ -44,6 +52,8 @@ var maintenanceInterval = undefined;
 function start () {
     log.debug ('starting events listener...');
     // listen for events
+    // using events 'since' directive would alleviate the load on docker managers
+    //   and etcd nodes
     docker.getEvents ({ filters: { type: ["service"]}}).then (async (events) => {
         log.info ('docker events listener started');
         events.on ('data', async (data) => {
