@@ -70,6 +70,10 @@ async function start () {
     }
     // listen for events
     log.debug (`starting events listener...`);
+    listen (timestamp - 1);
+}
+
+function listen (timestamp) {
     docker.getEvents ({ filters: { type: ["service"] }, since: timestamp }).then (async (events) => {
         log.info ('docker events listener started');
         events.on ('data', async (data) => {
@@ -77,14 +81,15 @@ async function start () {
             await processEvent (event);
         });
         events.on ('close', () => {
+            let closedAt = Math.floor (new Date().getTime () / 1000);
             log.warn ('docker events connection closed, reconnecting...');
-            setTimeout (start, 7500);
+            setTimeout (listen, 7500, closedAt - 1);
         });
     }).catch ((error) => {
-        log.error ('could not connect to docker event stream:', error.code);
-        setTimeout (start, 7500);
+        log.error ('could not connect to docker event stream:', error.code, 'retrying...');
+        setTimeout (listen, 7500, timestamp);
     });
-};
+}
 
 async function processEvent (event) {
     if (event.Action == 'create' || event.Action == 'update') {
