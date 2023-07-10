@@ -49,7 +49,7 @@ module.exports = {
                         agassiService['virtualHost'] = getVHost (service);
                         agassiService['authentication'] = getAuth (service);
                         agassiService['serviceID'] = service.ID;
-                        agassiService['updateAt'] = service.UpdatedAt;
+                        agassiService['UpdatedAt'] = service.UpdatedAt;
                         agassiService['options'] = getOptions (service);
                         return agassiService;
                     }
