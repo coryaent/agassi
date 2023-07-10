@@ -187,25 +187,29 @@ async function performMaintenance () {
     log.debug ('performing maintenance');
     // remove services that are no longer in docker
     // pull existing services from db
-    let dbServices = (await redis.keys ('service:*')).map (key => key.replace ('service:', ''));
-    log.debug (`found ${dbServices.length} db services`, dbServices);
+    let prefix = '/agassi/virtual-hosts/v0/';
+    let all = await etcdClient.getAll().prefix(prefix);
+
+    // get an array of key-value pairs [{key: example.com, value: someJSON}]
+    let storedAgassiServices = [];
+    all.forEach (pair => storedAgassiServices.push ({'key': pair[0], 'value': pair[1]}));
+    log.debug (`found ${storedAgassiServices.length} in store`);
 
     // pull services from docker
-    let dockerServices = (await docker.listServices ()).map (service => service.ID);
+    let dockerServiceIDs = (await docker.listServices ()).map (service => service.ID);
     log.debug (`found ${dockerServices.length} docker services`, dockerServices);
 
-    // iterate through each db service and check that it still exists in docker x
+    // iterate through each db service and check that it still exists in docker
     log.debug ('looking for services to prune');
-    for (let id of dbServices) {
-        if (!dockerServices.includes (id)) {
-            // service only exists in the database, it needs to be pruned
-            // do not remove the service and its vhost, the vhost may be used by an active service
-            log.debug ('deleting service ' + id);
-            let res = await redis.del ('service:' + id);
-            log.trace (res);
+    for (let agassiService of storedAgassiServices) {
+        let value = JSON.parse (agassiService.value);
+        if (!dockerServiceIDs.includes (value.serviceID)) {
+            log.debug ('purging ' + value.serviceID + ' from store with vHost ' + value.virtualHost);
+            await etcdClient.delete (agassiService.key);
+            log.debug (`deleted agassi service with virtualhost ${value.virtualHost}`);
         }
     }
-
+    /* TODO (the rest of this function) */
     // now that they're pruned, fetch the service keys again
     // use keydb here or don't have too many services'
     log.debug ('checking for current certs');
