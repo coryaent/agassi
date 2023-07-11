@@ -22,10 +22,10 @@ const compareHash = memoize (bcrypt.compare, {maxAge: 1000 * 60 * 5}); // locall
 const cache = new Map ();
 
 // generate default key, certificate and sign it
-log.debug ('generating default certificate...');
+log.info ('generating default certificate...');
 const pemKey = fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE);
 const privateKey = forge.pki.privateKeyFromPem (pemKey);
-log.debug ('read private key');
+log.trace ('read private key');
 const publicKey = forge.pki.setRsaPublicKey (privateKey.n, privateKey.e);
 const cert = forge.pki.createCertificate ();
 log.debug ('certificate successfully created');
@@ -40,9 +40,9 @@ cert.setSubject ([{
     value: `${os.hostname ()}.invalid`
 }]);
 // sign the certificate
-log.debug ('signing certificate...');
+log.info ('signing certificate...');
 cert.sign (privateKey, forge.md.sha256.create ());
-log.debug ('certificate signed');
+log.trace ('certificate signed');
 const pemDefaultCert = Buffer.from (forge.pki.certificateToPem (cert));
 
 module.exports = https.createServer ({
@@ -54,7 +54,7 @@ module.exports = https.createServer ({
         let cachedCert = cache.get (certPath);
         if (cachedCert) {
             // found a cert in the cache
-            log.debug (`got cached cert for domain ${domain}`);
+            log.trace (`got cached cert for domain ${domain}`);
             authorizedCert = cachedCert;
             return callback (null, tls.createSecureContext ({
                 key: pemKey,
@@ -65,15 +65,15 @@ module.exports = https.createServer ({
             authorizedCert = await etcdClient.get (certPath);
             if (authorizedCert) { // got a cert fom etcd
                 // cache the cert from etcd
-                log.debug (`got cert for domain ${domain} from etcd, caching...`);
+                log.trace (`got cert for domain ${domain} from etcd, caching...`);
                 cache.set (certPath, authorizedCert);
-                log.debug ('set cert in cache');
+                log.trace ('set cert in cache');
                 return callback (null, tls.createSecureContext ({
                     key: pemKey,
                     cert: authorizedCert
                 }));
             } else { // no cert from etcd or cache
-                log.warn (`no certificate found for ${domain}`);
+                log.trace (`no certificate found for ${domain}`);
                 return callback (null, tls.createSecureContext ({
                     key: pemKey,
                     cert: pemDefaultCert
@@ -97,16 +97,15 @@ module.exports = https.createServer ({
         // this will set virtualHost to null (again) if there is no vHost in etcd
         virtualHost = await etcdClient.get (vHostPath);
         if (virtualHost) { // got virtual host from etcd
-            log.debug (`got virtual host for domain from etcd`);
+            log.trace (`got virtual host for domain from etcd`);
             // parse the virtual host from etcd
-            log.debug ('parsiing virtual host from etcd...');
+            log.trace ('parsing virtual host from etcd...');
             virtualHost = JSON.parse (virtualHost)
-            log.debug ('parsed virtual host');
-            log.debug ('virtual host options:', virtualHost.options);
-            log.debug ('cacheing virtual host...');
+            log.trace ('parsed virtual host');
+            log.trace ('cacheing virtual host...');
             // set cache to parsed virtual host so that we don't parse it again
             cache.set (vHostPath, virtualHost);
-            log.debug ('cache set');
+            log.trace ('set virtual host in cache');
         }
     }
     // still don't have virtual host
@@ -119,14 +118,10 @@ module.exports = https.createServer ({
         response.end (`Could not find virtual host for domain ${requestURL.hostname}`);
         return;
     }
-    //log.trace ('parsing virtual host options...');
-    //virtualHost.options = JSON.parse (virtualHost.options);
-    //log.trace ('parsed options');
-
     // parse proxy options
     // basic auth protected host
     if (virtualHost.authentication) {
-        log.trace ('authentication required');
+        log.trace ('authentication required for virtual host', virtualHost.virtualHost);
         // authorization required but not provided
         if (!request.headers.authorization) {
             // prompt for password in browser
@@ -175,11 +170,11 @@ module.exports = https.createServer ({
     }
 })
 .once ('listening', async () => {
-    log.debug ('initializing rate limiter...');
+    log.info ('initializing rate limiter...');
     rateLimit.init ();
-    log.debug ('rate limiter initialized');
+    log.trace ('rate limiter initialized');
 
-    log.debug ('initializing cache...');
+    log.info ('initializing cache...');
     let prefix = '/agassi/';
     let allAgassi = await etcdClient.getAll().prefix(prefix).exec ();
     log.debug (`cacheing ${allAgassi.kvs.length} agassi services and certificates...`);
@@ -197,12 +192,12 @@ module.exports = https.createServer ({
         cache.set (key, value);
         log.trace ('cached', key);
     }
-    log.debug (`cached ${allAgassi.kvs.length} agassi services and certificates`);
-    log.debug ('creating watcher on prefix ' + prefix + ' since revision ' + allAgassi.header.revision + '...');
+    log.trace (`cached ${allAgassi.kvs.length} agassi services and certificates`);
+    log.info ('creating watcher on prefix ' + prefix + ' since revision ' + allAgassi.header.revision + '...');
     etcdClient.watch ().prefix(prefix).startRevision(allAgassi.header.revision).create().then (watcher => {
         log.debug ('watcher created successfully');
         watcher.on ('put', res => {
-                log.trace ('put event received');
+            log.trace ('put event received');
             let key = res.key.toString();
             let servicePrefix = '/agassi/virtual-hosts/v0/';
             let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
@@ -217,6 +212,7 @@ module.exports = https.createServer ({
             log.trace ('cached', key);
         });
         watcher.on ('delete', res => {
+            log.trace ('delete event received');
             let key = res.key.toString ();
             cache.delete (key);
         });
@@ -226,5 +222,5 @@ module.exports = https.createServer ({
     log.info ('https server started');
 })
 .on ('close', () => {
-    log.info ('https server stopped');
+    log.warn ('https server stopped');
 });
