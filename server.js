@@ -196,7 +196,7 @@ module.exports = https.createServer ({
         }
         cache.set (key, value);
     }
-    log.debug (`cached ${allAgassi.kv.length} agassi services`);
+    log.debug (`cached ${allAgassi.kvs.length} agassi services`);
     log.debug ('creating watcher on prefix ' + prefix + ' since revision ' + allAgassi.header.revision + '...');
     etcdClient.watch ().prefix(prefix).startRevision(allAgassi.header.revision).create().then (watcher => {
         log.debug ('watcher created successfully');
