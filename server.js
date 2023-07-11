@@ -182,7 +182,7 @@ module.exports = https.createServer ({
     log.debug ('initializing cache...');
     let prefix = '/agassi/';
     let allAgassi = await etcdClient.getAll().prefix(prefix).exec ();
-    log.debug (`cacheing ${allAgassi.length} agassi services and certificates...`);
+    log.debug (`cacheing ${allAgassi.kvs.length} agassi services and certificates...`);
     for (let kv of allAgassi.kvs) {
         let key = kv.key.toString();
         let servicePrefix = '/agassi/virtual-hosts/v0/';
@@ -196,7 +196,7 @@ module.exports = https.createServer ({
         }
         cache.set (key, value);
     }
-    log.debug (`cached ${allAgassi.kvs.length} agassi services`);
+    log.debug (`cached ${allAgassi.kvs.length} agassi services and certificates`);
     log.debug ('creating watcher on prefix ' + prefix + ' since revision ' + allAgassi.header.revision + '...');
     etcdClient.watch ().prefix(prefix).startRevision(allAgassi.header.revision).create().then (watcher => {
         log.debug ('watcher created successfully');
