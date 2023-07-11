@@ -21,7 +21,7 @@ ENVAR | Detail | Default
 `AGASSI_DOCKER_API_VERSION` | passed to [dockerode](https://github.com/apocas/dockerode) | v1.37
 `AGASSI_DOCKER_HOST` | TCP socket passed to dockerode | localhost
 `AGASSI_DOCKER_PORT` | TCP port passed to dockerode | 2375
-`AGASSS_ETCD_HOSTS` | comma-seperated array of strings of etcd3 hosts | <div style="display: inline">http://localhost:2379</div>
+`AGASSS_ETCD_HOSTS` | comma-seperated array of strings of etcd3 hosts | http://localhost:2379
 `AGASSI_EXPIRATION_THRESHOLD` | days before certificate expires to renew | 45
 `AGASSI_LABEL_PREFIX` | label prefix to define virtual hosts | page.agassi.
 `AGASSI_LETS_ENCRYPT_EMAIL` | email address used to send certificate renewal notifications |
