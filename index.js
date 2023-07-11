@@ -21,9 +21,8 @@ if (process.argv.includes ('--client')) {
     if (!process.env.AGASSI_ACME_ACCOUNT_KEY_FILE || !isValidPath (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)) {
         log.fatal ('AGASSI_ACME_ACCOUNT_KEY_FILE is either not defined or invalid');
     }
-    if (!process.env.AGASSI_LETS_ENCRYPT_EMAIL || !isValidEmail (process.env.AGASSI_LETS_ENCRYPT_EMAIL)) {
-        log.fatal ('AGASSI_LETS_ENCRYPT_EMAIL is either not provided or invalid');
-        process.exit (1);
+    if (!isValidEmail (process.env.AGASSI_LETS_ENCRYPT_EMAIL)) {
+        log.warn ('AGASSI_LETS_ENCRYPT_EMAIL appears to be invalid');
     }
     if (!process.env.AGASSI_TARGET_CNAME || !isValidDomain (process.env.AGASSI_TARGET_CNAME, { subdomain: true })) {
         log.fatal ('AGASSI_TARGET_CNAME is either undefined or invalid');
