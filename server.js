@@ -195,12 +195,14 @@ module.exports = https.createServer ({
             value = kv.value;
         }
         cache.set (key, value);
+        log.trace ('cached', key);
     }
     log.debug (`cached ${allAgassi.kvs.length} agassi services and certificates`);
     log.debug ('creating watcher on prefix ' + prefix + ' since revision ' + allAgassi.header.revision + '...');
     etcdClient.watch ().prefix(prefix).startRevision(allAgassi.header.revision).create().then (watcher => {
         log.debug ('watcher created successfully');
         watcher.on ('put', res => {
+                log.trace ('put event received');
             let key = res.key.toString();
             let servicePrefix = '/agassi/virtual-hosts/v0/';
             let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
@@ -212,6 +214,7 @@ module.exports = https.createServer ({
                 value = res.value;
             }
             cache.set (key, value);
+            log.trace ('cached', key);
         });
         watcher.on ('delete', res => {
             let key = res.key.toString ();
