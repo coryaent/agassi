@@ -13,20 +13,20 @@ ENVAR | Detail | Default
 --- | --- | ---
 `AGASSI_ACME_PRODUCTION` | if set to any value, fetch certificates from production Let's Encrypt |
 `AGASSI_ACME_ACCOUNT_KEY_FILE` | the path to the key to the ACME account |
-`AGASSI_AUTH_REALM` | the realm to use from basic authentication | 'Agassi'
+`AGASSI_AUTH_REALM` | the realm to use from basic authentication | Agassi
 `AGASSI_CPANEL_API_TOKEN_FILE` | the path to the cPanel API token |
 `AGASSI_CPANEL_SERVER` | the base URL for the cpanel endpoint |
 `AGASSI_CPANEL_USERNAME` | the username to log in to cPanel |
 `AGASSI_DEFAULT_KEY_FILE` | the path to the default key used for signing certificates |
-`AGASSI_DOCKER_API_VERSION` | passed to [dockerode](https://github.com/apocas/dockerode) | 'v1.37'
+`AGASSI_DOCKER_API_VERSION` | passed to [dockerode](https://github.com/apocas/dockerode) | v1.37
 `AGASSI_DOCKER_HOST` | TCP socket passed to dockerode | localhost
 `AGASSI_DOCKER_PORT` | TCP port passed to dockerode | 2375
-`AGASSS_ETCD_HOSTS` | comma-seperated array of strings of etcd3 hosts | 'http://localhost:2379'
-`AGASSI_EXPIRATION_THRESHOLD` | days before certificate expires to renew | '45'
-`AGASSI_LABEL_PREFIX` | label prefix to define virtual hosts | 'page.agassi.'
+`AGASSS_ETCD_HOSTS` | comma-seperated array of strings of etcd3 hosts | <div style="display: inline">http://localhost:2379</div>
+`AGASSI_EXPIRATION_THRESHOLD` | days before certificate expires to renew | 45
+`AGASSI_LABEL_PREFIX` | label prefix to define virtual hosts | page.agassi.
 `AGASSI_LETS_ENCRYPT_EMAIL` | email address used to send certificate renewal notifications |
-`AGASSI_LOG_LEVEL` | trace, debug, info, warn, error, fatal | 'info'
-`AGASSI_MAINTENANCE_INTERVAL` | how often to prune services and update certificates (hours) | '12'
+`AGASSI_LOG_LEVEL` | trace, debug, info, warn, error, fatal | info
+`AGASSI_MAINTENANCE_INTERVAL` | how often to prune services and update certificates (hours) | 12
 `AGASSI_TARGET_CNAME` | cname value to which DNS records point |
 
 ## Labels
