@@ -3,7 +3,7 @@
 # Agassi
 Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockerswarm.rocks/). When Traefik dropped support for distributed certificate storage, it created a situation all certificates were stored locally on a single machine. This removed redundency from the setup.
 
-By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates. Domain, agassi service, and virtual host are used interchangably in the code.
+By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates. Each agassi service is mapped to a virtual host, (mostly) added by the client and retrieved by the server.
 
 ## Configuration
 
@@ -29,9 +29,9 @@ ENVAR | Detail | Default
 `AGASSI_TARGET_CNAME` | cname value to which DNS records point |
 
 ## Labels
-- `page.agassi.vhost` set to your target domain `example.com`
+- `page.agassi.domain` set to your target domain `example.com`
 - `page.agassi.auth` see Authorization for how to generate an auth string
-- `page.agassi.opts.target` the service access address for example `http://myservice:80`
+- `page.agassi.options.target` the service access address for example `http://myservice:80`
 All options prefixed with `page.agassi.options.` are camel-cased (set `prependPath` with the label `page.agassi.opts.prepend-path`) and passed to [node-http-proxy](https://github.com/http-party/node-http-proxy).
 Pass the labels into your swarm compose file.
 ```yaml
@@ -40,16 +40,16 @@ services:
   service-01:
     image:
     labels:
-      page.agassi.vhost: example.com
-      page.agassi.opts.target: http://service-01:80
+      page.agassi.domain: example.com
+      page.agassi.options.target: http://service-01:80
 # this means of labeling gets overwritten by the former
 services:
   service-01:
     image:
     deploy:
       labels:
-        page.agassi.vhost: example.com
-        page.agassi.opts.target: http://service-01:80
+        page.agassi.domain: example.com
+        page.agassi.options.target: http://service-01:80
 ```
 
 ## Flow

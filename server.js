@@ -121,7 +121,7 @@ module.exports = https.createServer ({
     // parse proxy options
     // basic auth protected host
     if (virtualHost.authentication) {
-        log.trace ('authentication required for virtual host', virtualHost.virtualHost);
+        log.trace ('authentication required for virtual host', virtualHost.domain);
         // authorization required but not provided
         if (!request.headers.authorization) {
             // prompt for password in browser
