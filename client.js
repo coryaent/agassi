@@ -52,7 +52,9 @@ async function start () {
     // where to start listening (passed to getEvents)
     let timestamp = Math.floor (new Date().getTime () / 1000);
     // add existing services
+    log.debug ('checking docker services for agassi services...');
     let services = await docker.listServices ();
+    log.debug (`found ${services.length} docker services`);
     for (let id of services.map (service => service.ID)) {
         let service = await docker.getService (id);
         service = await service.inspect ();
@@ -65,15 +67,15 @@ async function start () {
             log.debug ('CNAME record set');
             log.debug ('adding service to store...');
             await addService (agassiService);
-            log.debug ('service added to store');
+            log.debug (`service ${agassiService.serviceID} added to store`);
         }
     }
     // listen for events
-    log.debug (`starting events listener...`);
     listen (timestamp - 1);
 }
 
 function listen (timestamp) {
+    log.debug (`starting docker service events listener...`);
     docker.getEvents ({ filters: { type: ["service"] }, since: timestamp }).then (async (events) => {
         log.info ('docker events listener started');
         events.on ('data', async (data) => {
@@ -93,17 +95,19 @@ function listen (timestamp) {
 
 async function processEvent (event) {
     if (event.Action == 'create' || event.Action == 'update') {
-        log.debug ('found new or updated service');
+        log.debug ('found new or updated service with ID ' + event.Actor.ID);
         let service = await docker.getService (event.Actor.ID);
         service = await service.inspect ();
-        log.trace ('id: ' + event.Actor.ID);
         let agassiService = parseAgassiService (service);
         // if we have an agassi service
-        log.debug ('agassiService:', agassiService);
         if (agassiService) {
             log.debug ('found agassi service ' + agassiService.serviceID + ' with virtual host ' + agassiService.virtualHost);
+            log.debug ('setting CNAME record...');
             await putCnameRecord (agassiService.virtualHost, process.env.AGASSI_TARGET_CNAME);
+            log.debug ('CNAME record set');
+            log.debug ('adding service to store...');
             await addService (agassiService);
+            log.debug (`service ${agassiService.serviceID} added to store`);
         }
     }
     if (event.Action == 'remove') {
@@ -117,28 +121,37 @@ async function processEvent (event) {
 
 
 async function addService (agassiService) {
-    log.debug ('agassiService:', agassiService);
-    // `SET service:[service id] [vhost]`
-    log.debug (`setting service ${agassiService.serviceID} -> vhost ${agassiService.virtualHost}`);
+    log.debug (`adding service ${agassiService.serviceID} -> vhost ${agassiService.virtualHost} ...`);
     let vHostPath = `/agassi/virtual-hosts/v0/${agassiService.virtualHost}`;
+    log.debug ('checking for existing agassi service at domain ' + agassiService.virtualHost + ' ...');
     let existingVirtualHost = await etcdClient.get (vHostPath);
     if (existingVirtualHost) { // service already exists in etcd
+        log.debug (`agassi service at ${agassiService.virtualHost} found in store`);
          // check which virtual host is newer
+        log.debug (`checking which agassi service was updated more recently...`);
         if (Date.parse (agassiService.UpdatedAt) > Date.parse (existingVirtualHost.UpdatedAt)) {
             // add the new host to etcd
+            log.debug (`updating agassi service with domain ${agassiService.virtuallHost}...`);
             await etcdClient.put (vHostPath).value (JSON.stringify (agassiService));
+            log.debug ('agassi service updated');
         }
     } else { // add the new host to etcd
+        log.debug (`no agassi service with domain ${agassiService.virtualHost} found in store`);
         await etcdClient.put (vHostPath).value (JSON.stringify (agassiService));
+        log.debug (`agassi service with domain ${agassiService.virtuallHost} added to store`);
     }
     // check if the certificate exists
     let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${agassiService.virtualHost}`;
+    log.debug (`checking store for cert with domain ${agassiService.virtualHost}...`);
     let existingCert = await etcdClient.get (certPath);
-    if (!existingCert) {
+    if (existingCert) {
+        log.debug (`found cert in store for domain ${agassiService.virtualHost}`);
+    } else {
         log.debug (`no cert found for ${agassiService.virtualHost}`);
         // need to fetch and add the certificate
+        log.debug (`fetching cert for domain ${agassiService.virtualHost}...`);
         let pemCert = await fetchCertificate (agassiService.virtualHost);
-        log.debug (`get cert for virtual host ${agassiService.virtualHost}`);
+        log.debug (`fetched cert for domain ${agassiService.virtualHost}`);
         // get ttl in seconds
         let cert = forge.pki.certificateFromPem (pemCert);
         let ttl = Math.floor ( ( Date.parse (cert.validity.notAfter) - Date.now () ) / 1000 );
@@ -154,13 +167,15 @@ async function removeService (serviceID) {
     // leave the cert alone in this circumstance, it will expire on its own
     log.debug (`removing service with ID ${serviceID}`);
     let prefix = '/agassi/virtual-hosts/v0/';
+    log.debug (`getting all agassi services to check for service ID ${serviceID}...`);
     let all = await etcdClient.getAll().prefix(prefix);
     // get an array of objects with properties 'key' and 'value'
     let existingVirtualHosts = [];
     all.forEach (pair => existingVirtualHosts.push ({'key': pair[0], 'value': pair[1]}));
+    log.debug (`found ${existingVirtualHosts.length} agassi services in store`);
     for (let vHost of existingVirtualHosts) {
         if (JSON.parse (vHost.value).serviceID == serviceID) {
-            log.debug (`deleting virtual host at ${vHost.key}`);
+            log.debug (`deleting virtual host at ${vHost.key}...`);
             await etcdClient.delete(vHost.key);
             log.debug (`${vHost.key} deleted`);
         }
@@ -245,28 +260,28 @@ async function fetchCertificate (fqdn) {
         termsOfServiceAgreed: true,
         contact: [`mailto:${process.env.AGASSI_LETS_ENCRYPT_EMAIL}`]
     });
-    log.debug ('creating certificate order')
+    log.debug ('creating certificate order...')
     const order = await acmeClient.createOrder({
         identifiers: [
             { type: 'dns', value: fqdn },
         ]
     });
 
-    log.debug ('fetching authorizations');
+    log.debug ('fetching authorizations...');
     const authorizations = await acmeClient.getAuthorizations (order);
-    log.debug ('finding dns challenge');
+    log.debug ('finding dns challenge...');
     const dnsChallenge = authorizations[0]['challenges'].find ((element) => element.type === 'dns-01');
 
-    log.debug ('fetching key authorization');
+    log.debug ('fetching key authorization...');
     const keyAuthorization = await acmeClient.getChallengeKeyAuthorization(dnsChallenge);
 
     // set txt (ACME)
-    log.debug ('setting txt record');
+    log.debug ('setting txt record...');
     const txtSet = await putTxtRecord (`_acme-challenge.${fqdn}`, keyAuthorization);
     log.trace (txtSet.data);
 
     // complete challenge
-    log.debug ('completing challenge');
+    log.debug ('completing challenge...');
     const completion = await acmeClient.completeChallenge (dnsChallenge);
 
     // await validation
@@ -275,15 +290,15 @@ async function fetchCertificate (fqdn) {
     await sleep (7500);
     let validation = await acmeClient.waitForValidStatus (dnsChallenge)
 
-    log.debug ('creating csr');
+    log.debug ('creating csr...');
     const [key, csr] = await acme.crypto.createCsr ({
         commonName: fqdn
     }, fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE));
 
-    log.debug ('finalizing order')
+    log.debug ('finalizing order...')
     const finalized = await acmeClient.finalizeOrder (order, csr);
 
-    log.debug ('fetching cert');
+    log.debug ('fetching cert...');
     let cert = await acmeClient.getCertificate (finalized);
     // I do not know why this is necessary, but getCertificate seems to return three of the same cert in one file.
     cert = cert.substring (0, cert.indexOf ('-----END CERTIFICATE-----')).concat ('-----END CERTIFICATE-----');
