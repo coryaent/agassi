@@ -173,7 +173,7 @@ const maintenance ={
         if (!maintenanceInterval) {
             log.debug ('starting maintenance');
             // 60000 is the number of milliseconds in a minute
-            maintenanceInterval = setInterval (performMaintenance, Number.parseInt (process.env.AGASSI_MAINTENANCE_INTERVAL) * 60000);
+            maintenanceInterval = setInterval (performMaintenance, 1000 * 60 * 60 * 12); // every 12 hours
         }
     },
     stop: () => {
