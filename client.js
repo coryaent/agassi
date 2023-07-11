@@ -187,113 +187,51 @@ const maintenance ={
 
 // perform maintenance (will be called at a regular interval)
 async function performMaintenance () {
-
     /*
-        this function is far easier now that dockre is pulling all
+        this function is far easier now that docker is pulling all
         services and events soundly
 
         what it needs to do is pull all the certs, check that each cert
         is associate with an agassiService (from the store) and then
         renew certs that are over 45 days old (by default)
     */
+    log.debug ('performing maintenance...');
+    let vHostPrefix = '/agassi/virtual-hosts/v0/';
+    log.debug ('pulling agassi services from store...')
+    let allVirtualHosts = etcdClient.getAll.prefix(vHostPrefix).exec();
+    log.debug (`found ${allVirtualHosts.kvs.length} agassi services in kv store`);
+    let vHostDomains = [];
+    for (let kv of allVirtualHosts.kvs) {
+        let agassiService = JSON.parse (kv.value);
+        vHostDomains.push (agassiService.virtualHost);
+    }
 
-    log.debug ('performing maintenance');
-    // remove services that are no longer in docker
-    // pull existing services from db
-    let prefix = '/agassi/virtual-hosts/v0/';
-    let all = await etcdClient.getAll().prefix(prefix);
-
-    // get a map of key-value pairs [{key: example.com, value: someJSON}]
-    // parse JSON later
-    let storedAgassiServices = new Map ();
-    all.forEach (pair => storedAgassiServices.set (pair[0], pair[1]));
-    log.debug (`found ${storedAgassiServices.size} in store`);
-
-    // pull services from docker
-    let dockerServiceIDs = (await docker.listServices ()).map (service => service.ID);
-    log.debug (`found ${dockerServices.length} docker services`, dockerServices);
-
-    // iterate through each db service and check that it still exists in docker
-    log.debug ('looking for services to prune');
-    for (let agassiServiceKey of storedAgassiServices.keys ()) {
-        // parse JSON here
-        let value = JSON.parse (storedAgassiServices.get (agassiServiceKey));
-        if (!dockerServiceIDs.includes (value.serviceID)) {
-            // remove service from store
-            log.debug ('purging ' + value.serviceID + ' from store with vHost ' + value.virtualHost);
-            await etcdClient.delete (agassiServiceKey);
-            log.debug (`deleted key ${agassiServiceKey} from store`);
-            // also remove from map of stored services
-            storedAgassiServices.delete (agassiServiceKey);
+    let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
+    log.debug ('pulling certificates from store...');
+    let allCerts = await etcdClient.getAll().prefix(certPrefix).exec ();
+    log.debug (`found ${allCerts.kvs.length} certs in kv store`);
+    for (let kv of allCerts.kvs) {
+        let key = kv.key.toString ();
+        let pemCert = kv.value;
+        let certDomain = key.replace (certPrefix, '');
+        log.debug (`found cert for domain ${certDomain}`);
+        // check that the cert has an associated agassi service
+        if (vHostDomains.includes(certDomain)) {
+            // check expiration
+            let cert = forge.pki.certificateFromPem (certPemBuffer);
+            let daysUntilExpiration = (new Date (cert.validity.notAfter).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
+            log.debug (`cert for domain ${certDomain} will expire in ${daysUntilExpiration} days`);
+            // if renewal is past the threshold we need to renew
+            if (daysUntilExpiration < 45) {
+                log.debug (`renewing certificate for ${certDomain}...`);
+                let updatedCert = await fetchCertificate (certDomain);
+                log.debug ('got updated cert');
+                log.debug ('adding updated cert to store...');
+                await etcdClient.put (certPrefix + certDomain).value (updatedCert);
+                log.debug ('added updated cert to kv store');
+            }
         }
     }
-    /* TODO (the rest of this function) and check that an array may be more effective than a may above */
-    // now that they're pruned, fetch the service keys again
-    // use keydb here or don't have too many services'
-    log.debug ('checking for current certs');
-    // update all now that we have pruned
-    for (let agassiServiceKey of storedAgassiServices.keys ()) {
-        let value = JSON.parse (storedAgassiServices.get (agassiServiceKey));
-        let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${value.virtualHost}`;
-        let pemCert = await etcdClient.get (certPath);
-        if (pemCert) {
-            let cert = forge.pki.certificateFromPem (pemCert);
-            let msUntilExpiration = new Date (cert.validity.notAfter).getTime () - new Date ().getTime ();
-            let daysUntilExpiration = msUntilExpiration / (1000 * 60 * 60 * 24);
-        }
-    }
-    //console.log ('cert from pem:', certFromPem);
-    console.log ('cert years until expiration:', (new Date (certFromPem.validity.notAfter).getTime () - new Date ().getTime ())/(1000*60*60*24*365));
-
-    let serviceKeys = await redis.keys ('service:*');
-    for (let key of serviceKeys) {
-        log.debug ('fetching vhost for', key);
-        let vHost = await redis.get (key);
-        log.debug ('cheking cert for vhost', vHost);
-        if (!await dbHasCurrentCert (vHost)) {
-            // we need to fetch a cert and insert it into the database
-            await certify (getVHost (service));
-        }
-    }
-
-    log.debug ('looking for vhosts to prune');
-    // get each current service vhost
-    const serviceVHosts = [];
-    for (let key of serviceKeys) {
-        let vHost = await redis.get (key);
-        serviceVHosts.push (vHost);
-    }
-    log.debug ('found', serviceVHosts.length, 'service vhosts');
-    // get all the vhosts from the db
-    const dbVHosts = (await redis.keys ('vhost:*')).map (key => key.replace ('vhost:', ''));
-    log.debug ('found', dbVHosts.length, 'db vhosts');
-    // for each vhost from the db
-    for (let vHost of dbVHosts) {
-        if (!serviceVHosts.includes (vHost)) {
-            log.debug ('removing vHost', vHost);
-            let res = await redis.del (`vhost:${vHost}`);
-            log.trace (res);
-        }
-    }
-}
-
-// check if a cert expiration is beyond a certain safeguard
-async function dbHasCurrentCert (fqdn) {
-    log.debug (`checking for current certificates for ${fqdn}`);
-    if (!(await redis.exists (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${fqdn}`))) {
-        log.debug ('could not find cert for domain ' + fqdn);
-        return false;
-    }
-    log.debug ('found cert');
-    let msUntilExpiration = await redis.pttl (`cert${process.env.AGASSI_ACME_PRODUCTION ? '' : '.staging'}:${fqdn}`);
-    let daysUntilExpiration = msUntilExpiration / msInDay;
-    log.debug ('days until expiration ' + daysUntilExpiration);
-    if (daysUntilExpiration < Number.parseInt (process.env.AGASSI_EXPIRATION_THRESHOLD)) {
-        log.debug ('cert is past the expiration threshold');
-        return false;
-    }
-    log.debug ('domain ' + fqdn + ' has current cert');
-    return true;
 }
 
 function sleep (ms) {
