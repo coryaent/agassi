@@ -174,7 +174,51 @@ module.exports = https.createServer ({
         Proxy.web (request, response, virtualHost.options);
     }
 })
-.once ('listening', rateLimit.init)
+.once ('listening', async () => {
+    log.debug ('initializing rate limiter...');
+    rateLimit.init ();
+    log.debug ('rate limiter initialized');
+
+    log.debug ('initializing cache...');
+    let prefix = '/agassi/';
+    let allAgassi = await etcdClient.getAll().prefix(prefix).exec ();
+    log.debug (`cacheing ${allAgassi.length} agassi services and certificates...`);
+    for (let kv of allAgassi.kvs) {
+        let key = kv.key.toString();
+        let servicePrefix = '/agassi/virtual-hosts/v0/';
+        let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
+        let value = null;
+        if (key.startsWith (servicePrefix)) {
+            value = JSON.parse(kv.value);
+        }
+        if (key.startsWith (certPrefix)) {
+            value = kv.value;
+        }
+        cache.set (key, value);
+    }
+    log.debug (`cached ${allAgassi.kv.length} agassi services`);
+    log.debug ('creating watcher on prefix ' + prefix + ' since revision ' + allAgassi.header.revision + '...');
+    etcdClient.watch ().prefix(prefix).startRevision(allAgassi.header.revision).create().then (watcher => {
+        log.debug ('watcher created successfully');
+        watcher.on ('put', res => {
+            let key = res.key.toString();
+            let servicePrefix = '/agassi/virtual-hosts/v0/';
+            let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
+            let value = null;
+            if (key.startsWith (servicePrefix)) {
+                value = JSON.parse(res.value);
+            }
+            if (key.startsWith (certPrefix)) {
+                value = res.value;
+            }
+            cache.set (key, value);
+        });
+        watcher.on ('delete', res => {
+            let key = res.key.toString ();
+            cache.delete (key);
+        });
+    });
+})
 .on ('listening', () => {
     log.info ('https server started');
 })
