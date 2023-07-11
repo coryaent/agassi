@@ -3,10 +3,7 @@
 # Agassi
 Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockerswarm.rocks/). When Traefik dropped support for distributed certificate storage, it created a situation all certificates were stored locally on a single machine. This removed redundency from the setup.
 
-By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates. Domain and virtual host are used interchangably in the code.
-
-# TODO
-- [ ] Create a healthcheck for the client that pings the docker socket (etcd should reconnect automatically)
+By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates. Domain, agassi service, and virtual host are used interchangably in the code.
 
 ## Configuration
 
@@ -31,18 +28,11 @@ ENVAR | Detail | Default
 `AGASSI_MAINTENANCE_INTERVAL` | how often to prune services and update certificates (hours) | '12'
 `AGASSI_TARGET_CNAME` | cname value to which DNS records point |
 
-## Redis
-`SET cert:example.com [cert] PX [ms until expiration]`
-
-`SET service:[service id] [vhost]`
-
-`HSET vhost:example.com [auth] [options]`
-
 ## Labels
 - `page.agassi.vhost` set to your target domain `example.com`
 - `page.agassi.auth` see Authorization for how to generate an auth string
 - `page.agassi.opts.target` the service access address for example `http://myservice:80`
-All options prefixed with `page.agassi.opts.` are camel-cased (set `prependPath` with the label `page.agassi.opts.prepend-path`) and passed to [node-http-proxy](https://github.com/http-party/node-http-proxy).
+All options prefixed with `page.agassi.options.` are camel-cased (set `prependPath` with the label `page.agassi.opts.prepend-path`) and passed to [node-http-proxy](https://github.com/http-party/node-http-proxy).
 Pass the labels into your swarm compose file.
 ```yaml
 # defining at this level takes priority
@@ -63,7 +53,7 @@ services:
 ```
 
 ## Flow
-Agassi requires the use of two seperate services, a client (ACME and Docker) and a server (HTTPS).
+Agassi requires the use of two seperate services, a client (ACME, etcd, and docker) and a server (HTTPS).
 ### Client
 Client spins up.
 
@@ -77,9 +67,11 @@ Server spins up.
 Starts listening to HTTPS requests.
 
 ## Authorization
+To generate a basic auth parameter:
 ```sh
 echo $(htpasswd -n -B -C 4 user | base64 -w 0)
 ```
+To generate a default and ACME account key
 ```sh
-openssl genrsa 4096 | docker secret create agassi_default_key -
+openssl genrsa 4096 | docker secret create my_key -
 ```
