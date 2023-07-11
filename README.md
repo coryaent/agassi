@@ -3,7 +3,7 @@
 # Agassi
 Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockerswarm.rocks/). When Traefik dropped support for distributed certificate storage, it created a situation all certificates were stored locally on a single machine. This removed redundency from the setup.
 
-By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates. Each agassi service is mapped to a virtual host, (mostly) added by the client and retrieved by the server.
+By taking advantage of Docker Swarm's built-in state management, Agassi is able to run entirely in memory without the use of generative templates. Each agassi service is mapped to a virtual host, which are created by the client and retrieved by the server.
 
 ## Configuration
 
@@ -29,8 +29,8 @@ ENVAR | Detail | Default
 `AGASSI_TARGET_CNAME` | cname value to which DNS records point |
 
 ## Labels
-- `page.agassi.domain` set to your target domain `example.com`
-- `page.agassi.auth` see Authorization for how to generate an auth string
+- `page.agassi.domain` set to your target domain ex. `example.com`
+- `page.agassi.auth` see [Authorization](#authorization) for how to generate an auth string
 - `page.agassi.options.target` the service access address for example `http://myservice:80`
 All options prefixed with `page.agassi.options.` are camel-cased (set `prependPath` with the label `page.agassi.opts.prepend-path`) and passed to [node-http-proxy](https://github.com/http-party/node-http-proxy).
 Pass the labels into your swarm compose file.
