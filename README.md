@@ -20,17 +20,15 @@ ENVAR | Detail | Default
 `AGASSI_CPANEL_USERNAME` | the username to log in to cPanel |
 `AGASSI_DEFAULT_KEY_FILE` | the path to the default key used for signing certificates |
 `AGASSI_DOCKER_API_VERSION` | passed to [dockerode](https://github.com/apocas/dockerode) | 'v1.37'
-`AGASSI_DOCKER_HOST` | TCP socket passed to dockerode |
+`AGASSI_DOCKER_HOST` | TCP socket passed to dockerode | localhost
 `AGASSI_DOCKER_PORT` | TCP port passed to dockerode | 2375
-`AGASSS_ETCD_HOSTS` | comma-seperated array of strings of etcd3 hosts |
+`AGASSS_ETCD_HOSTS` | comma-seperated array of strings of etcd3 hosts | http://localhost:2379
 `AGASSI_EXPIRATION_THRESHOLD` | days before certificate expires to renew | '45'
 `AGASSI_LABEL_PREFIX` | label prefix to define virtual hosts | 'page.agassi.'
 `AGASSI_LETS_ENCRYPT_EMAIL` | email address used to send certificate renewal notifications |
 `AGASSI_LOG_LEVEL` | trace, debug, info, warn, error, fatal | 'info'
 `AGASSI_MAILINABOX_DOMAIN` | domain of mail-in-a-box server |
-`AGASSI_MAILINABOX_EMAIL` | email used to authenticate mail-in-a-box API |
-`AGASSI_MAILINABOX_PASSWORD_FILE` | path to the password file used to authenticate mail-in-a-box API |
-`AGASSI_MAINTENANCE_INTERVAL` | how often to prune services and update certificates (minutes) | '60'
+`AGASSI_MAINTENANCE_INTERVAL` | how often to prune services and update certificates (hours) | '12'
 `AGASSI_TARGET_CNAME` | cname value to which DNS records point |
 
 ## Redis

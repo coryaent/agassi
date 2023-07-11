@@ -189,7 +189,8 @@ const maintenance ={
         if (!maintenanceInterval) {
             log.debug ('starting maintenance');
             // 60000 is the number of milliseconds in a minute
-            maintenanceInterval = setInterval (performMaintenance, 1000 * 60 * 60 * 12); // every 12 hours
+            maintenanceInterval = setInterval (performMaintenance,
+                1000 * 60 * 60 * Number.parseFloat(process.env.AGASSI_MAINTENANCE_INTERVAL));
         }
     },
     stop: () => {
@@ -238,7 +239,7 @@ async function performMaintenance () {
             let daysUntilExpiration = (new Date (cert.validity.notAfter).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
             log.debug (`cert for domain ${certDomain} will expire in ${daysUntilExpiration} days`);
             // if renewal is past the threshold we need to renew
-            if (daysUntilExpiration < 45) {
+            if (daysUntilExpiration < Number.parseFloat(process.env.AGASSI_EXPIRATION_THRESHOLD)) {
                 log.debug (`renewing certificate for ${certDomain}...`);
                 let updatedCert = await fetchCertificate (certDomain);
                 log.trace ('got updated cert');
