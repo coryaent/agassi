@@ -89,7 +89,7 @@ module.exports = https.createServer ({
     const requestURL = new URL (request.url, `https://${request.headers.host}`);
     const vHostPath = `/agassi/virtual-hosts/v0/${requestURL.hostname}`;
     // discard invalid domains and IP addresses
-    if (!isValidDomain (requestURL.hostname) || isIP (requestURL.hostname)) { 
+    if (!isValidDomain (requestURL.hostname, { subdomain: true }) || isIP (requestURL.hostname)) { 
         return;
     }
     log.trace (`received request for domain ${requestURL.hostname}`)
