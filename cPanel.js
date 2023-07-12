@@ -35,8 +35,7 @@ async function putCnameRecord (_fqdn, _target) {
 
     let b64Subdomain = Buffer.from (dname).toString ('base64');
     let targetB64Array = [Buffer.from (target).toString ('base64')];
-    log.debug ('b64Subdomain:', b64Subdomain);
-    log.debug ('targetB64Array:', targetB64Array);
+    log.debug ('checking for existing cname record');
     let existingRecord = records.find (function findCnameRecord (record) {
         if (record.type == 'record' && 
             record.record_type == 'CNAME' &&
@@ -88,8 +87,7 @@ async function putTxtRecord (_fqdn, text) {
 
     let dname_b64 = Buffer.from (dname).toString ('base64');
     let text_b64_array = [Buffer.from (text).toString ('base64')];
-    log.debug ('dname_b64:', dname_b64);
-    log.debug ('text_b64_array:', text_b64_array);
+    log.debug ('checking for existng txt record');
     let existingRecord = records.find (function findTxtRecord (record) {
         if (record.type == 'record' &&
             record.record_type == 'TXT' &&
