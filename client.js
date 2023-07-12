@@ -16,9 +16,9 @@
     maintenance needs to run on a regular interval (specified in hours, default to 24)
     it needs to perform function
       - scan each cert
-        a) if there is an agassiService/virtualHost for the cert, check if its expiration is pat a threshold
+        a) if there is an agassiService/virtualHost for the cert, check if its expiration is past a threshold
            (expires within 45 days by default)
-        b) otherwise renew the cert (it will be removed from etcd automatically when the lease expires
+        b) otherwise don't renew the cert (it will be removed from etcd automatically when the lease expires)
 */
 
 const log = require ('./logger.js');
@@ -213,7 +213,7 @@ async function performMaintenance () {
     log.debug ('performing maintenance...');
     let vHostPrefix = '/agassi/virtual-hosts/v0/';
     log.debug ('pulling agassi services from store...')
-    let allVirtualHosts = etcdClient.getAll.prefix(vHostPrefix).exec();
+    let allVirtualHosts = await etcdClient.getAll().prefix(vHostPrefix).exec();
     log.trace (`found ${allVirtualHosts.kvs.length} agassi services in kv store`);
     let vHostDomains = [];
     for (let kv of allVirtualHosts.kvs) {
@@ -232,6 +232,7 @@ async function performMaintenance () {
         log.trace (`found cert for domain ${certDomain}`);
         // check that the cert has an associated agassi service
         if (vHostDomains.includes(certDomain)) {
+            log.debug (`cert for domain ${certDomain} has corresponding virtual host`);
             // check expiration
             let cert = forge.pki.certificateFromPem (pemCert);
             let daysUntilExpiration = (new Date (cert.validity.notAfter).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
