@@ -251,8 +251,6 @@ async function performMaintenance () {
                 await lease.put (certPrefix + certDomain).value (pemUpdatedCert);
                 log.trace ('added updated cert to kv store');
             }
-        } else {
-            log.debug (`domain ${certDomain} has current cert in store`);
         }
     }
 }
