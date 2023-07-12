@@ -188,8 +188,8 @@ const maintenance ={
     start: () => {
         if (!maintenanceInterval) {
             // 60000 is the number of milliseconds in a minute
-            maintenanceInterval = setInterval ( performMaintenance,
-                Math.floor( 1000 * 60 * 60 * Number.parseFloat(process.env.AGASSI_MAINTENANCE_INTERVAL) ) );
+            maintenanceInterval = setInterval (performMaintenance,
+                1000 * 60 * 60 * Number.parseFloat(process.env.AGASSI_MAINTENANCE_INTERVAL));
         }
     },
     stop: () => {
