@@ -13,6 +13,8 @@ const compare = require ('tsscmp');
 const { Etcd3 } = require ('etcd3');
 const Proxy = require ('./proxy.js');
 const forge = require ('node-forge');
+const isValidDomain = require ('is-valid-domain');
+const { isIP } = require ('node:net');
 
 // initializations
 const etcdClient = new Etcd3({
@@ -86,6 +88,10 @@ module.exports = https.createServer ({
 }, async (request, response) => {
     const requestURL = new URL (request.url, `https://${request.headers.host}`);
     const vHostPath = `/agassi/virtual-hosts/v0/${requestURL.hostname}`;
+    // discard invalid domains and IP addresses
+    if (!isValidDomain (requestURL.hostname) || isIP (requestURL.hostname)) { 
+        return;
+    }
     log.trace (`received request for domain ${requestURL.hostname}`)
     let virtualHost = null;
     // check cache for virtual host
