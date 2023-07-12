@@ -44,8 +44,7 @@ const docker = new Docker ({
     port: process.env.AGASSI_DOCKER_PORT,
     version: process.env.AGASSI_DOCKER_API_VERSION
 });
-
-const msInDay = 86400000;
+// legacy code to stop maintenance
 var maintenanceInterval = undefined;
 
 async function start () {
