@@ -48,7 +48,6 @@ async function putCnameRecord (_fqdn, _target) {
     if (existingRecord) {
         log.debug ('cname already set');
         log.debug ('checking ttl');
-        log.debug ('matching cname record:', existingRecord);
         // if ttl doesn't match, update record
         if (existingRecord.ttl != ttl) {
             log.debug ('ttl does not match');
@@ -104,7 +103,6 @@ async function putTxtRecord (_fqdn, text) {
     if (existingRecord) {
         log.debug ('txt already set');
         log.debug ('checking ttl');
-        log.debug ('matching txt record:', existingRecord);
         // if ttl doesn't match, update record
         if (existingRecord.ttl != ttl) {
             log.debug ('ttl does not match');
