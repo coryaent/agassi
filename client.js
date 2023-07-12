@@ -241,10 +241,16 @@ async function performMaintenance () {
             // if renewal is past the threshold we need to renew
             if (daysUntilExpiration < Number.parseFloat(process.env.AGASSI_EXPIRATION_THRESHOLD)) {
                 log.debug (`renewing certificate for ${certDomain}...`);
-                let updatedCert = await fetchCertificate (certDomain);
+                let pemUpdatedCert = await fetchCertificate (certDomain);
                 log.trace ('got updated cert');
                 log.debug ('adding updated cert to store...');
-                await etcdClient.put (certPrefix + certDomain).value (updatedCert);
+                // get ttl in seconds
+                let updatedCert = forge.pki.certificateFromPem (pemUpdatedCert);
+                let ttl = Math.floor ( ( Date.parse (updatedCert.validity.notAfter) - Date.now () ) / 1000 );
+                log.trace (`updated cert will expire in ${ttl / ( 60 * 60 * 24 )} days`);
+                // add cert to etcd with ttl
+                let lease = etcdClient.lease (ttl, {autoKeepAlive: false});
+                await lease.put (certPrefix + certDomain).value (pemUpdatedCert);
                 log.trace ('added updated cert to kv store');
             }
         }
