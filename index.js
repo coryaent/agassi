@@ -22,6 +22,10 @@ if (process.argv.includes ('--client')) {
         log.fatal ('AGASSI_ACME_ACCOUNT_KEY_FILE is either not defined or invalid');
         process.exit(1);
     }
+    if ( ( Math.round(process.env.AGASSI_DNS_TTL) < 300 ) || ( Math.round(process.env.AGASSI_DNS_TTL > 604800 ) ) ) {
+        log.fatal ('AGASSI_DNS_TTL must be greater than or equal to 300 and less than or equal to 604800');
+        process.exit(1);
+    }
     if (!process.env.AGASSI_DEFAULT_KEY_FILE || !isValidPath (process.env.AGASSI_DEFAULT_KEY_FILE)) {
         log.fatal ('AGASSI_DEFAULT_KEY_FILE is either not defined or invalid');
         process.exit(1)
