@@ -233,7 +233,7 @@ async function performMaintenance () {
         // check that the cert has an associated agassi service
         if (vHostDomains.includes(certDomain)) {
             // check expiration
-            let cert = forge.pki.certificateFromPem (certPemBuffer);
+            let cert = forge.pki.certificateFromPem (pemCert);
             let daysUntilExpiration = (new Date (cert.validity.notAfter).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
             log.debug (`cert for domain ${certDomain} will expire in ${daysUntilExpiration} days`);
             // if renewal is past the threshold we need to renew
