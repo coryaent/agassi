@@ -132,7 +132,7 @@ async function addService (agassiService) {
         log.debug (`checking which agassi service was updated more recently...`);
         if (Date.parse (agassiService.UpdatedAt) > Date.parse (existingVirtualHost.UpdatedAt)) {
             // add the new host to etcd
-            log.debug (`updating agassi service with domain ${agassiService.virtuallHost}...`);
+            log.debug (`updating agassi service with domain ${agassiService.domain}...`);
             await etcdClient.put (vHostPath).value (JSON.stringify (agassiService));
             log.trace ('agassi service updated');
         }
@@ -143,7 +143,7 @@ async function addService (agassiService) {
     }
     // check if the certificate exists
     let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${agassiService.domain}`;
-    log.debug (`checking store for cert with domain ${agassiService.virtualHost}...`);
+    log.debug (`checking store for cert with domain ${agassiService.domain}...`);
     let existingCert = await etcdClient.get (certPath);
     if (existingCert) {
         log.trace (`found cert in store for domain ${agassiService.domain}`);
