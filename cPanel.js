@@ -53,7 +53,6 @@ async function putCnameRecord (_fqdn, _target) {
             log.debug ('ttl does not match');
             log.debug ('updating record');
             let edit = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&edit={"line_index":"${existingRecord.line_index}","dname":"${dname}","ttl":"${ttl}","record_type":"CNAME","data":["${target}"]}`, auth);
-            log.debug ('edit:', edit.data);
             if (edit.errors) {
                 throw new Error (edit.errors.toString ());
             } else {
@@ -67,7 +66,6 @@ async function putCnameRecord (_fqdn, _target) {
     } else {
         log.debug ('setting cname record');
         let addition = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&add={"dname":"${dname}","ttl":"${ttl}","record_type":"CNAME","data":["${target}"]}`, auth);
-        log.debug ('addition:', addition.data);
         if (addition.errors) {
             throw new Error (addition.errors.toString ());
         } else {
@@ -108,7 +106,6 @@ async function putTxtRecord (_fqdn, text) {
             log.debug ('ttl does not match');
             log.debug ('updating record');
             let edit = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&edit={"line_index":"${existingRecord.line_index}","dname":"${dname}","ttl":"${ttl}","record_type":"TXT","data":["${text}"]}`, auth);
-            log.debug ('edit:', edit.data);
             if (edit.errors) {
                 throw new Error (edit.errors.toString ());
             } else {
@@ -122,7 +119,6 @@ async function putTxtRecord (_fqdn, text) {
     } else {
         log.debug ('setting txt record');
         let addition = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&add={"dname":"${dname}","ttl":"${ttl}","record_type":"TXT","data":["${text}"]}`, auth);
-        log.debug ('addition:', addition.data);
         if (addition.errors) {
             throw new Error (addition.errors.toString ());
         } else {
