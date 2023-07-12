@@ -60,7 +60,7 @@ async function start () {
         let service = await docker.getService (id);
         service = await service.inspect ();
         let agassiService = parseAgassiService (service);
-        log.dtrace ('parsed service ' + id);
+        log.trace ('parsed service ' + id);
         if (agassiService) {
             log.debug ('found agassi service ' + service.ID + ' with virtual host ' + agassiService.domain);
             log.debug ('setting CNAME record...');
