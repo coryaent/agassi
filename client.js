@@ -269,7 +269,6 @@ async function fetchCertificate (fqdn) {
     if (process.env.AGASSI_LETS_ENCRYPT_EMAIL) {
         accountOpts.contact = [`mailto:${process.env.AGASSI_LETS_ENCRYPT_EMAIL}`]
     }
-    log.debug ('creating ACME account...');
     const account = await acmeClient.createAccount(accountOpts);
     log.debug ('creating certificate order...')
     const order = await acmeClient.createOrder({
