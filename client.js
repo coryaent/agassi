@@ -79,6 +79,7 @@ function listen (timestamp) {
     docker.getEvents ({ filters: { type: ["service"] }, since: timestamp }).then (async (events) => {
         log.info ('docker events listener started');
         events.on ('data', async (data) => {
+            log.trace ('got docker service event');
             let event = JSON.parse (data);
             await processEvent (event);
         });
