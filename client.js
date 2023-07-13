@@ -169,10 +169,10 @@ async function removeService (serviceID) {
     log.debug (`removing service with ID ${serviceID}...`);
     let prefix = '/agassi/virtual-hosts/v0/';
     log.debug (`getting all agassi virtual hosts to check for service ID ${serviceID}...`);
-    let all = await etcdClient.getAll().prefix(prefix);
+    let all = await etcdClient.getAll().prefix(prefix).exec();
     // get an array of objects with properties 'key' and 'value'
     let existingVirtualHosts = [];
-    all.forEach (pair => existingVirtualHosts.push ({'key': pair[0], 'value': pair[1]}));
+    all.kvs.forEach (pair => existingVirtualHosts.push ({'key': pair[0], 'value': pair[1]}));
     log.trace (`found ${existingVirtualHosts.length} agassi virtual hosts in store`);
     for (let vHost of existingVirtualHosts) {
         if (JSON.parse (vHost.value).serviceID == serviceID) {
