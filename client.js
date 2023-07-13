@@ -1,9 +1,9 @@
 "use strict";
 
 /*
-    the client script pulls existing services and adds new services based on events
+    the client script pulls existing virtual hosts and adds new virtual hosts based on events
 
-    when adding a service we must check to see that it is the latest update
+    when adding a virtual host we must check to see that it is the latest update
     therefore, we need to check the UpdatedAt property to see which is greater
 
     we cannot call
@@ -16,14 +16,14 @@
     maintenance needs to run on a regular interval (specified in hours, default to 24)
     it needs to perform function
       - scan each cert
-        a) if there is an agassiService/virtualHost for the cert, check if its expiration is past a threshold
+        a) if there is an virtual host for the cert, check if its expiration is past a threshold
            (expires within 45 days by default)
         b) otherwise don't renew the cert (it will be removed from etcd automatically when the lease expires)
 */
 
 const log = require ('./logger.js');
 
-const { parseAgassiService } = require ('./agassiService.js');
+const { parseVirtualHost } = require ('./virtualHost.js');
 const { putCnameRecord, putTxtRecord } = require ('./cPanel.js');
 const Docker = require ('dockerode');
 const { Etcd3 } = require('etcd3');
@@ -48,26 +48,26 @@ const docker = new Docker ({
 var maintenanceInterval = undefined;
 
 async function start () {
-    log.info ('client starting...');
+    log.info ('client started');
     // where to start listening (passed to getEvents)
     let timestamp = Math.floor (new Date().getTime () / 1000);
-    // add existing services
-    log.debug ('checking docker services for agassi services...');
+    // add existing virtual hosts
+    log.debug ('checking docker services for agassi virtual hosts');
     let services = await docker.listServices ();
     log.trace (`found ${services.length} docker services`);
     for (let id of services.map (service => service.ID)) {
         let service = await docker.getService (id);
         service = await service.inspect ();
-        let agassiService = parseAgassiService (service);
+        let virtualHost = parseVirtualHost (service);
         log.trace ('parsed service ' + id);
-        if (agassiService) {
-            log.debug ('found agassi service ' + service.ID + ' with virtual host ' + agassiService.domain);
+        if (virtualHost) {
+            log.debug ('found agassi virtual host for service ' + service.ID + ' with domain ' + virtualHost.domain);
             log.debug ('setting CNAME record...');
-            await putCnameRecord (agassiService.domain, process.env.AGASSI_TARGET_CNAME);
+            await putCnameRecord (virtualHost.domain, process.env.AGASSI_TARGET_CNAME);
             log.trace ('CNAME record set');
             log.debug ('adding service to store...');
-            await addService (agassiService);
-            log.trace (`service ${agassiService.serviceID} added to store`);
+            await storeVirtualHost (virtualHost);
+            log.trace (`service ${virtualHost.serviceID} added to store`);
         }
     }
     // listen for events
@@ -98,16 +98,16 @@ async function processEvent (event) {
         log.trace ('found new or updated service with ID ' + event.Actor.ID);
         let service = await docker.getService (event.Actor.ID);
         service = await service.inspect ();
-        let agassiService = parseAgassiService (service);
+        let virtualHost = parseVirtualHost (service);
         // if we have an agassi service
-        if (agassiService) {
-            log.debug ('found agassi service ' + agassiService.serviceID + ' with virtual host ' + agassiService.domain);
+        if (virtualHost) {
+            log.debug ('found agassi virtual host for service ' + virtualHost.serviceID + ' with domain ' + virtualHost.domain);
             log.debug ('setting CNAME record...');
-            await putCnameRecord (agassiService.domain, process.env.AGASSI_TARGET_CNAME);
+            await putCnameRecord (virtualHost.domain, process.env.AGASSI_TARGET_CNAME);
             log.trace ('CNAME record set');
             log.debug ('adding service to store...');
-            await addService (agassiService);
-            log.trace (`service ${agassiService.serviceID} added to store`);
+            await storeVirtualHost (virtualHost);
+            log.trace (`service ${virtualHost.serviceID} added to store`);
         }
     }
     if (event.Action == 'remove') {
@@ -120,38 +120,38 @@ async function processEvent (event) {
 };
 
 
-async function addService (agassiService) {
-    log.debug (`adding service ${agassiService.serviceID} -> vhost ${agassiService.domain} ...`);
-    let vHostPath = `/agassi/virtual-hosts/v0/${agassiService.domain}`;
-    log.debug ('checking for existing agassi service at domain ' + agassiService.domain + ' ...');
+async function storeVirtualHost (virtualHost) {
+    log.debug (`adding service ${virtualHost.serviceID} -> vhost ${virtualHost.domain} ...`);
+    let vHostPath = `/agassi/virtual-hosts/v0/${virtualHost.domain}`;
+    log.debug ('checking for existing agassi service at domain ' + virtualHost.domain + ' ...');
     let existingVirtualHost = await etcdClient.get (vHostPath);
     if (existingVirtualHost) { // service already exists in etcd
-        log.trace (`agassi service at ${agassiService.domain} found in store`);
+        log.trace (`agassi virtual host at ${virtualHost.domain} found in store`);
          // check which virtual host is newer
-        log.debug (`checking which agassi service was updated more recently...`);
-        if (Date.parse (agassiService.UpdatedAt) > Date.parse (existingVirtualHost.UpdatedAt)) {
+        log.debug (`checking which virtual host was updated more recently...`);
+        if (Date.parse (virtualHost.UpdatedAt) > Date.parse (existingVirtualHost.UpdatedAt)) {
             // add the new host to etcd
-            log.debug (`updating agassi service with domain ${agassiService.domain}...`);
-            await etcdClient.put (vHostPath).value (JSON.stringify (agassiService));
-            log.trace ('agassi service updated');
+            log.debug (`updating agassi virtual host with domain ${virtualHost.domain}...`);
+            await etcdClient.put (vHostPath).value (JSON.stringify (virtualHost));
+            log.trace ('agassi virtual host updated');
         }
     } else { // add the new host to etcd
-        log.debug (`no agassi service with domain ${agassiService.domain} found in store`);
-        await etcdClient.put (vHostPath).value (JSON.stringify (agassiService));
-        log.debug (`agassi service with domain ${agassiService.domain} added to store`);
+        log.debug (`no agassi virtual host with domain ${virtualHost.domain} found in store`);
+        await etcdClient.put (vHostPath).value (JSON.stringify (virtualHost));
+        log.debug (`agassi virtualHost with domain ${virtualHost.domain} added to store`);
     }
     // check if the certificate exists
-    let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${agassiService.domain}`;
-    log.debug (`checking store for cert with domain ${agassiService.domain}...`);
+    let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${virtualHost.domain}`;
+    log.debug (`checking store for cert with domain ${virtualHost.domain}...`);
     let existingCert = await etcdClient.get (certPath);
     if (existingCert) {
-        log.trace (`found cert in store for domain ${agassiService.domain}`);
+        log.trace (`found cert in store for domain ${virtualHost.domain}`);
     } else {
-        log.trace (`no cert found for ${agassiService.domain}`);
+        log.trace (`no cert found for ${virtualHost.domain}`);
         // need to fetch and add the certificate
-        log.debug (`fetching cert for domain ${agassiService.domain}...`);
-        let pemCert = await fetchCertificate (agassiService.domain);
-        log.trace (`fetched cert for domain ${agassiService.domain}`);
+        log.debug (`fetching cert for domain ${virtualHost.domain}...`);
+        let pemCert = await fetchCertificate (virtualHost.domain);
+        log.trace (`fetched cert for domain ${virtualHost.domain}`);
         // get ttl in seconds
         let cert = forge.pki.certificateFromPem (pemCert);
         let ttl = Math.floor ( ( Date.parse (cert.validity.notAfter) - Date.now () ) / 1000 );
@@ -167,12 +167,12 @@ async function removeService (serviceID) {
     // leave the cert alone in this circumstance, it will expire on its own
     log.debug (`removing service with ID ${serviceID}...`);
     let prefix = '/agassi/virtual-hosts/v0/';
-    log.debug (`getting all agassi services to check for service ID ${serviceID}...`);
+    log.debug (`getting all agassi virtual hosts to check for service ID ${serviceID}...`);
     let all = await etcdClient.getAll().prefix(prefix);
     // get an array of objects with properties 'key' and 'value'
     let existingVirtualHosts = [];
     all.forEach (pair => existingVirtualHosts.push ({'key': pair[0], 'value': pair[1]}));
-    log.trace (`found ${existingVirtualHosts.length} agassi services in store`);
+    log.trace (`found ${existingVirtualHosts.length} agassi virtual hosts in store`);
     for (let vHost of existingVirtualHosts) {
         if (JSON.parse (vHost.value).serviceID == serviceID) {
             log.trace (`deleting virtual host at ${vHost.key}...`);
@@ -206,18 +206,18 @@ async function performMaintenance () {
         services and events soundly
 
         what it needs to do is pull all the certs, check that each cert
-        is associate with an agassiService (from the store) and then
+        is associate with a virtual host (from the store) and then
         renew certs that are over 45 days old (by default)
     */
     log.debug ('performing maintenance...');
     let vHostPrefix = '/agassi/virtual-hosts/v0/';
-    log.debug ('pulling agassi services from store...')
+    log.debug ('pulling agassi virtual hosts from store...')
     let allVirtualHosts = await etcdClient.getAll().prefix(vHostPrefix).exec();
-    log.trace (`found ${allVirtualHosts.kvs.length} agassi services in kv store`);
+    log.trace (`found ${allVirtualHosts.kvs.length} agassi virtual hosts in kv store`);
     let vHostDomains = [];
     for (let kv of allVirtualHosts.kvs) {
-        let agassiService = JSON.parse (kv.value);
-        vHostDomains.push (agassiService.domain);
+        let virtualHost = JSON.parse (kv.value);
+        vHostDomains.push (virtualHost.domain);
     }
 
     let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
@@ -229,7 +229,7 @@ async function performMaintenance () {
         let pemCert = kv.value;
         let certDomain = key.replace (certPrefix, '');
         log.trace (`found cert for domain ${certDomain}`);
-        // check that the cert has an associated agassi service
+        // check that the cert has an associated agassi virtual host
         if (vHostDomains.includes(certDomain)) {
             log.debug (`cert for domain ${certDomain} has corresponding virtual host`);
             // check expiration

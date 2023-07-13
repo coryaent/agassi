@@ -1,14 +1,14 @@
 "use strict";
 /*
 
-an Agassi Service is defined by docker service labels labels:
+an agassi virtual host is defined by docker service labels labels:
   page.agassi.domain: 'some.fully.qualified.domain.name'
   page.agassi.authentication: 'dXNlcjokMnkkMDgkS3JxSkJIWWRnSXBNTlU3bDRsaXlGT3NsWUQyZmkwSHprNkhDY3dFRDBsRTNkb1dKWVUxd20KCg=='
       // authentication can be generated using htpasswd -B -n -C 8 user | printf %s\n $(base64 -w 0 -)`
   page.agassi.options.target: 'http://some_service_name:8080' (can be anything reachable)
-  page.agassi.options.another-option: 'option_value' // gets passed to http-proxy
+  page.agassi.options.another-option: 'option_value' // gets passed to http-proxy as anotherOption
 
-the data that constitutes an agassiService goes like this:
+the data that constitutes an agassi virtual host goes like this:
   {
     domain: "...",
     authentication: "...",
@@ -27,7 +27,7 @@ const log = require ('./logger.js');
 const domainRegEx = /(?:domai|fqd)n/;
 
 module.exports = {
-    parseAgassiService: function (service) {
+    parseVirtualHost: function (service) {
         const labels = parseServiceLabels (service);
 
         // no labels at all, not an agassi service
@@ -42,16 +42,16 @@ module.exports = {
                 // filter labels that meet the regex
                 if (domainRegEx.test (agassiLabel)) {
                     // has virtual host
-                    log.trace ('parseAgassiService found label', process.env.AGASSI_LABEL_PREFIX.concat (agassiLabel));
+                    log.trace ('parseVirtualHost found label', process.env.AGASSI_LABEL_PREFIX.concat (agassiLabel));
                     if (getOptions (service)['forward'] || getOptions (service)['target']) {
                         log.trace ('found forward/target option');
-                        let agassiService = {};
-                        agassiService['domain'] = getDomain (service);
-                        agassiService['authentication'] = getAuth (service);
-                        agassiService['serviceID'] = service.ID;
-                        agassiService['UpdatedAt'] = service.UpdatedAt;
-                        agassiService['options'] = getOptions (service);
-                        return agassiService;
+                        let virtualHost = {};
+                        virtualHost['domain'] = getDomain (service);
+                        virtualHost['authentication'] = getAuth (service);
+                        virtualHost['serviceID'] = service.ID;
+                        virtualHost['UpdatedAt'] = service.UpdatedAt;
+                        virtualHost['options'] = getOptions (service);
+                        return virtualHost;
                     }
                 }
             }
