@@ -10,7 +10,7 @@
         docker.getService (id);
         service.inspect ();
     on a service upon removal
-    therefore, we need to iterate over the keys at /agassi/services/v0 and parse their JSON values
+    therefore, we need to iterate over the keys at /agassi/virtual-hosts/v0 and parse their JSON values
     when a matching serviceID is found, we remove the service
 
     maintenance needs to run on a regular interval (specified in hours, default to 24)
