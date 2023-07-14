@@ -206,7 +206,7 @@ module.exports = https.createServer ({
     log.debug ('earlist revision found:', earliestRevision);
     log.trace (`cached ${allAgassi.kvs.length} agassi services and certificates`);
     log.info ('creating watcher on prefix ' + prefix + ' since revision ' + earliestRevision + '...');
-    etcdClient.watch ().prefix(prefix).startRevision(earlistRevision).create().then (watcher => {
+    etcdClient.watch ().prefix(prefix).startRevision(earliestRevision).create().then (watcher => {
         log.info ('watcher created successfully');
         watcher.on ('put', res => {
             let key = res.key.toString();
