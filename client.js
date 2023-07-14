@@ -179,7 +179,7 @@ async function removeService (serviceID) {
         log.debug ('value:', vHost.value.toString());
         if (JSON.parse (vHost.value).serviceID == serviceID) {
             log.trace (`deleting virtual host at ${vHost.key.toString()}...`);
-            await etcdClient.delete(vHost.key);
+            await etcdClient.delete().key(vHost.key.toString());
             log.debug (`${vHost.key.toString()} deleted`);
         }
     }
