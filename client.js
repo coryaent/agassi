@@ -278,6 +278,7 @@ async function fetchCertificate (fqdn) {
             { type: 'dns', value: fqdn },
         ]
     });
+    log.debug ('order:', order);
 
     log.debug ('fetching authorizations...');
     const authorizations = await acmeClient.getAuthorizations (order);
@@ -308,6 +309,7 @@ async function fetchCertificate (fqdn) {
 
     log.debug ('finalizing order...')
     const finalized = await acmeClient.finalizeOrder (order, csr);
+    log.debug ('finalized:', finalized);
 
     log.debug ('fetching cert...');
     let cert = await acmeClient.getCertificate (finalized);
