@@ -183,9 +183,14 @@ module.exports = https.createServer ({
     log.info ('initializing cache...');
     let prefix = '/agassi/';
     let allAgassi = await etcdClient.getAll().prefix(prefix).exec ();
+    let earliestRevision = allAgassi.header.revision;
     log.debug (`cacheing ${allAgassi.kvs.length} agassi services and certificates...`);
     for (let kv of allAgassi.kvs) {
+        if (earliestRevision < kv.mod_revision) {
+            earliestRevision = kv.mod_revision;
+        }
         let key = kv.key.toString();
+        log.debug ('key ' + key + ' has mod revision ' + kv.mode_revision);
         let servicePrefix = '/agassi/virtual-hosts/v0/';
         let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
         let value = null;
@@ -198,9 +203,10 @@ module.exports = https.createServer ({
         cache.set (key, value);
         log.trace ('cached', key);
     }
+    log.debug ('earlist revision found:', earliestRevision);
     log.trace (`cached ${allAgassi.kvs.length} agassi services and certificates`);
     log.info ('creating watcher on prefix ' + prefix + ' since revision ' + allAgassi.header.revision + '...');
-    etcdClient.watch ().prefix(prefix).startRevision(allAgassi.header.revision).create().then (watcher => {
+    etcdClient.watch ().prefix(prefix).startRevision(earlistRevision).create().then (watcher => {
         log.info ('watcher created successfully');
         watcher.on ('put', res => {
             let key = res.key.toString();
