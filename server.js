@@ -186,11 +186,11 @@ module.exports = https.createServer ({
     let earliestRevision = allAgassi.header.revision;
     log.debug (`cacheing ${allAgassi.kvs.length} agassi services and certificates...`);
     for (let kv of allAgassi.kvs) {
-        if (earliestRevision < kv.mod_revision) {
+        if (earliestRevision > kv.mod_revision) {
             earliestRevision = kv.mod_revision;
         }
         let key = kv.key.toString();
-        log.debug ('key ' + key + ' has mod revision ' + kv.mode_revision);
+        log.debug ('key ' + key + ' has mod revision ' + kv.mod_revision);
         let servicePrefix = '/agassi/virtual-hosts/v0/';
         let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
         let value = null;
