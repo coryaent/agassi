@@ -47,6 +47,15 @@ const docker = new Docker ({
 // legacy code to stop maintenance
 var maintenanceInterval = undefined;
 
+/*
+    we need to replace the timestamp calculation
+    instead of using Date.now(), we should use the .time property from
+        listed server events
+    the latest event shold be stored in memory and passed to the listen()
+        function
+*/
+
+
 async function start () {
     log.info ('client started');
     // where to start listening (passed to getEvents)
@@ -71,8 +80,13 @@ async function start () {
         }
     }
     // listen for events
-    listen (timestamp - 1);
+    listen (timestamp);
 }
+
+/*
+    what this needs to do:
+        keep track of the latest events and reconnect from that point
+*/
 
 function listen (timestamp) {
     log.debug (`starting docker service events listener...`);
@@ -86,7 +100,7 @@ function listen (timestamp) {
         events.on ('close', () => {
             let closedAt = Math.floor (new Date().getTime () / 1000);
             log.warn ('docker events connection closed, reconnecting...');
-            setTimeout (listen, 7500, closedAt - 1);
+            setTimeout (listen, 7500, closedAt);
         });
     }).catch ((error) => {
         log.error ('could not connect to docker event stream:', error.code, 'retrying...');
