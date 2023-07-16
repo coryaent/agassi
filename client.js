@@ -47,10 +47,17 @@ const docker = new Docker ({
 // legacy code to stop maintenance
 var maintenanceInterval = undefined;
 
+/*
+    instead of using Date.now(), we should use the .time property from
+        seen events
+    Date.now() must be used initially because only events have the .time property
+    the latest event shold be stored in memory and passed to the listen()
+        function
+*/
 async function start () {
-    log.info ('client started');
+    let timestamp = Math.floor (new Date().getTime () / 1000); // we still need this
+    log.info ('client started at ' + timestamp);
     // where to start listening (passed to getEvents)
-    let timestamp = Math.floor (new Date().getTime () / 1000);
     // add existing virtual hosts
     log.debug ('checking docker services for agassi virtual hosts');
     let services = await docker.listServices ();
@@ -71,26 +78,40 @@ async function start () {
         }
     }
     // listen for events
-    listen (timestamp - 1);
+    listen (timestamp);
 }
 
+/*
+    what this needs to do:
+        keep track of the latest events and reconnect from that point
+*/
 function listen (timestamp) {
-    log.debug (`starting docker service events listener...`);
-    docker.getEvents ({ filters: { type: ["service"] }, since: timestamp }).then (async (events) => {
+    let lastEventTime = timestamp;
+    log.debug (`starting docker service events listener since ${lastEventTime}...`);
+    docker.getEvents ({ since: lastEventTime }).then (async (events) => {
         log.info ('docker events listener started');
         events.on ('data', async (data) => {
-            log.trace ('got docker service event');
             let event = JSON.parse (data);
-            await processEvent (event);
+            // keep track of the timestamp passed for reconnection
+            if (lastEventTime < event.time) {
+                lastEventTime = event.time;
+                log.trace ('last event received at ' + lastEventTime);
+            }
+            // only process service events
+            if (event.Type == 'service') {
+                log.trace ('got docker service event');
+                await processEvent (event);
+            }
         });
         events.on ('close', () => {
-            let closedAt = Math.floor (new Date().getTime () / 1000);
+            // 'close' event fires when the connection is reset
             log.warn ('docker events connection closed, reconnecting...');
-            setTimeout (listen, 7500, closedAt - 1);
+            setTimeout (listen, 7500, lastEventTime);
         });
     }).catch ((error) => {
+        // catch error in which we cannot reconnect to the docker stream
         log.error ('could not connect to docker event stream:', error.code, 'retrying...');
-        setTimeout (listen, 7500, timestamp);
+        setTimeout (listen, 7500, lastEventTime);
     });
 }
 
