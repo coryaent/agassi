@@ -48,15 +48,12 @@ const docker = new Docker ({
 var maintenanceInterval = undefined;
 
 /*
-    we need to replace the timestamp calculation
     instead of using Date.now(), we should use the .time property from
         seen events
     Date.now() must be used initially because only events have the .time property
     the latest event shold be stored in memory and passed to the listen()
         function
 */
-
-
 async function start () {
     let timestamp = Math.floor (new Date().getTime () / 1000); // we still need this
     log.info ('client started at ' + timestamp);
@@ -88,26 +85,31 @@ async function start () {
     what this needs to do:
         keep track of the latest events and reconnect from that point
 */
-
 function listen (timestamp) {
     let lastEventTime = timestamp;
-    log.debug (`starting docker service events listener...`);
-    docker.getEvents ({ filters: { type: ["service"] }, since: lastEventTime }).then (async (events) => {
+    log.debug (`starting docker service events listener since ${lastEventTime}...`);
+    docker.getEvents ({ since: lastEventTime }).then (async (events) => {
         log.info ('docker events listener started');
         events.on ('data', async (data) => {
-            log.trace ('got docker service event');
             let event = JSON.parse (data);
+            // keep track of the timestamp passed for reconnection
             if (lastEventTime < event.time) {
                 lastEventTime = event.time;
+                log.trace ('last event received at ' + lastEventTime);
             }
-            await processEvent (event);
-    let timestamp = Math.floor (new Date().getTime () / 1000); // we still need this
+            // only process service events
+            if (event.Type == 'service') {
+                log.trace ('got docker service event');
+                await processEvent (event);
+            }
         });
         events.on ('close', () => {
+            // 'close' event fires when the connection is reset
             log.warn ('docker events connection closed, reconnecting...');
             setTimeout (listen, 7500, lastEventTime);
         });
     }).catch ((error) => {
+        // catch error in which we cannot reconnect to the docker stream
         log.error ('could not connect to docker event stream:', error.code, 'retrying...');
         setTimeout (listen, 7500, lastEventTime);
     });
