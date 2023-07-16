@@ -49,9 +49,9 @@ var maintenanceInterval = undefined;
 
 /*
     we need to replace the timestamp calculation
-    instead of using Date.now(), we should use the .Time property from
+    instead of using Date.now(), we should use the .time property from
         seen events
-    Date.now() must be used initially because only events have the .Time property
+    Date.now() must be used initially because only events have the .time property
     the latest event shold be stored in memory and passed to the listen()
         function
 */
@@ -97,8 +97,8 @@ function listen (timestamp) {
         events.on ('data', async (data) => {
             log.trace ('got docker service event');
             let event = JSON.parse (data);
-            if (lastEventTime < event.Time) {
-                lastEventTime = event.Time;
+            if (lastEventTime < event.time) {
+                lastEventTime = event.time;
             }
             await processEvent (event);
     let timestamp = Math.floor (new Date().getTime () / 1000); // we still need this
