@@ -4,7 +4,6 @@ const log = require ('./logger');
 
 const fs = require ('fs');
 const dns = require ('node:dns').promises;
-const dig = require ('node-dig-dns');
 const axios = require ('axios');
 const parseDomain = require ('tld-extract');
 
