@@ -30,6 +30,7 @@ const { Etcd3 } = require('etcd3');
 const acme = require ('acme-client');
 const forge = require ('node-forge');
 const fs = require ('fs');
+const http = require ('http');
 
 // create clients
 const acmeClient = new acme.Client({
@@ -82,10 +83,50 @@ async function start () {
 }
 
 /*
+    dockerode seems to lose events and so we're trying raw node.js http requests
+*/
+function listen (timestamp) {
+    log.debug ('starting docker events listening since ' + timestamp + ' ...');
+    let latestEventTime = timestamp;
+    let socketHost = process.env.AGASSI_DOCKER_HOST;
+    let socketPort = process.env.AGASSI_DOCKER_PORT;
+    http.get(`http://${socketHost}:${socketPort}/events?since=${lastEventTime}`, (resp) => {
+        log.info ('docker events stream connected');
+        resp.on('data', async (chunk) => {
+            let event = JSON.parse(chunk);
+            if (event.time > latestEventTime) {
+                latestEventTime = event.time;
+            }
+            log.trace ('received event:', {type: event.Type, time: event.time});
+            if (event.Type == 'service') {
+                await processEvent (event);
+            }
+        });
+        resp.on('end', () => {
+            // this does not have any documentation but it is included
+            //     in the event that docker ends the events stream
+            log.debug ('docker events response ended, last event seen at ' + latestEventTime);
+            log.debug ('reconnecting events stream after end...');
+            setTimeout(listen, 7500, latestEventTime);
+        });
+        resp.on ('close', () => {
+            log.warn ('docker events stream closed or lost, last event seen at ' + latestEventTime);
+            log.debug ('reconnecting events stream after close...');
+            setTimeout(listen, 7500, latestEventTime);
+        });
+
+    }).on("error", (err) => {
+        log.error ('error connecting to the docker events stream ' + err.message);
+        log.debug ('attempting reconnection after error...');
+        setTimeout(listen, 7500, latestEventTime);
+    });
+}
+
+/*
     what this needs to do:
         keep track of the latest events and reconnect from that point
 */
-function listen (timestamp) {
+function listenDockerode (timestamp) {
     let lastEventTime = timestamp;
     log.debug (`starting docker service events listener since ${lastEventTime}...`);
     docker.getEvents ({ since: lastEventTime }).then (async (events) => {
