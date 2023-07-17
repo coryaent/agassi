@@ -90,7 +90,7 @@ function listen (timestamp) {
     let latestEventTime = timestamp;
     let socketHost = process.env.AGASSI_DOCKER_HOST;
     let socketPort = process.env.AGASSI_DOCKER_PORT;
-    http.get(`http://${socketHost}:${socketPort}/events?since=${lastEventTime}`, (resp) => {
+    http.get(`http://${socketHost}:${socketPort}/events?since=${latestEventTime}`, (resp) => {
         log.info ('docker events stream connected');
         resp.on('data', async (chunk) => {
             let event = JSON.parse(chunk);
