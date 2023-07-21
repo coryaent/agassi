@@ -58,14 +58,23 @@ var maintenanceInterval = undefined;
 async function start () {
     let timestamp = Math.floor (new Date().getTime () / 1000); // we still need this
     log.info ('client started at ' + timestamp);
-    // where to start listening (passed to getEvents)
-    // add existing virtual hosts
     log.debug ('checking docker services for agassi virtual hosts');
     let services = await docker.listServices ();
     log.trace (`found ${services.length} docker services`);
+    // get the latest service update (where to start listening)
+    let latestServiceUpdate = 0;
+    for (let service of services) {
+        let serviceUpdate = Math.floor (new Date(service.UpdatedAt).getTime() / 1000);
+        if (serviceUpdate > latestServiceUpdate) {
+            latestServiceUpdate = serviceUpdate;
+            log.trace ('found later event time ' + latestServiceUpdate);
+        }
+    }
+    // check each service for agassi virtual hosts
     for (let id of services.map (service => service.ID)) {
         let service = await docker.getService (id);
         service = await service.inspect ();
+        // add existing virtual hosts
         let virtualHost = parseVirtualHost (service);
         log.trace ('parsed service ' + id);
         if (virtualHost) {
@@ -79,7 +88,7 @@ async function start () {
         }
     }
     // listen for events
-    listen (timestamp);
+    listen (latestServiceUpdate);
 }
 
 /*
@@ -93,13 +102,19 @@ function listen (timestamp) {
     http.get(`http://${socketHost}:${socketPort}/events?since=${latestEventTime}`, (resp) => {
         log.info ('docker events stream connected');
         resp.on('data', async (chunk) => {
-            let event = JSON.parse(chunk);
-            if (event.time > latestEventTime) {
-                latestEventTime = event.time;
-            }
-            log.trace ('received event:', {type: event.Type, time: event.time});
-            if (event.Type == 'service') {
-                await processEvent (event);
+            try {
+                let event = JSON.parse(chunk);
+                if (event.scope == 'swarm') {
+                    if (event.time > latestEventTime) {
+                        latestEventTime = event.time;
+                    }
+                    log.trace ('received swarm event:', {type: event.Type, time: event.time});
+                }
+                if (event.Type == 'service') {
+                    await processEvent (event);
+                }
+            } catch (error) {
+                log.debug ('event is not valid JSON');
             }
         });
         resp.on('end', () => {
