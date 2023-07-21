@@ -67,13 +67,8 @@ async function start () {
         let serviceUpdate = Math.floor (new Date(service.UpdatedAt).getTime() / 1000);
         if (serviceUpdate > latestServiceUpdate) {
             latestServiceUpdate = serviceUpdate;
-            log.trace ('found later event time ' + latestServiceUpdate);
+            log.trace ('found later service event time ' + latestServiceUpdate);
         }
-    }
-    // check each service for agassi virtual hosts
-    for (let id of services.map (service => service.ID)) {
-        let service = await docker.getService (id);
-        service = await service.inspect ();
         // add existing virtual hosts
         let virtualHost = parseVirtualHost (service);
         log.trace ('parsed service ' + id);
@@ -86,6 +81,12 @@ async function start () {
             await storeVirtualHost (virtualHost);
             log.trace (`service ${virtualHost.serviceID} added to store`);
         }
+    }
+    // check each service for agassi virtual hosts
+    for (let id of services.map (service => service.ID)) {
+        let service = await docker.getService (id);
+        service = await service.inspect ();
+
     }
     // listen for events
     listen (latestServiceUpdate);
