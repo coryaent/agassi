@@ -71,7 +71,7 @@ async function start () {
         }
         // add existing virtual hosts
         let virtualHost = parseVirtualHost (service);
-        log.trace ('parsed service ' + id);
+        log.trace ('parsed service ' + service.ID);
         if (virtualHost) {
             log.debug ('found agassi virtual host for service ' + service.ID + ' with domain ' + virtualHost.domain);
             log.debug ('setting CNAME record...');
@@ -81,12 +81,6 @@ async function start () {
             await storeVirtualHost (virtualHost);
             log.trace (`service ${virtualHost.serviceID} added to store`);
         }
-    }
-    // check each service for agassi virtual hosts
-    for (let id of services.map (service => service.ID)) {
-        let service = await docker.getService (id);
-        service = await service.inspect ();
-
     }
     // listen for events
     listen (latestServiceUpdate);
