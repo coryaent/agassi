@@ -337,6 +337,8 @@ function sleep (ms) {
 }
 
 async function fetchCertificate (fqdn) {
+    let fetchTimeout = setTimeout (() => { throw new Error ('Fetching certificate timed out'); }, 60000);
+
     const accountOpts = {
         termsOfServiceAgreed: true
     };
@@ -387,6 +389,8 @@ async function fetchCertificate (fqdn) {
     let cert = await acmeClient.getCertificate (finalized);
     // I do not know why this is necessary, but getCertificate seems to return three of the same cert in one file.
     cert = cert.substring (0, cert.indexOf ('-----END CERTIFICATE-----')).concat ('-----END CERTIFICATE-----');
+
+    clearTimeout (fetchTimeout);
 
     return cert;
 }
