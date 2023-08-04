@@ -52,6 +52,7 @@ async function putRecord (_fqdn, _type, _record) {
             log.debug ('ttl does not match');
             log.debug ('updating record');
             let edit = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&edit={"line_index":"${existingRecord.line_index}","dname":"${dname}","ttl":"${ttl}","record_type":"${type}","data":["${_record}"]}`, auth);
+            edit = edit.data;
             if (edit.errors) {
                 throw new Error (edit.errors.toString ());
             } else {
@@ -67,6 +68,7 @@ async function putRecord (_fqdn, _type, _record) {
     } else {
         log.debug (`setting ${type} record`);
         let addition = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&add={"dname":"${dname}","ttl":"${ttl}","record_type":"${type}","data":["${_record}"]}`, auth);
+        addition = addition.data;
         if (addition.errors) {
             throw new Error (addition.errors.toString ());
         } else {
