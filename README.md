@@ -28,7 +28,9 @@ ENVAR | Detail | Default
 `AGASSI_LETS_ENCRYPT_EMAIL` | email address used to send certificate renewal notifications |
 `AGASSI_LOG_LEVEL` | trace, debug, info, warn, error, fatal | info
 `AGASSI_MAINTENANCE_INTERVAL` | how often to prune services and update certificates (hours) | 12
-`AGASSI_TARGET_CNAME` | cname value to which DNS records point |
+`AGASSI_TARGET_CNAME`* | cname value to which DNS records point |
+
+`* this must end with a dot, e.g., subdomain.example.com.`
 
 ## Labels
 - `page.agassi.domain` set to your target domain ex. `example.com`
