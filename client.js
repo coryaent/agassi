@@ -329,8 +329,9 @@ function sleep (ms) {
     });
 }
 
+
 async function fetchCertificate (fqdn) {
-    let fetchTimeout = setTimeout (() => { throw new Error ('Fetching certificate timed out'); }, 60000);
+    let fetchTimeout = setTimeout (() => { throw new Error ('Fetching certificate timed out'); }, 30000);
 
     const accountOpts = {
         termsOfServiceAgreed: true
@@ -340,46 +341,46 @@ async function fetchCertificate (fqdn) {
     }
     const account = await acmeClient.createAccount(accountOpts);
     log.debug ('creating certificate order...')
-    const order = await acmeClient.createOrder({
+    let order = await acmeClient.createOrder({
         identifiers: [
             { type: 'dns', value: fqdn },
         ]
     });
-    log.debug ('order:', order);
 
     log.debug ('fetching authorizations...');
     const authorizations = await acmeClient.getAuthorizations (order);
-    log.debug ('finding dns challenge...');
     const dnsChallenge = authorizations[0]['challenges'].find ((element) => element.type === 'dns-01');
 
-    log.debug ('fetching key authorization...');
-    const keyAuthorization = await acmeClient.getChallengeKeyAuthorization(dnsChallenge);
+    if (dnsChallenge.status == 'pending') {
 
-    // set txt (ACME)
-    log.debug ('setting txt record...');
-    const txtSet = await putTxtRecord (`_acme-challenge.${fqdn}`, keyAuthorization);
+        log.debug ('fetching key authorization...');
+        const keyAuthorization = await acmeClient.getChallengeKeyAuthorization(dnsChallenge);
 
-    // complete challenge
-    log.debug ('completing challenge...');
-    const completion = await acmeClient.completeChallenge (dnsChallenge);
+        // set txt (ACME)
+        log.debug ('setting txt record...');
+        const txtSet = await putTxtRecord (`_acme-challenge.${fqdn}`, keyAuthorization);
 
-    // await validation
-    log.debug ('awaiting validation...');
-    // give the DNS records a few seconds to propagate
-    await sleep (7500);
-    let validation = await acmeClient.waitForValidStatus (dnsChallenge)
+        // complete challenge
+        log.debug ('completing challenge...');
+        const completion = await acmeClient.completeChallenge (dnsChallenge);
 
+        // await validation
+        log.debug ('awaiting validation...');
+        // give the DNS records a few seconds to propagate
+        // await sleep (7500);
+        let challengeResponse = await acmeClient.waitForValidStatus (dnsChallenge);
+
+    }
     log.debug ('creating csr...');
     const [key, csr] = await acme.crypto.createCsr ({
         commonName: fqdn
     }, fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE));
 
     log.debug ('finalizing order...')
-    const finalized = await acmeClient.finalizeOrder (order, csr);
-    log.debug ('finalized:', finalized);
+    order = await acmeClient.finalizeOrder (order, csr);
 
     log.debug ('fetching cert...');
-    let cert = await acmeClient.getCertificate (finalized);
+    let cert = await acmeClient.getCertificate (order);
     // I do not know why this is necessary, but getCertificate seems to return three of the same cert in one file.
     cert = cert.substring (0, cert.indexOf ('-----END CERTIFICATE-----')).concat ('-----END CERTIFICATE-----');
 
