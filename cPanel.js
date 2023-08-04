@@ -21,110 +21,69 @@ module.exports = {
     putTxtRecord
 };
 
-async function putCnameRecord (_fqdn, _target) {
+// string, string, int, string
+// '_record' is the argument, 'record' is one of many records
+async function putRecord (_fqdn, _type, _record) {
+    // make arguments consistent and fit with domain parser
     let fqdn = parseDomain (`https://${_fqdn}`);
-    let dname = fqdn.sub;
+    let type = _type.toUpperCase();
 
     let records = (await axios.get (`https://${cPanelServer}/execute/DNS/parse_zone?zone=${fqdn.domain}`, auth)).data.data;
     let serial = Buffer.from (records.find (record => record.record_type=='SOA').data_b64[2], 'base64').toString ();
-    let target = _target;
-    if (!_target.endsWith ('.')) {
-        target = _target + '.';
-    }
 
+    let dname = fqdn.sub; // for consistency with the cPanel API
     let b64Subdomain = Buffer.from (dname).toString ('base64');
-    let targetB64Array = [Buffer.from (target).toString ('base64')];
-    log.debug ('checking for existing cname record');
-    let existingRecord = records.find (function findCnameRecord (record) {
-        if (record.type == 'record' && 
-            record.record_type == 'CNAME' &&
-            b64Subdomain == record.dname_b64 && 
-            targetB64Array.toString () == record.data_b64.toString ()) {
+    let recordB64Array = [Buffer.from (_record).toString ('base64')];
+
+    let existingRecord = records.find (function findRecord (record) {
+        if (record.type == 'record' &&
+            record.record_type == type &&
+            b64Subdomain == record.dname_b64 &&
+            recordB64Array.toString () == record.data_b64.toString ()) {
             return record;
         }
     });
+
     if (existingRecord) {
-        log.debug ('cname already set');
+        log.debug (`${type} already set`);
         log.debug ('checking ttl');
         // if ttl doesn't match, update record
         if (existingRecord.ttl != ttl) {
             log.debug ('ttl does not match');
             log.debug ('updating record');
-            let edit = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&edit={"line_index":"${existingRecord.line_index}","dname":"${dname}","ttl":"${ttl}","record_type":"CNAME","data":["${target}"]}`, auth);
+            let edit = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&edit={"line_index":"${existingRecord.line_index}","dname":"${dname}","ttl":"${ttl}","record_type":"${type}","data":["${_record}"]}`, auth);
             if (edit.errors) {
                 throw new Error (edit.errors.toString ());
             } else {
                 if (edit.warnings) {
                     log.warn ('warning:', edit.warnings.toString ());
                 } else {
-                    log.debug ('CNAME ttl updated');
+                    log.debug (`${type} ttl updated`);
                 }
             }
+        } else {
+            log.debug ('nothing to do');
         }
     } else {
-        log.debug ('setting cname record');
-        let addition = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&add={"dname":"${dname}","ttl":"${ttl}","record_type":"CNAME","data":["${target}"]}`, auth);
+        log.debug (`setting ${type} record`);
+        let addition = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&add={"dname":"${dname}","ttl":"${ttl}","record_type":"${type}","data":["${_record}"]}`, auth);
         if (addition.errors) {
             throw new Error (addition.errors.toString ());
         } else {
             if (addition.warnings) {
                 log.warn ('warning:', addition.warnings.toString ());
             } else {
-                log.debug ('CNAME record set');
+                log.debug (`${type} record set`);
             }
         }
     }
     return 0;
 }
 
-async function putTxtRecord (_fqdn, text) {
-    let fqdn = parseDomain (`https://${_fqdn}`);
-    let dname = fqdn.sub;
+async function putCnameRecord (fqdn, record) {
+    return putRecord (fqdn, 'CNAME', record);
+}
 
-    let records = (await axios.get (`https://${cPanelServer}/execute/DNS/parse_zone?zone=${fqdn.domain}`, auth)).data.data;
-    let serial = Buffer.from (records.find (record => record.record_type=='SOA').data_b64[2], 'base64').toString ();
-
-    let dname_b64 = Buffer.from (dname).toString ('base64');
-    let text_b64_array = [Buffer.from (text).toString ('base64')];
-    log.debug ('checking for existng txt record');
-    let existingRecord = records.find (function findTxtRecord (record) {
-        if (record.type == 'record' &&
-            record.record_type == 'TXT' &&
-            dname_b64 == record.dname_b64 &&
-            text_b64_array.toString () == record.data_b64.toString ()) {
-            return record;
-        }
-    });
-    if (existingRecord) {
-        log.debug ('txt already set');
-        log.debug ('checking ttl');
-        // if ttl doesn't match, update record
-        if (existingRecord.ttl != ttl) {
-            log.debug ('ttl does not match');
-            log.debug ('updating record');
-            let edit = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&edit={"line_index":"${existingRecord.line_index}","dname":"${dname}","ttl":"${ttl}","record_type":"TXT","data":["${text}"]}`, auth);
-            if (edit.errors) {
-                throw new Error (edit.errors.toString ());
-            } else {
-                if (edit.warnings) {
-                    log.warn ('warning:', edit.warnings.toString ());
-                } else {
-                    log.debug ('txt ttl updated');
-                }
-            }
-        }
-    } else {
-        log.debug ('setting txt record');
-        let addition = await axios.get (`https://${cPanelServer}/execute/DNS/mass_edit_zone?zone=${fqdn.domain}&serial=${serial}&add={"dname":"${dname}","ttl":"${ttl}","record_type":"TXT","data":["${text}"]}`, auth);
-        if (addition.errors) {
-            throw new Error (addition.errors.toString ());
-        } else {
-            if (addition.warnings) {
-                log.warn ('warning:', addition.warnings.toString ());
-            } else {
-                log.debug ('txt record set');
-            }
-        }
-    }
-    return 0;
+async function putTxtRecord (fqdn, record) {
+    return putRecord (fqdn, 'TXT', record);
 }
