@@ -84,18 +84,18 @@ async function start () {
 }
 
 /*
-    dockerode seems to lose events and so we're trying raw node.js http requests
+    what this needs to do:
+        keep track of the latest events and reconnect from that point
 */
 function listen (timestamp) {
-    log.debug ('starting docker events listening since ' + timestamp + ' ...');
-    let latestEventTime = timestamp;
-    let socketHost = process.env.AGASSI_DOCKER_HOST;
-    let socketPort = process.env.AGASSI_DOCKER_PORT;
-    http.get(`http://${socketHost}:${socketPort}/events?since=${latestEventTime}`, (resp) => {
-        log.info ('docker events stream connected');
-        resp.on('data', async (chunk) => {
-            try {
-                let event = JSON.parse(chunk);
+    let lastEventTime = timestamp;
+    log.debug (`starting docker service events listener since ${lastEventTime}...`);
+    docker.getEvents ({ since: lastEventTime }).then (async (events) => {
+        log.info ('docker events listener started');
+        events.on ('data', async (data) => {
+            try { // sometimes invalid data comes through the events stream
+                let event = JSON.parse(data);
+                // only
                 if (event.scope == 'swarm') {
                     if (event.time > latestEventTime) {
                         latestEventTime = event.time;
@@ -106,49 +106,7 @@ function listen (timestamp) {
                     await processEvent (event);
                 }
             } catch (error) {
-                log.trace ('event is not valid JSON');
-            }
-        });
-        resp.on('end', () => {
-            // this does not have any documentation but it is included
-            //     in the event that docker ends the events stream
-            log.debug ('docker events response ended, last event seen at ' + latestEventTime);
-            log.debug ('reconnecting events stream after end...');
-            setTimeout(listen, 7500, latestEventTime);
-        });
-        resp.on ('close', () => {
-            log.warn ('docker events stream closed or lost, last event seen at ' + latestEventTime);
-            log.debug ('reconnecting events stream after close...');
-            setTimeout(listen, 7500, latestEventTime);
-        });
-
-    }).on("error", (err) => {
-        log.error ('error connecting to the docker events stream ' + err.message);
-        log.debug ('attempting reconnection after error...');
-        setTimeout(listen, 7500, latestEventTime);
-    });
-}
-
-/*
-    what this needs to do:
-        keep track of the latest events and reconnect from that point
-*/
-function listenDockerode (timestamp) {
-    let lastEventTime = timestamp;
-    log.debug (`starting docker service events listener since ${lastEventTime}...`);
-    docker.getEvents ({ since: lastEventTime }).then (async (events) => {
-        log.info ('docker events listener started');
-        events.on ('data', async (data) => {
-            let event = JSON.parse (data);
-            // keep track of the timestamp passed for reconnection
-            if (lastEventTime < event.time) {
-                lastEventTime = event.time;
-                log.trace ('last event received at ' + lastEventTime);
-            }
-            // only process service events
-            if (event.Type == 'service') {
-                log.trace ('got docker service event');
-                await processEvent (event);
+                log.trace ('got invalid JSON event');
             }
         });
         events.on ('close', () => {
@@ -185,7 +143,6 @@ async function processEvent (event) {
 
     }
 };
-
 
 async function storeVirtualHost (virtualHost) {
     let vHostPath = `/agassi/virtual-hosts/v0/${virtualHost.domain}`;
