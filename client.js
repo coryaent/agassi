@@ -87,14 +87,18 @@ async function start () {
         keep track of the latest events and reconnect from that point
 */
 function listen (timestamp) {
-    let lastEventTime = timestamp;
-    log.debug (`starting docker service events listener since ${lastEventTime}...`);
-    docker.getEvents ({ since: lastEventTime }).then (async (events) => {
+    let latestEventTime = timestamp;
+    log.debug (`starting docker service events listener since ${latestEventTime}...`);
+    docker.getEvents ({ since: latestEventTime }).then (async (events) => {
         log.info ('docker events listener started');
         events.on ('data', async (data) => {
+            let event = null;
             try { // sometimes invalid data comes through the events stream
-                let event = JSON.parse(data);
-                // only
+                event = JSON.parse(data);
+            } catch (error) {
+                log.trace ('got invalid JSON event');
+            }
+            if (event) {
                 if (event.scope == 'swarm') {
                     if (event.time > latestEventTime) {
                         latestEventTime = event.time;
@@ -104,19 +108,17 @@ function listen (timestamp) {
                 if (event.Type == 'service') {
                     await processEvent (event);
                 }
-            } catch (error) {
-                log.trace ('got invalid JSON event');
             }
         });
         events.on ('close', () => {
             // 'close' event fires when the connection is reset
             log.warn ('docker events connection closed, reconnecting...');
-            setTimeout (listen, 7500, lastEventTime);
+            setTimeout (listen, 7500, latestEventTime);
         });
     }).catch ((error) => {
         // catch error in which we cannot reconnect to the docker stream
         log.error ('could not connect to docker event stream:', error.code, 'retrying...');
-        setTimeout (listen, 7500, lastEventTime);
+        setTimeout (listen, 7500, latestEventTime);
     });
 }
 
