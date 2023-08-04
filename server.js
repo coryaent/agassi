@@ -86,20 +86,19 @@ module.exports = https.createServer ({
     key: pemKey,
     cert: pemDefaultCert
 }, async (request, response) => {
-    const requestURL = new URL (request.url, `https://${request.headers.host}`);
-    const vHostPath = `/agassi/virtual-hosts/v0/${requestURL.hostname}`;
+    const vHostPath = `/agassi/virtual-hosts/v0/${request.headers.host}`;
     // discard invalid domains and IP addresses
-    if (!isValidDomain (requestURL.hostname, { subdomain: true }) || isIP (requestURL.hostname)) { 
+    if (!isValidDomain (request.headers.host, { subdomain: true }) || isIP (request.headers.host)) {
         return;
     }
-    log.trace (`received request for domain ${requestURL.hostname}`)
+    log.trace (`received request for domain ${request.headers.host}`)
     let virtualHost = null;
     // check cache for virtual host
     log.trace ('checking cache for virtual host...');
     virtualHost = cache.get (vHostPath);
     if (!virtualHost) { // no vHost in cache 
-        log.trace (`virtual host ${requestURL.hostname} not found in cache`);
-        log.trace (`checking store for virtual host for ${requestURL.hostname}...`);
+        log.trace (`virtual host ${request.headers.host} not found in cache`);
+        log.trace (`checking store for virtual host for ${request.headers.host}...`);
         // this will set virtualHost to null (again) if there is no vHost in etcd
         virtualHost = await etcdClient.get (vHostPath);
         if (virtualHost) { // got virtual host from etcd
@@ -117,11 +116,11 @@ module.exports = https.createServer ({
     // still don't have virtual host
     // if it doesn't have .options it doesn't have a target or forward
     if (!virtualHost || !virtualHost.options) {
-        log.trace (`no target found for domain ${requestURL.hostname}`);
+        log.trace (`no target found for domain ${request.headers.host}`);
         response.writeHead(404, {
             'Content-Type': 'text/plain'
         });
-        response.end (`Could not find virtual host for domain ${requestURL.hostname}`);
+        response.end (`Could not find virtual host for domain ${request.headers.host}`);
         return;
     }
     // parse proxy options
