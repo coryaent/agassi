@@ -11,8 +11,9 @@ By using Agassi, you are accepting the [Let's Encrypt Subscriber Agreement](http
 
 ENVAR | Detail | Default
 --- | --- | ---
-`AGASSI_ACME_PRODUCTION` | if set to any value, fetch certificates from production Let's Encrypt |
 `AGASSI_ACME_ACCOUNT_KEY_FILE` | the path to the key to the ACME account |
+`AGASSI_ACME_PRODUCTION` | if set to any value, fetch certificates from production Let's Encrypt |
+`AGASSI_ACME_TIMEOUT` | seconds before fetching the certificate times out | 30
 `AGASSI_AUTH_REALM` | the realm to use from basic authentication | Agassi
 `AGASSI_CPANEL_API_TOKEN_FILE` | the path to the cPanel API token |
 `AGASSI_CPANEL_SERVER` | the base URL for the cpanel endpoint |
