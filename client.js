@@ -288,7 +288,7 @@ function sleep (ms) {
 
 async function fetchCertificate (fqdn) {
     let fetchTimeout = setTimeout (() => { throw new Error ('Fetching certificate timed out'); },
-        Number.parseInt(process.env.AGASSI_ACME_TIMEOUT) / 1000);
+        Number.parseInt(process.env.AGASSI_ACME_TIMEOUT) * 1000);
 
     const accountOpts = {
         termsOfServiceAgreed: true
