@@ -73,13 +73,10 @@ async function start () {
         let virtualHost = parseVirtualHost (service);
         log.trace ('parsed service ' + service.ID);
         if (virtualHost) {
-            log.debug ('found agassi virtual host for service ' + service.ID + ' with domain ' + virtualHost.domain);
             log.debug ('setting CNAME record...');
             await putCnameRecord (virtualHost.domain, process.env.AGASSI_TARGET_CNAME);
-            log.trace ('CNAME record set');
             log.debug ('adding service to store...');
             await storeVirtualHost (virtualHost);
-            log.trace (`service ${virtualHost.serviceID} added to store`);
         }
     }
     // listen for events
@@ -109,7 +106,7 @@ function listen (timestamp) {
                     await processEvent (event);
                 }
             } catch (error) {
-                log.debug ('event is not valid JSON');
+                log.trace ('event is not valid JSON');
             }
         });
         resp.on('end', () => {
@@ -174,13 +171,10 @@ async function processEvent (event) {
         let virtualHost = parseVirtualHost (service);
         // if we have an agassi service
         if (virtualHost) {
-            log.debug ('found agassi virtual host for service ' + virtualHost.serviceID + ' with domain ' + virtualHost.domain);
             log.debug ('setting CNAME record...');
             await putCnameRecord (virtualHost.domain, process.env.AGASSI_TARGET_CNAME);
-            log.trace ('CNAME record set');
             log.debug ('adding service to store...');
             await storeVirtualHost (virtualHost);
-            log.trace (`service ${virtualHost.serviceID} added to store`);
         }
     }
     if (event.Action == 'remove') {
@@ -194,7 +188,6 @@ async function processEvent (event) {
 
 
 async function storeVirtualHost (virtualHost) {
-    log.debug (`adding service ${virtualHost.serviceID} -> vhost ${virtualHost.domain} ...`);
     let vHostPath = `/agassi/virtual-hosts/v0/${virtualHost.domain}`;
     log.debug ('checking for existing agassi service at domain ' + virtualHost.domain + ' ...');
     let existingVirtualHost = await etcdClient.get (vHostPath);

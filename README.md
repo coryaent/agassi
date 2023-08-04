@@ -33,20 +33,12 @@ ENVAR | Detail | Default
 `* this must end with a dot, e.g., subdomain.example.com.`
 
 ## Labels
-- `page.agassi.domain` set to your target domain ex. `example.com`
+- `page.agassi.domain` set to your target domain e.g. `example.com`
 - `page.agassi.auth` see [Authorization](#authorization) for how to generate an auth string
 - `page.agassi.options.target` the service access address for example `http://myservice:80`
 All options prefixed with `page.agassi.options.` are camel-cased (set `prependPath` with the label `page.agassi.opts.prepend-path`) and passed to [node-http-proxy](https://github.com/http-party/node-http-proxy).
 Pass the labels into your swarm compose file.
 ```yaml
-# defining at this level takes priority
-services:
-  service-01:
-    image:
-    labels:
-      page.agassi.domain: example.com
-      page.agassi.options.target: http://service-01:80
-# this means of labeling gets overwritten by the former
 services:
   service-01:
     image:
