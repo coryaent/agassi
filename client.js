@@ -33,7 +33,7 @@ const fs = require ('fs');
 
 // create clients
 const acmeClient = new acme.Client({
-    directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
+    directoryUrl: process.env.AGASSI_ACME_STAGING ? acme.directory.letsencrypt.staging : acme.directory.letsencrypt.production,
     accountKey: fs.readFileSync (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)
 });
 const etcdClient = new Etcd3({
@@ -165,7 +165,7 @@ async function storeVirtualHost (virtualHost) {
         log.debug (`agassi virtualHost with domain ${virtualHost.domain} added to store`);
     }
     // check if the certificate exists
-    let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${virtualHost.domain}`;
+    let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_STAGING ? 'staging' : 'production'}/${virtualHost.domain}`;
     log.debug (`checking store for cert with domain ${virtualHost.domain}...`);
     let existingCert = await etcdClient.get (certPath);
     if (existingCert) {
@@ -246,7 +246,7 @@ async function performMaintenance () {
         vHostDomains.push (virtualHost.domain);
     }
 
-    let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
+    let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_STAGING ? 'staging' : 'production'}/`;
     log.debug ('pulling certificates from store...');
     let allCerts = await etcdClient.getAll().prefix(certPrefix).exec ();
     log.trace (`found ${allCerts.kvs.length} certs in kv store`);

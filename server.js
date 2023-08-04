@@ -50,7 +50,7 @@ const pemDefaultCert = Buffer.from (forge.pki.certificateToPem (cert));
 module.exports = https.createServer ({
     SNICallback: async (domain, callback) => {
         // get latest cert
-        let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${domain}`;
+        let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_STAGING ? 'staging' : 'production'}/${domain}`;
         let authorizedCert = null;
         // try the cache
         let cachedCert = cache.get (certPath);
@@ -142,7 +142,7 @@ module.exports = https.createServer ({
             response.writeHead(429, {
                 'Content-Type': 'text/plain'
             });
-            response.end ('Authentication failed.');
+            response.end ('Authorization failed.');
             return;
         }
 
@@ -165,7 +165,7 @@ module.exports = https.createServer ({
             rateLimit.inboundRequest (request);
             // prompt for password in browser
             response.writeHead (401, { 'WWW-Authenticate': `Basic realm="process.env.AGASSI_AUTH_REALM"`});
-            response.end ('Authorization is required.');
+            response.end ('Authentication is required.');
         }
 
     } else {
@@ -187,7 +187,7 @@ module.exports = https.createServer ({
         let key = kv.key.toString();
         log.debug ('key ' + key + ' has mod revision ' + kv.mod_revision);
         let servicePrefix = '/agassi/virtual-hosts/v0/';
-        let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
+        let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_STAGING ? 'staging' : 'production'}/`;
         let value = null;
         if (key.startsWith (servicePrefix)) {
             value = JSON.parse(kv.value);
@@ -206,7 +206,7 @@ module.exports = https.createServer ({
             let key = res.key.toString();
             log.trace ('put event received for key', key);
             let servicePrefix = '/agassi/virtual-hosts/v0/';
-            let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
+            let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_STAGING ? 'staging' : 'production'}/`;
             let value = null;
             if (key.startsWith (servicePrefix)) {
                 value = JSON.parse(res.value);
