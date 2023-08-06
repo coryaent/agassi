@@ -198,8 +198,8 @@ async function removeService (serviceID) {
     //all.kvs.forEach (pair => existingVirtualHosts.push ({'key': pair[0], 'value': pair[1]}));
     log.trace (`found ${all.kvs.length} agassi virtual hosts in store`);
     for (let vHost of all.kvs) {
-        log.debug ('key:', vHost.key.toString());
-        log.debug ('value:', vHost.value.toString());
+        // log.debug ('key:', vHost.key.toString());
+        // log.debug ('value:', vHost.value.toString());
         if (JSON.parse (vHost.value).serviceID == serviceID) {
             log.trace (`deleting virtual host at ${vHost.key.toString()}...`);
             await etcdClient.delete().key(vHost.key.toString());
