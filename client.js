@@ -310,7 +310,7 @@ async function fetchCertificate (fqdn) {
     const authorizations = await acmeClient.getAuthorizations (order);
     const dnsChallenge = authorizations[0]['challenges'].find ((element) => element.type === 'dns-01');
 
-    if (dnsChallenge.status == 'pending') {
+    if (dnsChallenge.status == 'pending' || dnsChallenge.status == 'processing') {
 
         log.debug ('fetching key authorization...');
         const keyAuthorization = await acmeClient.getChallengeKeyAuthorization(dnsChallenge);
