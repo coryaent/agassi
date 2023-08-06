@@ -79,7 +79,7 @@ async function start () {
         }
     }
     // listen for events
-    listen (latestServiceUpdate);
+    listen (latestServiceUpdate + 1); // docker fetches events at or later than specified time
 }
 
 /*
