@@ -11,8 +11,9 @@ By using Agassi, you are accepting the [Let's Encrypt Subscriber Agreement](http
 
 ENVAR | Detail | Default
 --- | --- | ---
-`AGASSI_ACME_PRODUCTION` | if set to any value, fetch certificates from production Let's Encrypt |
 `AGASSI_ACME_ACCOUNT_KEY_FILE` | the path to the key to the ACME account |
+`AGASSI_ACME_PRODUCTION` | if set to any value, fetch certificates from production Let's Encrypt |
+`AGASSI_ACME_TIMEOUT` | seconds before fetching the certificate times out | 30
 `AGASSI_AUTH_REALM` | the realm to use from basic authentication | Agassi
 `AGASSI_CPANEL_API_TOKEN_FILE` | the path to the cPanel API token |
 `AGASSI_CPANEL_SERVER` | the base URL for the cpanel endpoint |
@@ -28,23 +29,17 @@ ENVAR | Detail | Default
 `AGASSI_LETS_ENCRYPT_EMAIL` | email address used to send certificate renewal notifications |
 `AGASSI_LOG_LEVEL` | trace, debug, info, warn, error, fatal | info
 `AGASSI_MAINTENANCE_INTERVAL` | how often to prune services and update certificates (hours) | 12
-`AGASSI_TARGET_CNAME` | cname value to which DNS records point |
+`AGASSI_TARGET_CNAME`* | cname value to which DNS records point |
+
+`* this must end with a dot, e.g., subdomain.example.com.`
 
 ## Labels
-- `page.agassi.domain` set to your target domain ex. `example.com`
+- `page.agassi.domain` set to your target domain e.g. `example.com`
 - `page.agassi.auth` see [Authorization](#authorization) for how to generate an auth string
 - `page.agassi.options.target` the service access address for example `http://myservice:80`
 All options prefixed with `page.agassi.options.` are camel-cased (set `prependPath` with the label `page.agassi.opts.prepend-path`) and passed to [node-http-proxy](https://github.com/http-party/node-http-proxy).
 Pass the labels into your swarm compose file.
 ```yaml
-# defining at this level takes priority
-services:
-  service-01:
-    image:
-    labels:
-      page.agassi.domain: example.com
-      page.agassi.options.target: http://service-01:80
-# this means of labeling gets overwritten by the former
 services:
   service-01:
     image:

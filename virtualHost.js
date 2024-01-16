@@ -25,10 +25,12 @@ the data that constitutes an agassi virtual host goes like this:
 const log = require ('./logger.js');
 
 const domainRegEx = /(?:domai|fqd)n/;
+const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
+const authRegEx = /auth(?:entication)?/;
 
 module.exports = {
     parseVirtualHost: function (service) {
-        const labels = parseServiceLabels (service);
+        const labels = service.Spec.Labels;
 
         // no labels at all, not an agassi service
         if (!Object.keys (labels).length > 0) {
@@ -36,15 +38,13 @@ module.exports = {
         }
 
         for (let labelKey of Object.keys (labels)) {
-            // filter labels that start with the prefix
+            // only check agassi service labels
             if (labelKey.startsWith (process.env.AGASSI_LABEL_PREFIX)) {
                 const agassiLabel = labelKey.replace (process.env.AGASSI_LABEL_PREFIX, '');
-                // filter labels that meet the regex
+                // every agassi service will have a domain
                 if (domainRegEx.test (agassiLabel)) {
-                    // has virtual host
-                    log.trace ('parseVirtualHost found label', process.env.AGASSI_LABEL_PREFIX.concat (agassiLabel));
+                    // any agassi service must have a target or a forward option
                     if (getOptions (service)['forward'] || getOptions (service)['target']) {
-                        log.trace ('found forward/target option');
                         let virtualHost = {};
                         virtualHost['domain'] = getDomain (service);
                         virtualHost['authentication'] = getAuth (service);
@@ -59,65 +59,29 @@ module.exports = {
         return null;
     }
 }
+
 function getAuth (service) {
-    const authRegEx = /auth(?:entication)?/;
-    const labels = parseServiceLabels (service);
+    const labels = service.Spec.Labels;
     const authLabel = Object.keys (labels)
         .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
-        .find (label => authRegEx.test (label));            // find the virtual hosts label
-    // log.debug ('got authLabel', authLabel);
+        .find (label => authRegEx.test (label));            // find the auth label
+
     return labels[process.env.AGASSI_LABEL_PREFIX + '' + authLabel];
 }
 
 function getDomain (service) {
-
-    const labels = parseServiceLabels (service);
+    const labels = service.Spec.Labels;
     const domainLabel = Object.keys (labels)
         .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
-        .find (label => domainRegEx.test (label));            // find the virtual hosts label
+        .find (label => domainRegEx.test (label));            // find the domain label
+
     return labels[process.env.AGASSI_LABEL_PREFIX + '' + domainLabel];
 }
 
-function getOptions (service) {
-    return parseProxyOptions (parseServiceLabels (service));
-}
-// pass service details
-function parseServiceLabels (service) {
-    // merge service labels, prefering container labels to service labels
-    const labels = {};
-    const labelsMap = new Map ();
-
-    //  service:
-    //    image:
-    //    deploy:
-    //      labels:
-    if (service.Spec.Labels) {
-        const serviceLabels = service.Spec.Labels;
-        Object.keys (serviceLabels).forEach ((labelKey) => {
-            labelsMap.set (labelKey, serviceLabels[labelKey]);
-        });
-    }
-
-    //  service:
-    //    image:
-    //    labels:
-    if (service.Spec.TaskTemplate.ContainerSpec.Labels) {
-        const containerLabels = service.Spec.TaskTemplate.ContainerSpec.Labels;
-        Object.keys (containerLabels).forEach ((labelKey) => {
-            labelsMap.set (labelKey, containerLabels[labelKey]);
-        });
-    }
-
-    labelsMap.forEach ((value, key) => {
-        labels[key] = value;
-    });
-
-    return labels;
-}
-
 // pass return from parseServiceLabels
-function parseProxyOptions (labels) {
-    const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
+function getOptions (service) {
+
+    const labels = service.Spec.Labels;
     // http-proxy options
     const options = {};
 
@@ -209,7 +173,6 @@ function parseProxyOptions (labels) {
             }
         }
     });
-
     return options;
 }
 

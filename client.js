@@ -30,7 +30,6 @@ const { Etcd3 } = require('etcd3');
 const acme = require ('acme-client');
 const forge = require ('node-forge');
 const fs = require ('fs');
-const http = require ('http');
 
 // create clients
 const acmeClient = new acme.Client({
@@ -73,13 +72,10 @@ async function start () {
         let virtualHost = parseVirtualHost (service);
         log.trace ('parsed service ' + service.ID);
         if (virtualHost) {
-            log.debug ('found agassi virtual host for service ' + service.ID + ' with domain ' + virtualHost.domain);
             log.debug ('setting CNAME record...');
             await putCnameRecord (virtualHost.domain, process.env.AGASSI_TARGET_CNAME);
-            log.trace ('CNAME record set');
             log.debug ('adding service to store...');
             await storeVirtualHost (virtualHost);
-            log.trace (`service ${virtualHost.serviceID} added to store`);
         }
     }
     // listen for events
@@ -87,18 +83,22 @@ async function start () {
 }
 
 /*
-    dockerode seems to lose events and so we're trying raw node.js http requests
+    what this needs to do:
+        keep track of the latest events and reconnect from that point
 */
 function listen (timestamp) {
-    log.debug ('starting docker events listening since ' + timestamp + ' ...');
     let latestEventTime = timestamp;
-    let socketHost = process.env.AGASSI_DOCKER_HOST;
-    let socketPort = process.env.AGASSI_DOCKER_PORT;
-    http.get(`http://${socketHost}:${socketPort}/events?since=${latestEventTime}`, (resp) => {
-        log.info ('docker events stream connected');
-        resp.on('data', async (chunk) => {
-            try {
-                let event = JSON.parse(chunk);
+    log.debug (`starting docker service events listener since ${latestEventTime}...`);
+    docker.getEvents ({ since: latestEventTime }).then (async (events) => {
+        log.info ('docker events listener started');
+        events.on ('data', async (data) => {
+            let event = null;
+            try { // sometimes invalid data comes through the events stream
+                event = JSON.parse(data);
+            } catch (error) {
+                log.trace ('got invalid JSON event');
+            }
+            if (event) {
                 if (event.scope == 'swarm') {
                     if (event.time > latestEventTime) {
                         latestEventTime = event.time;
@@ -108,61 +108,17 @@ function listen (timestamp) {
                 if (event.Type == 'service') {
                     await processEvent (event);
                 }
-            } catch (error) {
-                log.debug ('event is not valid JSON');
-            }
-        });
-        resp.on('end', () => {
-            // this does not have any documentation but it is included
-            //     in the event that docker ends the events stream
-            log.debug ('docker events response ended, last event seen at ' + latestEventTime);
-            log.debug ('reconnecting events stream after end...');
-            setTimeout(listen, 7500, latestEventTime);
-        });
-        resp.on ('close', () => {
-            log.warn ('docker events stream closed or lost, last event seen at ' + latestEventTime);
-            log.debug ('reconnecting events stream after close...');
-            setTimeout(listen, 7500, latestEventTime);
-        });
-
-    }).on("error", (err) => {
-        log.error ('error connecting to the docker events stream ' + err.message);
-        log.debug ('attempting reconnection after error...');
-        setTimeout(listen, 7500, latestEventTime);
-    });
-}
-
-/*
-    what this needs to do:
-        keep track of the latest events and reconnect from that point
-*/
-function listenDockerode (timestamp) {
-    let lastEventTime = timestamp;
-    log.debug (`starting docker service events listener since ${lastEventTime}...`);
-    docker.getEvents ({ since: lastEventTime }).then (async (events) => {
-        log.info ('docker events listener started');
-        events.on ('data', async (data) => {
-            let event = JSON.parse (data);
-            // keep track of the timestamp passed for reconnection
-            if (lastEventTime < event.time) {
-                lastEventTime = event.time;
-                log.trace ('last event received at ' + lastEventTime);
-            }
-            // only process service events
-            if (event.Type == 'service') {
-                log.trace ('got docker service event');
-                await processEvent (event);
             }
         });
         events.on ('close', () => {
             // 'close' event fires when the connection is reset
             log.warn ('docker events connection closed, reconnecting...');
-            setTimeout (listen, 7500, lastEventTime);
+            setTimeout (listen, 7500, latestEventTime);
         });
     }).catch ((error) => {
         // catch error in which we cannot reconnect to the docker stream
         log.error ('could not connect to docker event stream:', error.code, 'retrying...');
-        setTimeout (listen, 7500, lastEventTime);
+        setTimeout (listen, 7500, latestEventTime);
     });
 }
 
@@ -174,13 +130,10 @@ async function processEvent (event) {
         let virtualHost = parseVirtualHost (service);
         // if we have an agassi service
         if (virtualHost) {
-            log.debug ('found agassi virtual host for service ' + virtualHost.serviceID + ' with domain ' + virtualHost.domain);
             log.debug ('setting CNAME record...');
             await putCnameRecord (virtualHost.domain, process.env.AGASSI_TARGET_CNAME);
-            log.trace ('CNAME record set');
             log.debug ('adding service to store...');
             await storeVirtualHost (virtualHost);
-            log.trace (`service ${virtualHost.serviceID} added to store`);
         }
     }
     if (event.Action == 'remove') {
@@ -192,9 +145,7 @@ async function processEvent (event) {
     }
 };
 
-
 async function storeVirtualHost (virtualHost) {
-    log.debug (`adding service ${virtualHost.serviceID} -> vhost ${virtualHost.domain} ...`);
     let vHostPath = `/agassi/virtual-hosts/v0/${virtualHost.domain}`;
     log.debug ('checking for existing agassi service at domain ' + virtualHost.domain + ' ...');
     let existingVirtualHost = await etcdClient.get (vHostPath);
@@ -336,7 +287,11 @@ function sleep (ms) {
     });
 }
 
+
 async function fetchCertificate (fqdn) {
+    let fetchTimeout = setTimeout (() => { throw new Error ('Fetching certificate timed out'); },
+        Number.parseInt(process.env.AGASSI_ACME_TIMEOUT) * 1000);
+
     const accountOpts = {
         termsOfServiceAgreed: true
     };
@@ -345,48 +300,50 @@ async function fetchCertificate (fqdn) {
     }
     const account = await acmeClient.createAccount(accountOpts);
     log.debug ('creating certificate order...')
-    const order = await acmeClient.createOrder({
+    let order = await acmeClient.createOrder({
         identifiers: [
             { type: 'dns', value: fqdn },
         ]
     });
-    log.debug ('order:', order);
 
     log.debug ('fetching authorizations...');
     const authorizations = await acmeClient.getAuthorizations (order);
-    log.debug ('finding dns challenge...');
     const dnsChallenge = authorizations[0]['challenges'].find ((element) => element.type === 'dns-01');
 
-    log.debug ('fetching key authorization...');
-    const keyAuthorization = await acmeClient.getChallengeKeyAuthorization(dnsChallenge);
+    if (dnsChallenge.status == 'pending') {
 
-    // set txt (ACME)
-    log.debug ('setting txt record...');
-    const txtSet = await putTxtRecord (`_acme-challenge.${fqdn}`, keyAuthorization);
+        log.debug ('fetching key authorization...');
+        const keyAuthorization = await acmeClient.getChallengeKeyAuthorization(dnsChallenge);
 
-    // complete challenge
-    log.debug ('completing challenge...');
-    const completion = await acmeClient.completeChallenge (dnsChallenge);
+        // set txt (ACME)
+        log.debug ('setting txt record...');
+        const txtSet = await putTxtRecord (`_acme-challenge.${fqdn}`, keyAuthorization);
 
-    // await validation
-    log.debug ('awaiting validation...');
-    // give the DNS records a few seconds to propagate
-    await sleep (7500);
-    let validation = await acmeClient.waitForValidStatus (dnsChallenge)
+        // complete challenge
+        log.debug ('completing challenge...');
+        const completion = await acmeClient.completeChallenge (dnsChallenge);
 
+        // await validation
+        log.debug ('awaiting validation...');
+        // give the DNS records a few seconds to propagate
+        // await sleep (7500);
+        let challengeResponse = await acmeClient.waitForValidStatus (dnsChallenge);
+
+    }
     log.debug ('creating csr...');
     const [key, csr] = await acme.crypto.createCsr ({
         commonName: fqdn
     }, fs.readFileSync (process.env.AGASSI_DEFAULT_KEY_FILE));
 
     log.debug ('finalizing order...')
-    const finalized = await acmeClient.finalizeOrder (order, csr);
-    log.debug ('finalized:', finalized);
+    order = await acmeClient.finalizeOrder (order, csr);
 
     log.debug ('fetching cert...');
-    let cert = await acmeClient.getCertificate (finalized);
+    let cert = await acmeClient.getCertificate (order);
     // I do not know why this is necessary, but getCertificate seems to return three of the same cert in one file.
     cert = cert.substring (0, cert.indexOf ('-----END CERTIFICATE-----')).concat ('-----END CERTIFICATE-----');
+
+    clearTimeout (fetchTimeout);
 
     return cert;
 }
