@@ -16,7 +16,6 @@ module.exports = httpProxy.createProxyServer ({
     };
 })
 .on ('error', (error) => {
-    log.warn (error.name);
-    log.warn (error.message);
+    log.error (error.name + ': ' + error.message);
     process.exitCode = 1;
 });

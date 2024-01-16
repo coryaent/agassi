@@ -1,102 +1,87 @@
 "use strict";
+/*
+
+an agassi virtual host is defined by docker service labels labels:
+  page.agassi.domain: 'some.fully.qualified.domain.name'
+  page.agassi.authentication: 'dXNlcjokMnkkMDgkS3JxSkJIWWRnSXBNTlU3bDRsaXlGT3NsWUQyZmkwSHprNkhDY3dFRDBsRTNkb1dKWVUxd20KCg=='
+      // authentication can be generated using htpasswd -B -n -C 8 user | printf %s\n $(base64 -w 0 -)`
+  page.agassi.options.target: 'http://some_service_name:8080' (can be anything reachable)
+  page.agassi.options.another-option: 'option_value' // gets passed to http-proxy as anotherOption
+
+the data that constitutes an agassi virtual host goes like this:
+  {
+    domain: "...",
+    authentication: "...",
+    serviceID: "...",
+    UpdatedAt: "2011-10-05T14:48:00.000Z", // ISO String date, capitalized for consistency with the docker API
+    options: {
+      target: "...",
+      "anotherOption": "..."
+    }
+  }
+
+*/
 
 const log = require ('./logger.js');
 
-module.exports = {
-    isAgassiService: function (service) {
+const domainRegEx = /(?:domai|fqd)n/;
+const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
+const authRegEx = /auth(?:entication)?/;
 
-        const labels = parseServiceLabels (service);
+module.exports = {
+    parseVirtualHost: function (service) {
+        const labels = service.Spec.Labels;
 
         // no labels at all, not an agassi service
         if (!Object.keys (labels).length > 0) {
             return false;
         }
-        const vHostRegEx = /v(?:irtual(?:\-h|H)|[Hh])ost/;
-        // we need to check for AGASSI_LABEL_PREFIX + vHost and
 
         for (let labelKey of Object.keys (labels)) {
-            // filter labels that start with the prefix
+            // only check agassi service labels
             if (labelKey.startsWith (process.env.AGASSI_LABEL_PREFIX)) {
                 const agassiLabel = labelKey.replace (process.env.AGASSI_LABEL_PREFIX, '');
-                // filter labels that meet the regex
-                if (vHostRegEx.test (agassiLabel)) {
-                    // has virtual host
-                    log.debug ('isAgassiService found label', process.env.AGASSI_LABEL_PREFIX.concat (agassiLabel));
-                    log.debug ('this may be an agassi service');
-                    if (getOptions (service)['forward']) {
-                        log.debug ('found forward option');
-                        return true
-                    }
-                    if (getOptions (service) ['target']) {
-                        log.debug ('found target option');
-                        return true
+                // every agassi service will have a domain
+                if (domainRegEx.test (agassiLabel)) {
+                    // any agassi service must have a target or a forward option
+                    if (getOptions (service)['forward'] || getOptions (service)['target']) {
+                        let virtualHost = {};
+                        virtualHost['domain'] = getDomain (service);
+                        virtualHost['authentication'] = getAuth (service);
+                        virtualHost['serviceID'] = service.ID;
+                        virtualHost['UpdatedAt'] = service.UpdatedAt;
+                        virtualHost['options'] = getOptions (service);
+                        return virtualHost;
                     }
                 }
             }
         }
-        return false;
-    },
-    getAuth: function (service) {
-        const authRegex = /auth(?:entication|oriz(?:ation|e)|enticate)?/;
-        const labels = parseServiceLabels (service);
-        const authLabel = Object.keys (labels)
-            .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
-            .find (label => authRegex.test (label));            // find the virtual hosts label
-        // log.debug ('got authLabel', authLabel);
-        return labels[process.env.AGASSI_LABEL_PREFIX + '' + authLabel];
-    },
-    getVHost: function (service) {
-        const vHostRegEx = /v(?:irtual(?:\-h|H)|[Hh])ost/;
-
-        const labels = parseServiceLabels (service);
-        const virtualHostLabel = Object.keys (labels)
-            .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
-            .find (label => vHostRegEx.test (label));            // find the virtual hosts label
-        return labels[process.env.AGASSI_LABEL_PREFIX + '' + virtualHostLabel];
-    },
-    getOptions: getOptions
+        return null;
+    }
 }
 
-function getOptions (service) {
-    return parseProxyOptions (parseServiceLabels (service));
+function getAuth (service) {
+    const labels = service.Spec.Labels;
+    const authLabel = Object.keys (labels)
+        .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
+        .find (label => authRegEx.test (label));            // find the auth label
+
+    return labels[process.env.AGASSI_LABEL_PREFIX + '' + authLabel];
 }
-// pass service details
-function parseServiceLabels (service) {
-    // merge service labels, prefering container labels to service labels
-    const labels = {};
-    const labelsMap = new Map ();
 
-    //  service:
-    //    image:
-    //    deploy:
-    //      labels:
-    if (service.Spec.Labels) {
-        const serviceLabels = service.Spec.Labels;
-        Object.keys (serviceLabels).forEach ((labelKey) => {
-            labelsMap.set (labelKey, serviceLabels[labelKey]);
-        });
-    }
+function getDomain (service) {
+    const labels = service.Spec.Labels;
+    const domainLabel = Object.keys (labels)
+        .map  (label => label.replace (process.env.AGASSI_LABEL_PREFIX, ''))  // remove prefix
+        .find (label => domainRegEx.test (label));            // find the domain label
 
-    //  service:
-    //    image:
-    //    labels:
-    if (service.Spec.TaskTemplate.ContainerSpec.Labels) {
-        const containerLabels = service.Spec.TaskTemplate.ContainerSpec.Labels;
-        Object.keys (containerLabels).forEach ((labelKey) => {
-            labelsMap.set (labelKey, containerLabels[labelKey]);
-        });
-    }
-
-    labelsMap.forEach ((value, key) => {
-        labels[key] = value;
-    });
-
-    return labels;
+    return labels[process.env.AGASSI_LABEL_PREFIX + '' + domainLabel];
 }
 
 // pass return from parseServiceLabels
-function parseProxyOptions (labels) {
-    const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
+function getOptions (service) {
+
+    const labels = service.Spec.Labels;
     // http-proxy options
     const options = {};
 
@@ -188,7 +173,6 @@ function parseProxyOptions (labels) {
             }
         }
     });
-
     return options;
 }
 
@@ -202,4 +186,3 @@ function camelCase (text) {
         return c ? c.toUpperCase () : '';
     });
 }
-
