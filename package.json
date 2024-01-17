@@ -29,7 +29,7 @@
     "console-log-level": "^1.4.1",
     "delay": "^5.0.0",
     "etcd3": "^1.1.1",
-    "dockerode": "^3.3.5",
+    "dockerode": "^4.0.2",
     "fast-date-format": "^2.2.4",
     "http-proxy": "^1.18.1",
     "http-ratelimit": "^0.2.3",
