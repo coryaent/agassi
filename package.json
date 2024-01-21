@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/coryagroup/agassi#readme",
   "dependencies": {
-    "acme-client": "^5.0.0",
+    "acme-client": "^5.1.0",
     "axios": "^1.6.4",
     "bcryptjs": "^2.4.3",
     "console-log-level": "^1.4.1",
