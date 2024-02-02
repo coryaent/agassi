@@ -22,11 +22,13 @@ the data that constitutes an agassi virtual host goes like this:
 
 */
 
-const log = require ('./logger.js');
+const log = require ('../logger.js');
 
 const domainRegEx = /(?:domai|fqd)n/;
 const optRegEx = /opt(?:(?:ion)?s|ion)?/i;
 const authRegEx = /auth(?:entication)?/;
+
+const { parseVirtualHost } = require ('../virtualHost.js');
 
 module.exports = {
     parseVirtualHost: function (service) {
