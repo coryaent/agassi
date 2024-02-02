@@ -1,7 +1,7 @@
 ![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/coryaent/agassi?style=flat-square)
 
 # Agassi
-Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockerswarm.rocks/). When Traefik dropped support for distributed certificate storage, it created a situation all certificates were stored locally on a single machine. This removed redundency from the setup.
+Agassi is inspired by the setup detailed at [Docker Swarm Rocks](https://dockerswarm.rocks/). When Traefik dropped support for distributed certificate storage, it created a situation where all certificates were stored locally on a single machine. This removed redundency from the setup.
 
 Taking advantage of etcd and Docker Swarm's built-in state management, Agassi is able to run without the use of generative templates. Each agassi service is mapped to a virtual host, which are created by the client and retrieved by the server.
 
