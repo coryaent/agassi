@@ -50,7 +50,7 @@ const pemDefaultCert = Buffer.from (forge.pki.certificateToPem (cert));
 module.exports = https.createServer ({
     SNICallback: async (domain, callback) => {
         // get latest cert
-        let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${domain}`;
+        let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_STAGING ? 'staging' : 'production'}/${domain}`;
         let authorizedCert = null;
         // try the cache
         let cachedCert = cache.get (certPath);
@@ -86,20 +86,19 @@ module.exports = https.createServer ({
     key: pemKey,
     cert: pemDefaultCert
 }, async (request, response) => {
-    const requestURL = new URL (request.url, `https://${request.headers.host}`);
-    const vHostPath = `/agassi/virtual-hosts/v0/${requestURL.hostname}`;
+    const vHostPath = `/agassi/virtual-hosts/v0/${request.headers.host}`;
     // discard invalid domains and IP addresses
-    if (!isValidDomain (requestURL.hostname, { subdomain: true }) || isIP (requestURL.hostname)) { 
+    if (!isValidDomain (request.headers.host, { subdomain: true }) || isIP (request.headers.host)) {
         return;
     }
-    log.trace (`received request for domain ${requestURL.hostname}`)
+    log.trace (`received request for domain ${request.headers.host}`)
     let virtualHost = null;
     // check cache for virtual host
     log.trace ('checking cache for virtual host...');
     virtualHost = cache.get (vHostPath);
     if (!virtualHost) { // no vHost in cache 
-        log.trace (`virtual host ${requestURL.hostname} not found in cache`);
-        log.trace (`checking store for virtual host for ${requestURL.hostname}...`);
+        log.trace (`virtual host ${request.headers.host} not found in cache`);
+        log.trace (`checking store for virtual host for ${request.headers.host}...`);
         // this will set virtualHost to null (again) if there is no vHost in etcd
         virtualHost = await etcdClient.get (vHostPath);
         if (virtualHost) { // got virtual host from etcd
@@ -117,11 +116,11 @@ module.exports = https.createServer ({
     // still don't have virtual host
     // if it doesn't have .options it doesn't have a target or forward
     if (!virtualHost || !virtualHost.options) {
-        log.trace (`no target found for domain ${requestURL.hostname}`);
+        log.trace (`no target found for domain ${request.headers.host}`);
         response.writeHead(404, {
             'Content-Type': 'text/plain'
         });
-        response.end (`Could not find virtual host for domain ${requestURL.hostname}`);
+        response.end (`Could not find virtual host for domain ${request.headers.host}`);
         return;
     }
     // parse proxy options
@@ -143,7 +142,7 @@ module.exports = https.createServer ({
             response.writeHead(429, {
                 'Content-Type': 'text/plain'
             });
-            response.end ('Authentication failed.');
+            response.end ('Authorization failed.');
             return;
         }
 
@@ -166,7 +165,7 @@ module.exports = https.createServer ({
             rateLimit.inboundRequest (request);
             // prompt for password in browser
             response.writeHead (401, { 'WWW-Authenticate': `Basic realm="process.env.AGASSI_AUTH_REALM"`});
-            response.end ('Authorization is required.');
+            response.end ('Authentication is required.');
         }
 
     } else {
@@ -188,7 +187,7 @@ module.exports = https.createServer ({
         let key = kv.key.toString();
         log.debug ('key ' + key + ' has mod revision ' + kv.mod_revision);
         let servicePrefix = '/agassi/virtual-hosts/v0/';
-        let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
+        let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_STAGING ? 'staging' : 'production'}/`;
         let value = null;
         if (key.startsWith (servicePrefix)) {
             value = JSON.parse(kv.value);
@@ -201,13 +200,13 @@ module.exports = https.createServer ({
     }
     log.trace (`cached ${allAgassi.kvs.length} agassi services and certificates`);
     log.info ('creating watcher on prefix ' + prefix + ' since revision ' + allAgassi.header.revision + '...');
-    etcdClient.watch ().prefix(prefix).startRevision(allAgassi.header.revision).create().then (watcher => {
+    etcdClient.watch ().prefix(prefix).startRevision(allAgassi.header.revision + 1).create().then (watcher => {
         log.info ('watcher created successfully');
         watcher.on ('put', res => {
             let key = res.key.toString();
             log.trace ('put event received for key', key);
             let servicePrefix = '/agassi/virtual-hosts/v0/';
-            let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
+            let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_STAGING ? 'staging' : 'production'}/`;
             let value = null;
             if (key.startsWith (servicePrefix)) {
                 value = JSON.parse(res.value);

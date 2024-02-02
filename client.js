@@ -33,7 +33,7 @@ const fs = require ('fs');
 
 // create clients
 const acmeClient = new acme.Client({
-    directoryUrl: process.env.AGASSI_ACME_PRODUCTION ? acme.directory.letsencrypt.production : acme.directory.letsencrypt.staging,
+    directoryUrl: process.env.AGASSI_ACME_STAGING ? acme.directory.letsencrypt.staging : acme.directory.letsencrypt.production,
     accountKey: fs.readFileSync (process.env.AGASSI_ACME_ACCOUNT_KEY_FILE)
 });
 const etcdClient = new Etcd3({
@@ -79,7 +79,7 @@ async function start () {
         }
     }
     // listen for events
-    listen (latestServiceUpdate);
+    listen (latestServiceUpdate + 1); // docker fetches events at or later than specified time
 }
 
 /*
@@ -165,7 +165,7 @@ async function storeVirtualHost (virtualHost) {
         log.debug (`agassi virtualHost with domain ${virtualHost.domain} added to store`);
     }
     // check if the certificate exists
-    let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/${virtualHost.domain}`;
+    let certPath = `/agassi/certificates/${process.env.AGASSI_ACME_STAGING ? 'staging' : 'production'}/${virtualHost.domain}`;
     log.debug (`checking store for cert with domain ${virtualHost.domain}...`);
     let existingCert = await etcdClient.get (certPath);
     if (existingCert) {
@@ -198,8 +198,8 @@ async function removeService (serviceID) {
     //all.kvs.forEach (pair => existingVirtualHosts.push ({'key': pair[0], 'value': pair[1]}));
     log.trace (`found ${all.kvs.length} agassi virtual hosts in store`);
     for (let vHost of all.kvs) {
-        log.debug ('key:', vHost.key.toString());
-        log.debug ('value:', vHost.value.toString());
+        // log.debug ('key:', vHost.key.toString());
+        // log.debug ('value:', vHost.value.toString());
         if (JSON.parse (vHost.value).serviceID == serviceID) {
             log.trace (`deleting virtual host at ${vHost.key.toString()}...`);
             await etcdClient.delete().key(vHost.key.toString());
@@ -246,7 +246,7 @@ async function performMaintenance () {
         vHostDomains.push (virtualHost.domain);
     }
 
-    let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_PRODUCTION ? 'production' : 'staging'}/`;
+    let certPrefix = `/agassi/certificates/${process.env.AGASSI_ACME_STAGING ? 'staging' : 'production'}/`;
     log.debug ('pulling certificates from store...');
     let allCerts = await etcdClient.getAll().prefix(certPrefix).exec ();
     log.trace (`found ${allCerts.kvs.length} certs in kv store`);
@@ -310,7 +310,7 @@ async function fetchCertificate (fqdn) {
     const authorizations = await acmeClient.getAuthorizations (order);
     const dnsChallenge = authorizations[0]['challenges'].find ((element) => element.type === 'dns-01');
 
-    if (dnsChallenge.status == 'pending') {
+    if (dnsChallenge.status == 'pending' || dnsChallenge.status == 'processing') {
 
         log.debug ('fetching key authorization...');
         const keyAuthorization = await acmeClient.getChallengeKeyAuthorization(dnsChallenge);
