@@ -23,7 +23,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: coryaent/krause
+          images: coryaent/agassi
         
       - name: Set up Docker Buildx
         id: buildx
